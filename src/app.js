@@ -204,7 +204,7 @@ function renderItems(project) {
     div.className = 'item' + (checked ? ' checked' : '');
     div.innerHTML = `
       <div class="item-head">
-        <input type="checkbox" data-check="${item.id}" ${checked ? 'checked' : ''} />
+        <input type="checkbox" data-check="${escapeHtml(item.id)}" ${checked ? 'checked' : ''} />
         <div>
           <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}
           ${item.code ? `<span class="muted">[${escapeHtml(item.code)}]</span>` : ''}
