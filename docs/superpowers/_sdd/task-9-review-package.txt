@@ -1,0 +1,171 @@
+=== COMMITS (948bb86..HEAD) ===
+93dfdd3 feat: project view with live filtering, checks, comments, autosave
+
+=== DIFF STAT ===
+ src/app.js | 120 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 119 insertions(+), 1 deletion(-)
+
+=== FULL DIFF ===
+diff --git a/src/app.js b/src/app.js
+index 7c619f8..cb65065 100644
+--- a/src/app.js
++++ b/src/app.js
+@@ -1,13 +1,13 @@
+ import { buildModel } from './workbookModel.js';
+ import { createProjectStore } from './projectStore.js';
+-import { computeProgress } from './exporter.js';
++import { computeProgress, applicableItems } from './exporter.js';
+ 
+ const MODEL_KEY = 'dpchecklist.model';
+ 
+ const state = {
+   model: null,
+   store: createProjectStore(window.localStorage),
+   currentProjectId: null,
+ };
+ 
+ const screens = ['setup', 'dashboard', 'project'];
+@@ -128,25 +128,143 @@ function escapeHtml(s) {
+   return String(s ?? '').replace(/[&<>"']/g, c =>
+     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+ }
+ 
+ function openProject(id) {
+   state.currentProjectId = id;
+   showScreen('project');
+   if (typeof renderProject === 'function') renderProject();
+ }
+ 
++function getCurrentProject() {
++  return state.store.getProject(state.currentProjectId);
++}
++
++function saveCurrent(project) {
++  state.store.saveProject(project);
++}
++
++function defaultInputValue(def) {
++  if (def.type === 'Boolean') return /^true$/i.test(String(def.default)) ;
++  if (def.type === 'Float' || def.type === 'Integer') return def.default === '' ? 0 : Number(def.default);
++  if (def.type === 'Choice') return def.default || (def.choices[0] ?? '');
++  return def.default;
++}
++
++function renderInputs(project) {
++  const panel = document.getElementById('inputs-panel');
++  panel.innerHTML = '<h3>Project inputs</h3>';
++  for (const def of state.model.inputs) {
++    if (!(def.name in project.inputs)) project.inputs[def.name] = defaultInputValue(def);
++    const value = project.inputs[def.name];
++    const label = document.createElement('label');
++    label.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
++    panel.appendChild(label);
++
++    let control;
++    if (def.type === 'Boolean') {
++      control = document.createElement('input');
++      control.type = 'checkbox';
++      control.checked = value === true;
++      control.addEventListener('change', () => updateInput(def.name, control.checked));
++    } else if (def.type === 'Choice') {
++      control = document.createElement('select');
++      for (const c of def.choices) {
++        const opt = document.createElement('option');
++        opt.value = c; opt.textContent = c;
++        if (c === value) opt.selected = true;
++        control.appendChild(opt);
++      }
++      control.addEventListener('change', () => updateInput(def.name, control.value));
++    } else {
++      control = document.createElement('input');
++      control.type = 'number';
++      if (def.type === 'Integer') control.step = '1';
++      control.value = value;
++      control.addEventListener('input', () => updateInput(def.name, control.value === '' ? '' : Number(control.value)));
++    }
++    panel.appendChild(control);
++  }
++}
++
++function updateInput(name, value) {
++  const project = getCurrentProject();
++  project.inputs[name] = value;
++  saveCurrent(project);
++  renderItems(project);
++  renderProgress(project);
++}
++
++function renderItems(project) {
++  const container = document.getElementById('items-list');
++  container.innerHTML = '';
++  const items = applicableItems(state.model, project.inputs);
++  for (const item of items) {
++    const checked = project.checks[item.id] === true;
++    const div = document.createElement('div');
++    div.className = 'item' + (checked ? ' checked' : '');
++    div.innerHTML = `
++      <div class="item-head">
++        <input type="checkbox" data-check="${item.id}" ${checked ? 'checked' : ''} />
++        <div>
++          <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}
++          ${item.code ? `<span class="muted">[${escapeHtml(item.code)}]</span>` : ''}
++          ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
++          ${item.example ? `<div class="item-example"><em>How to complete:</em> ${escapeHtml(item.example)}</div>` : ''}
++        </div>
++      </div>`;
++    const ta = document.createElement('textarea');
++    ta.placeholder = 'Your comment for this item…';
++    ta.rows = 2;
++    ta.value = project.comments[item.id] || '';
++    ta.addEventListener('input', () => {
++      const p = getCurrentProject();
++      p.comments[item.id] = ta.value;
++      saveCurrent(p);
++    });
++    div.appendChild(ta);
++    container.appendChild(div);
++  }
++
++  container.querySelectorAll('[data-check]').forEach(cb =>
++    cb.addEventListener('change', () => {
++      const p = getCurrentProject();
++      p.checks[cb.getAttribute('data-check')] = cb.checked;
++      saveCurrent(p);
++      renderItems(p);
++      renderProgress(p);
++    }));
++}
++
++function renderProgress(project) {
++  const { checked, applicable, ratio } = computeProgress(state.model, project);
++  document.getElementById('project-progress-bar').style.width = Math.round(ratio * 100) + '%';
++  document.getElementById('project-progress-label').textContent = `${checked} / ${applicable} checked`;
++}
++
++function renderProject() {
++  const project = getCurrentProject();
++  if (!project) { showScreen('dashboard'); return; }
++  document.getElementById('project-title').textContent = project.name;
++  renderInputs(project);
++  // persist any defaults just applied
++  saveCurrent(project);
++  renderItems(project);
++  renderProgress(project);
++}
++
+ function init() {
+   state.model = restoreModel();
+   wireSetup();
+   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
+   document.getElementById('nav-setup').addEventListener('click', () => showScreen('setup'));
++  document.getElementById('btn-back').addEventListener('click', () => showScreen('dashboard'));
+ 
+   document.getElementById('btn-new-project').addEventListener('click', () => {
+     if (!state.model) { alert('Load a checklist workbook in Setup first.'); return; }
+     const name = prompt('Project name?');
+     if (!name) return;
+     const project = state.store.createProject(name);
+     openProject(project.id);
+   });
+ 
+   document.getElementById('import-project-file').addEventListener('change', async e => {

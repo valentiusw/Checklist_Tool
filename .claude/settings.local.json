@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(git --version)",
+      "Bash(ls \"C:/Users/valen/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/\")",
+      "PowerShell($n = \\(Get-Command node -ErrorAction SilentlyContinue\\); if \\($n\\) { node --version; npm --version; \"node at: \" + $n.Source } else { \"node not found on PATH\" })",
+      "PowerShell(foreach \\($c in 'deno','bun','node','npm','python','py'\\) { $g = Get-Command $c -ErrorAction SilentlyContinue; if \\($g\\) { \"$c -> $\\($g.Source\\)\" } else { \"$c -> \\(not found\\)\" } }; \"--- winget node available? ---\"; $w = Get-Command winget -ErrorAction SilentlyContinue; if \\($w\\) { \"winget present\" } else { \"no winget\" })",
+      "PowerShell(winget install *)",
+      "PowerShell($env:Path = [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\); $n = Get-Command node -ErrorAction SilentlyContinue; if \\($n\\) { \"node: \" + \\(node --version\\) + \" at \" + $n.Source; \"npm: \" + \\(npm --version\\) } else { Get-ChildItem \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue | Select FullName })",
+      "PowerShell($n = Get-Command node -ErrorAction SilentlyContinue; if \\($n\\) { \"node on PATH: \" + \\(node --version\\) } else { \"node NOT on default PATH in fresh shell\" })",
+      "Bash(git init *)",
+      "Bash(curl -L -o \"c:/Users/valen/Desktop/CLAUDE_PROJECTS/DP_ChecklistTool/vendor/xlsx.full.min.js\" https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js)",
+      "Bash(awk '{print $5}')",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git config *)",
+      "Bash(npm test *)",
+      "Bash(node --test)",
+      "Bash(git ls-tree *)"
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+=== COMMITS ===
+a919eda chore: scaffold project, test runner, vendored SheetJS
+
+=== DIFF STAT (root..HEAD) ===
+ .gitignore              |  2 ++
+ package.json            |  9 +++++++++
+ src/.gitkeep            |  0
+ tests/smoke.test.js     |  6 ++++++
+ vendor/xlsx.full.min.js | 24 ++++++++++++++++++++++++
+ 5 files changed, 41 insertions(+)
+
+=== FULL DIFF (excluding vendored lib) ===
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..552f221
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++*.log
+diff --git a/package.json b/package.json
+new file mode 100644
+index 0000000..91f1ed5
+--- /dev/null
++++ b/package.json
+@@ -0,0 +1,9 @@
++{
++  "name": "dp-checklist-tool",
++  "version": "1.0.0",
++  "private": true,
++  "type": "module",
++  "scripts": {
++    "test": "node --test"
++  }
++}
+diff --git a/src/.gitkeep b/src/.gitkeep
+new file mode 100644
+index 0000000..e69de29
+diff --git a/tests/smoke.test.js b/tests/smoke.test.js
+new file mode 100644
+index 0000000..c1c6d11
+--- /dev/null
++++ b/tests/smoke.test.js
+@@ -0,0 +1,6 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++
++test('test runner works', () => {
++  assert.equal(1 + 1, 2);
++});
+
+=== NOTE: vendor/xlsx.full.min.js is the vendored SheetJS build (binary-ish minified, ~952KB), intentionally not shown ===

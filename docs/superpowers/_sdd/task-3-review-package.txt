@@ -1,0 +1,117 @@
+=== COMMITS (d9e3128..HEAD) ===
+086111e feat: condition evaluator and applicability check
+
+=== DIFF STAT ===
+ src/conditionEngine.js             | 44 ++++++++++++++++++++++++++++++++++++++
+ tests/conditionEngine.eval.test.js | 43 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 87 insertions(+)
+
+=== FULL DIFF ===
+diff --git a/src/conditionEngine.js b/src/conditionEngine.js
+index d7d5287..10731b4 100644
+--- a/src/conditionEngine.js
++++ b/src/conditionEngine.js
+@@ -90,10 +90,54 @@ export function parseCondition(input) {
+       const right = parseAnd();
+       left = { type: 'or', left, right };
+     }
+     return left;
+   }
+ 
+   const ast = parseOr();
+   if (pos !== tokens.length) throw new ConditionError('Unexpected trailing tokens');
+   return ast;
+ }
++
++function evalComparison(node, values, defs) {
++  const def = defs[node.name];
++  if (!def) throw new ConditionError(`Unknown input referenced in condition: ${node.name}`);
++  const actual = values[node.name];
++  if (def.type === 'Boolean') {
++    const expected = typeof node.value === 'boolean' ? node.value : /^true$/i.test(String(node.value));
++    const a = actual === true || /^true$/i.test(String(actual));
++    return node.op === 'ne' ? a !== expected : a === expected;
++  }
++  if (def.type === 'Float' || def.type === 'Integer') {
++    const expected = parseFloat(String(node.value));
++    const a = parseFloat(String(actual));
++    if (Number.isNaN(expected)) throw new ConditionError(`Non-numeric value for ${node.name}: ${node.value}`);
++    if (Number.isNaN(a)) return false;
++    switch (node.op) {
++      case 'eq': return a === expected;
++      case 'ne': return a !== expected;
++      case 'gt': return a > expected;
++      case 'lt': return a < expected;
++      case 'ge': return a >= expected;
++      case 'le': return a <= expected;
++      default: throw new ConditionError(`Unsupported operator: ${node.op}`);
++    }
++  }
++  // Choice
++  const expected = String(node.value);
++  const a = String(actual ?? '');
++  if (node.op === 'eq') return a === expected;
++  if (node.op === 'ne') return a !== expected;
++  throw new ConditionError(`Operator ${node.op} is not valid for Choice input ${node.name}`);
++}
++
++export function evaluate(ast, values, defs) {
++  if (ast.type === 'CMP') return evalComparison(ast, values, defs);
++  if (ast.type === 'and') return evaluate(ast.left, values, defs) && evaluate(ast.right, values, defs);
++  if (ast.type === 'or') return evaluate(ast.left, values, defs) || evaluate(ast.right, values, defs);
++  throw new ConditionError(`Unknown node type: ${ast.type}`);
++}
++
++export function isApplicable(ast, values, defs) {
++  if (ast === null || ast === undefined) return true;
++  return evaluate(ast, values, defs);
++}
+diff --git a/tests/conditionEngine.eval.test.js b/tests/conditionEngine.eval.test.js
+new file mode 100644
+index 0000000..0f8b37e
+--- /dev/null
++++ b/tests/conditionEngine.eval.test.js
+@@ -0,0 +1,43 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { parseCondition, evaluate, isApplicable, ConditionError } from '../src/conditionEngine.js';
++
++const defs = {
++  PitToEarth: { type: 'Boolean' },
++  MaxFFLInt: { type: 'Float' },
++  BuildingClass: { type: 'Choice' },
++};
++
++test('boolean equality', () => {
++  const ast = parseCondition('PitToEarth: FALSE');
++  assert.equal(evaluate(ast, { PitToEarth: false }, defs), true);
++  assert.equal(evaluate(ast, { PitToEarth: true }, defs), false);
++});
++
++test('numeric comparison ignores trailing unit', () => {
++  const ast = parseCondition('MaxFFLInt: >11m');
++  assert.equal(evaluate(ast, { MaxFFLInt: 12 }, defs), true);
++  assert.equal(evaluate(ast, { MaxFFLInt: 11 }, defs), false);
++});
++
++test('choice equality and inequality', () => {
++  assert.equal(evaluate(parseCondition('BuildingClass: "Class 9b"'), { BuildingClass: 'Class 9b' }, defs), true);
++  assert.equal(evaluate(parseCondition('BuildingClass != "Class 2"'), { BuildingClass: 'Class 9b' }, defs), true);
++});
++
++test('AND / OR composition', () => {
++  const ast = parseCondition('(PitToEarth: FALSE AND MaxFFLInt: >11) OR BuildingClass: "Class 2"');
++  assert.equal(evaluate(ast, { PitToEarth: false, MaxFFLInt: 12, BuildingClass: 'Class 9b' }, defs), true);
++  assert.equal(evaluate(ast, { PitToEarth: true, MaxFFLInt: 12, BuildingClass: 'Class 2' }, defs), true);
++  assert.equal(evaluate(ast, { PitToEarth: true, MaxFFLInt: 12, BuildingClass: 'Class 9b' }, defs), false);
++});
++
++test('unknown input throws ConditionError', () => {
++  const ast = parseCondition('Nope: 1');
++  assert.throws(() => evaluate(ast, {}, defs), ConditionError);
++});
++
++test('isApplicable returns true for null ast', () => {
++  assert.equal(isApplicable(null, {}, defs), true);
++  assert.equal(isApplicable(parseCondition('PitToEarth: TRUE'), { PitToEarth: false }, defs), false);
++});

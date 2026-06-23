@@ -1,0 +1,16 @@
+I want to build a smart checklist. I am reccomending a static HTML. Here is my situation. 
+
+I have an excel checklist at the moment. 
+It outlines all the checks I need to do. 
+An example of this checklist is in this folder, and the file is named ExampleChecklist.xlxs.
+
+I essentially need every checklist item to have a property aligning with the columns of the excel. I also need it to be able to take a larger format of this examplechecklist with all the items.
+I do not want to give the full checklist into claude as it has sensitve data.
+
+I need a tool that acts as a smart checklist. What I want it to do:
+
+- I need the checklist to be dynamic depending on the input of the project.As in some items show up with certain projects cause it meets the item condition. 
+- The inputs can be in the form of: Choice, Float, Integer and Boolean.
+- Have drafts of different project checklist with a quick view progress bar, to see how much that specific project has ticked off on the list.
+- I need it to output an excel with the unchecked items and their notes and an example on how to complete this item if that is applicable.
+

@@ -1,0 +1,99 @@
+=== COMMITS (3d4bd01..HEAD) ===
+f90dd2e feat: applicability, progress, and export-row helpers
+
+=== DIFF STAT ===
+ src/exporter.js        | 25 ++++++++++++++++++++++++
+ tests/exporter.test.js | 53 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 78 insertions(+)
+
+=== FULL DIFF ===
+diff --git a/src/exporter.js b/src/exporter.js
+new file mode 100644
+index 0000000..fb6dc27
+--- /dev/null
++++ b/src/exporter.js
+@@ -0,0 +1,25 @@
++import { isApplicable } from './conditionEngine.js';
++
++export function applicableItems(model, values) {
++  return model.items.filter(item => isApplicable(item.condition, values, model.inputDefs));
++}
++
++export function computeProgress(model, project) {
++  const items = applicableItems(model, project.inputs || {});
++  const applicable = items.length;
++  const checked = items.filter(i => (project.checks || {})[i.id] === true).length;
++  const ratio = applicable === 0 ? 0 : checked / applicable;
++  return { checked, applicable, ratio };
++}
++
++export function buildExportRows(model, project) {
++  const header = ['Item ID', 'Description', 'Code', 'Note', 'Example (how to complete)', 'Your comment'];
++  const checks = project.checks || {};
++  const comments = project.comments || {};
++  const rows = [header];
++  for (const item of applicableItems(model, project.inputs || {})) {
++    if (checks[item.id] === true) continue;
++    rows.push([item.id, item.description, item.code, item.note, item.example, comments[item.id] || '']);
++  }
++  return rows;
++}
+diff --git a/tests/exporter.test.js b/tests/exporter.test.js
+new file mode 100644
+index 0000000..ce1a03f
+--- /dev/null
++++ b/tests/exporter.test.js
+@@ -0,0 +1,53 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { buildModel } from '../src/workbookModel.js';
++import { applicableItems, computeProgress, buildExportRows } from '../src/exporter.js';
++
++const inputRows = [
++  ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
++  ['PitToEarth', 'Boolean', 'Pit', '', '', 'FALSE'],
++  ['MaxFFLInt', 'Float', 'FFL', 'm', '', '0'],
++];
++const checklistRows = [
++  ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
++  ['A08', '', 'Always applies', 'AS3000', 'note8', 'ex8'],
++  ['A10', 'PitToEarth: FALSE', 'CWT device', 'EN81-20', 'note10', 'ex10'],
++  ['A11', 'MaxFFLInt: >11', 'Emergency doors', 'RDM', 'note11', 'ex11'],
++];
++const model = buildModel({ checklistRows, inputRows });
++
++test('applicableItems filters by condition', () => {
++  const ids = applicableItems(model, { PitToEarth: false, MaxFFLInt: 5 }).map(i => i.id);
++  assert.deepEqual(ids, ['A08', 'A10']);
++});
++
++test('computeProgress = checked / applicable', () => {
++  const project = { inputs: { PitToEarth: false, MaxFFLInt: 5 }, checks: { A08: true }, comments: {} };
++  const p = computeProgress(model, project);
++  assert.deepEqual(p, { checked: 1, applicable: 2, ratio: 0.5 });
++});
++
++test('computeProgress ratio is 0 when none applicable', () => {
++  const project = { inputs: { PitToEarth: true, MaxFFLInt: 0 }, checks: {}, comments: {} };
++  // Only A08 always applies, so applicable=1 here; force a no-applicable model instead:
++  const emptyModel = buildModel({
++    checklistRows: [checklistRows[0], ['Z1', 'MaxFFLInt: >999', 'x', '', '', '']],
++    inputRows,
++  });
++  const p = computeProgress(emptyModel, { inputs: { MaxFFLInt: 0 }, checks: {}, comments: {} });
++  assert.equal(p.applicable, 0);
++  assert.equal(p.ratio, 0);
++});
++
++test('buildExportRows lists applicable unchecked items with header', () => {
++  const project = {
++    inputs: { PitToEarth: false, MaxFFLInt: 12 },
++    checks: { A08: true },
++    comments: { A10: 'pending part' },
++  };
++  const rows = buildExportRows(model, project);
++  assert.deepEqual(rows[0], ['Item ID', 'Description', 'Code', 'Note', 'Example (how to complete)', 'Your comment']);
++  const ids = rows.slice(1).map(r => r[0]);
++  assert.deepEqual(ids, ['A10', 'A11']); // A08 checked -> excluded
++  assert.equal(rows[1][5], 'pending part');
++});

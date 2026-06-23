@@ -1,0 +1,169 @@
+=== COMMITS (a919eda..HEAD) ===
+d9e3128 feat: condition tokenizer and parser with AND/OR precedence
+
+=== DIFF STAT ===
+ src/conditionEngine.js              | 99 +++++++++++++++++++++++++++++++++++++
+ tests/conditionEngine.parse.test.js | 49 ++++++++++++++++++
+ 2 files changed, 148 insertions(+)
+
+=== FULL DIFF ===
+diff --git a/src/conditionEngine.js b/src/conditionEngine.js
+new file mode 100644
+index 0000000..d7d5287
+--- /dev/null
++++ b/src/conditionEngine.js
+@@ -0,0 +1,99 @@
++export class ConditionError extends Error {
++  constructor(message) {
++    super(message);
++    this.name = 'ConditionError';
++  }
++}
++
++const OP_MAP = { '=': 'eq', ':': 'eq', '!=': 'ne', '>': 'gt', '<': 'lt', '>=': 'ge', '<=': 'le' };
++
++function makeComparison(name, sep, rawValue) {
++  let op = OP_MAP[sep];
++  let value = rawValue;
++  if (sep === ':') {
++    const lead = /^(>=|<=|!=|>|<)\s*(.*)$/.exec(rawValue);
++    if (lead) {
++      op = OP_MAP[lead[1]];
++      value = lead[2];
++    } else {
++      op = 'eq';
++    }
++  }
++  // strip surrounding quotes
++  const quoted = /^"([^"]*)"$|^'([^']*)'$/.exec(value);
++  if (quoted) {
++    value = quoted[1] !== undefined ? quoted[1] : quoted[2];
++  } else if (/^(true|false)$/i.test(value)) {
++    value = /^true$/i.test(value);
++  }
++  return { type: 'CMP', name, op, value };
++}
++
++export function tokenize(input) {
++  const tokens = [];
++  let i = 0;
++  while (i < input.length) {
++    const rest = input.slice(i);
++    const ws = /^\s+/.exec(rest);
++    if (ws) { i += ws[0].length; continue; }
++    if (rest[0] === '(') { tokens.push({ type: 'LPAREN' }); i += 1; continue; }
++    if (rest[0] === ')') { tokens.push({ type: 'RPAREN' }); i += 1; continue; }
++    const mAnd = /^and\b/i.exec(rest);
++    if (mAnd) { tokens.push({ type: 'AND' }); i += mAnd[0].length; continue; }
++    const mOr = /^or\b/i.exec(rest);
++    if (mOr) { tokens.push({ type: 'OR' }); i += mOr[0].length; continue; }
++    const mCmp = /^([A-Za-z_][A-Za-z0-9_]*)\s*(>=|<=|!=|>|<|=|:)\s*("[^"]*"|'[^']*'|[^\s()]+)/.exec(rest);
++    if (mCmp) {
++      tokens.push(makeComparison(mCmp[1], mCmp[2], mCmp[3]));
++      i += mCmp[0].length;
++      continue;
++    }
++    throw new ConditionError(`Cannot parse condition near: "${rest}"`);
++  }
++  return tokens;
++}
++
++export function parseCondition(input) {
++  const tokens = tokenize(input);
++  let pos = 0;
++  const peek = () => tokens[pos];
++  const next = () => tokens[pos++];
++
++  function parsePrimary() {
++    const t = peek();
++    if (!t) throw new ConditionError('Unexpected end of condition');
++    if (t.type === 'LPAREN') {
++      next();
++      const expr = parseOr();
++      if (!peek() || peek().type !== 'RPAREN') throw new ConditionError('Expected )');
++      next();
++      return expr;
++    }
++    if (t.type === 'CMP') { next(); return t; }
++    throw new ConditionError(`Unexpected token: ${t.type}`);
++  }
++
++  function parseAnd() {
++    let left = parsePrimary();
++    while (peek() && peek().type === 'AND') {
++      next();
++      const right = parsePrimary();
++      left = { type: 'and', left, right };
++    }
++    return left;
++  }
++
++  function parseOr() {
++    let left = parseAnd();
++    while (peek() && peek().type === 'OR') {
++      next();
++      const right = parseAnd();
++      left = { type: 'or', left, right };
++    }
++    return left;
++  }
++
++  const ast = parseOr();
++  if (pos !== tokens.length) throw new ConditionError('Unexpected trailing tokens');
++  return ast;
++}
+diff --git a/tests/conditionEngine.parse.test.js b/tests/conditionEngine.parse.test.js
+new file mode 100644
+index 0000000..7283de1
+--- /dev/null
++++ b/tests/conditionEngine.parse.test.js
+@@ -0,0 +1,49 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { tokenize, parseCondition, ConditionError } from '../src/conditionEngine.js';
++
++test('tokenizes a simple boolean equality', () => {
++  assert.deepEqual(tokenize('PitToEarth: FALSE'), [
++    { type: 'CMP', name: 'PitToEarth', op: 'eq', value: false },
++  ]);
++});
++
++test('tokenizes colon separator with leading operator and unit', () => {
++  assert.deepEqual(tokenize('MaxFFLInt: >11m'), [
++    { type: 'CMP', name: 'MaxFFLInt', op: 'gt', value: '11m' },
++  ]);
++});
++
++test('tokenizes >= and quoted choice value', () => {
++  assert.deepEqual(tokenize('BuildingClass: "Class 9b"'), [
++    { type: 'CMP', name: 'BuildingClass', op: 'eq', value: 'Class 9b' },
++  ]);
++  assert.deepEqual(tokenize('MaxFFLInt >= 11'), [
++    { type: 'CMP', name: 'MaxFFLInt', op: 'ge', value: '11' },
++  ]);
++});
++
++test('tokenizes AND, OR and parens', () => {
++  const toks = tokenize('(PitToEarth: FALSE AND MaxFFLInt: >11) OR BuildingClass: "Class 2"');
++  assert.deepEqual(toks.map(t => t.type), ['LPAREN','CMP','AND','CMP','RPAREN','OR','CMP']);
++});
++
++test('parseCondition builds AND tighter than OR', () => {
++  const ast = parseCondition('A: 1 OR B: 2 AND C: 3');
++  // Expect: A OR (B AND C)
++  assert.equal(ast.type, 'or');
++  assert.equal(ast.left.name, 'A');
++  assert.equal(ast.right.type, 'and');
++});
++
++test('parseCondition respects parentheses', () => {
++  const ast = parseCondition('(A: 1 OR B: 2) AND C: 3');
++  assert.equal(ast.type, 'and');
++  assert.equal(ast.left.type, 'or');
++  assert.equal(ast.right.name, 'C');
++});
++
++test('unparseable input throws ConditionError', () => {
++  assert.throws(() => parseCondition('A: 1 AND AND'), ConditionError);
++  assert.throws(() => tokenize('%%%'), ConditionError);
++});
