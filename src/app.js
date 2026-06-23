@@ -146,7 +146,7 @@ function saveCurrent(project) {
 function defaultInputValue(def) {
   if (def.type === 'Boolean') return /^true$/i.test(String(def.default)) ;
   if (def.type === 'Float' || def.type === 'Integer') return def.default === '' ? 0 : Number(def.default);
-  if (def.type === 'Choice') return def.default || (def.choices[0] ?? '');
+  if (def.type === 'Choice') return def.choices.includes(def.default) ? def.default : (def.choices[0] ?? '');
   return def.default;
 }
 
