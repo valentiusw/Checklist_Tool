@@ -1,0 +1,93 @@
+import { parseCondition, evaluate } from './conditionEngine.js';
+
+export class ModelError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ModelError';
+  }
+}
+
+const CHECKLIST_COLS = ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'];
+const INPUT_COLS = ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'];
+const VALID_TYPES = ['Choice', 'Float', 'Integer', 'Boolean'];
+
+function headerIndex(rows, requiredCols, sheetName) {
+  if (!rows || rows.length === 0) throw new ModelError(`Sheet "${sheetName}" is empty`);
+  const header = rows[0].map(c => String(c ?? '').trim());
+  const idx = {};
+  for (const col of requiredCols) {
+    const i = header.indexOf(col);
+    if (i === -1) throw new ModelError(`Sheet "${sheetName}" is missing required column: ${col}`);
+    idx[col] = i;
+  }
+  return idx;
+}
+
+function cell(row, i) {
+  const v = row[i];
+  return v === undefined || v === null ? '' : String(v).trim();
+}
+
+function buildInputs(inputRows) {
+  const idx = headerIndex(inputRows, INPUT_COLS, 'Inputs');
+  const inputs = [];
+  for (let r = 1; r < inputRows.length; r++) {
+    const row = inputRows[r];
+    const name = cell(row, idx['Name']);
+    if (!name) continue;
+    const type = cell(row, idx['Type']);
+    if (!VALID_TYPES.includes(type)) {
+      throw new ModelError(`Input "${name}" has invalid Type "${type}" (must be one of ${VALID_TYPES.join(', ')})`);
+    }
+    const choicesRaw = cell(row, idx['Choices']);
+    const choices = choicesRaw ? choicesRaw.split(';').map(s => s.trim()).filter(Boolean) : [];
+    inputs.push({
+      name,
+      type,
+      label: cell(row, idx['Label']) || name,
+      unit: cell(row, idx['Unit']),
+      choices,
+      default: cell(row, idx['Default']),
+    });
+  }
+  return inputs;
+}
+
+function buildItems(checklistRows, inputDefs) {
+  const idx = headerIndex(checklistRows, CHECKLIST_COLS, 'Checklist');
+  const items = [];
+  for (let r = 1; r < checklistRows.length; r++) {
+    const row = checklistRows[r];
+    const id = cell(row, idx['Item ID']);
+    if (!id) continue;
+    const conditionsText = cell(row, idx['Conditions']);
+    let condition = null;
+    if (conditionsText) {
+      try {
+        condition = parseCondition(conditionsText);
+        // validate references by a dry-run evaluate with empty values
+        evaluate(condition, {}, inputDefs);
+      } catch (err) {
+        throw new ModelError(`Item ${id}: ${err.message}`);
+      }
+    }
+    items.push({
+      id,
+      conditionsText,
+      condition,
+      description: cell(row, idx['Description']),
+      code: cell(row, idx['Code']),
+      note: cell(row, idx['Note']),
+      example: cell(row, idx['Example']),
+    });
+  }
+  return items;
+}
+
+export function buildModel({ checklistRows, inputRows }) {
+  const inputs = buildInputs(inputRows);
+  const inputDefs = {};
+  for (const inp of inputs) inputDefs[inp.name] = inp;
+  const items = buildItems(checklistRows, inputDefs);
+  return { items, inputs, inputDefs };
+}
