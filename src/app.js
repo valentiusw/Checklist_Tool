@@ -1,6 +1,6 @@
 import { buildModel } from './workbookModel.js';
 import { createProjectStore } from './projectStore.js';
-import { computeProgress, applicableItems } from './exporter.js';
+import { computeProgress, applicableItems, buildExportRows } from './exporter.js';
 
 const MODEL_KEY = 'dpchecklist.model';
 
@@ -252,6 +252,36 @@ function renderProject() {
   renderProgress(project);
 }
 
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportUnchecked() {
+  const project = getCurrentProject();
+  const rows = buildExportRows(state.model, project);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Unchecked');
+  const safeName = project.name.replace(/[^\w\-]+/g, '_');
+  const date = new Date().toISOString().slice(0, 10);
+  const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  downloadBlob(new Blob([out], { type: 'application/octet-stream' }), `${safeName}_unchecked_${date}.xlsx`);
+}
+
+function saveProjectFile() {
+  const project = getCurrentProject();
+  const json = state.store.serializeProject(project);
+  const safeName = project.name.replace(/[^\w\-]+/g, '_');
+  downloadBlob(new Blob([json], { type: 'application/json' }), `${safeName}.json`);
+}
+
 function init() {
   state.model = restoreModel();
   wireSetup();
@@ -279,6 +309,9 @@ function init() {
     }
     e.target.value = '';
   });
+
+  document.getElementById('btn-export').addEventListener('click', exportUnchecked);
+  document.getElementById('btn-save-project').addEventListener('click', saveProjectFile);
 
   showScreen(state.model ? 'dashboard' : 'setup');
 }
