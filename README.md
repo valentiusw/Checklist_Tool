@@ -10,17 +10,23 @@ file is parsed locally.
 
 ## Running it
 
-ES modules don't load over `file://`, so open the tool through a tiny local web server
-(no internet needed):
+**Easiest — double-click `start.cmd`.** It launches a local web server for this folder
+and opens the tool in your browser. To stop it, close the "Smart Checklist server"
+window.
+
+> Note: you can't just open `index.html` directly (`file://`) — browsers block the
+> tool's ES-module imports over `file://`, so a local server is required. No internet
+> is needed; everything is served from this folder.
+
+**Manual alternative** — run a static server yourself:
 
 ```bash
 # from this folder
 python -m http.server 8000
 ```
 
-Then open <http://localhost:8000/> in your browser.
-
-(Any static server works; the Python one ships with Windows' Python install.)
+Then open <http://localhost:8000/> in your browser. (Any static server works; the Python
+one ships with Windows' Python install.)
 
 ## First use
 
