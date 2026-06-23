@@ -1,5 +1,6 @@
 import { buildModel } from './workbookModel.js';
 import { createProjectStore } from './projectStore.js';
+import { computeProgress } from './exporter.js';
 
 const MODEL_KEY = 'dpchecklist.model';
 
@@ -86,14 +87,81 @@ function wireSetup() {
   });
 }
 
-// Placeholder renderers implemented in later tasks.
-function renderDashboard() { /* Task 8 */ }
+function renderDashboard() {
+  const list = document.getElementById('project-list');
+  const empty = document.getElementById('dashboard-empty');
+  list.innerHTML = '';
+  empty.hidden = !!state.model;
+  if (!state.model) return;
+
+  const projects = state.store.listProjects();
+  for (const summary of projects) {
+    const project = state.store.getProject(summary.id);
+    const { checked, applicable, ratio } = computeProgress(state.model, project);
+    const li = document.createElement('li');
+    li.className = 'project-card';
+    li.innerHTML = `
+      <div class="row-between">
+        <strong>${escapeHtml(project.name)}</strong>
+        <span>
+          <button data-open="${project.id}">Open</button>
+          <button data-delete="${project.id}">Delete</button>
+        </span>
+      </div>
+      <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
+      <p class="muted">${checked} / ${applicable} checked</p>`;
+    list.appendChild(li);
+  }
+
+  list.querySelectorAll('[data-open]').forEach(btn =>
+    btn.addEventListener('click', () => openProject(btn.getAttribute('data-open'))));
+  list.querySelectorAll('[data-delete]').forEach(btn =>
+    btn.addEventListener('click', () => {
+      if (confirm('Delete this project?')) {
+        state.store.deleteProject(btn.getAttribute('data-delete'));
+        renderDashboard();
+      }
+    }));
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function openProject(id) {
+  state.currentProjectId = id;
+  showScreen('project');
+  if (typeof renderProject === 'function') renderProject();
+}
 
 function init() {
   state.model = restoreModel();
   wireSetup();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
   document.getElementById('nav-setup').addEventListener('click', () => showScreen('setup'));
+
+  document.getElementById('btn-new-project').addEventListener('click', () => {
+    if (!state.model) { alert('Load a checklist workbook in Setup first.'); return; }
+    const name = prompt('Project name?');
+    if (!name) return;
+    const project = state.store.createProject(name);
+    openProject(project.id);
+  });
+
+  document.getElementById('import-project-file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      state.store.importProject(text);
+      renderDashboard();
+    } catch (err) {
+      alert('Could not import project: ' + err.message);
+    }
+    e.target.value = '';
+  });
+
   showScreen(state.model ? 'dashboard' : 'setup');
 }
 
