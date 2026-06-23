@@ -97,3 +97,47 @@ export function parseCondition(input) {
   if (pos !== tokens.length) throw new ConditionError('Unexpected trailing tokens');
   return ast;
 }
+
+function evalComparison(node, values, defs) {
+  const def = defs[node.name];
+  if (!def) throw new ConditionError(`Unknown input referenced in condition: ${node.name}`);
+  const actual = values[node.name];
+  if (def.type === 'Boolean') {
+    const expected = typeof node.value === 'boolean' ? node.value : /^true$/i.test(String(node.value));
+    const a = actual === true || /^true$/i.test(String(actual));
+    return node.op === 'ne' ? a !== expected : a === expected;
+  }
+  if (def.type === 'Float' || def.type === 'Integer') {
+    const expected = parseFloat(String(node.value));
+    const a = parseFloat(String(actual));
+    if (Number.isNaN(expected)) throw new ConditionError(`Non-numeric value for ${node.name}: ${node.value}`);
+    if (Number.isNaN(a)) return false;
+    switch (node.op) {
+      case 'eq': return a === expected;
+      case 'ne': return a !== expected;
+      case 'gt': return a > expected;
+      case 'lt': return a < expected;
+      case 'ge': return a >= expected;
+      case 'le': return a <= expected;
+      default: throw new ConditionError(`Unsupported operator: ${node.op}`);
+    }
+  }
+  // Choice
+  const expected = String(node.value);
+  const a = String(actual ?? '');
+  if (node.op === 'eq') return a === expected;
+  if (node.op === 'ne') return a !== expected;
+  throw new ConditionError(`Operator ${node.op} is not valid for Choice input ${node.name}`);
+}
+
+export function evaluate(ast, values, defs) {
+  if (ast.type === 'CMP') return evalComparison(ast, values, defs);
+  if (ast.type === 'and') return evaluate(ast.left, values, defs) && evaluate(ast.right, values, defs);
+  if (ast.type === 'or') return evaluate(ast.left, values, defs) || evaluate(ast.right, values, defs);
+  throw new ConditionError(`Unknown node type: ${ast.type}`);
+}
+
+export function isApplicable(ast, values, defs) {
+  if (ast === null || ast === undefined) return true;
+  return evaluate(ast, values, defs);
+}
