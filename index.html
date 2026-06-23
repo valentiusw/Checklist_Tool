@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Checklist</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Smart Checklist</h1>
+    <nav>
+      <button id="nav-dashboard">Dashboard</button>
+      <button id="nav-setup">Setup</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="screen-setup" class="screen">
+      <h2>Setup — Load Checklist Workbook</h2>
+      <p>Load your Excel workbook. It must contain a sheet named <code>Checklist</code> and a sheet named <code>Inputs</code>. Nothing is uploaded; parsing happens in your browser.</p>
+      <input type="file" id="workbook-file" accept=".xlsx,.xls" />
+      <p id="setup-status" class="status"></p>
+    </section>
+
+    <section id="screen-dashboard" class="screen" hidden>
+      <div class="row-between">
+        <h2>Projects</h2>
+        <div>
+          <button id="btn-new-project">New project</button>
+          <label class="import-label">Import project
+            <input type="file" id="import-project-file" accept=".json" hidden />
+          </label>
+        </div>
+      </div>
+      <p id="dashboard-empty" class="muted" hidden>No checklist loaded yet — go to Setup first.</p>
+      <ul id="project-list" class="project-list"></ul>
+    </section>
+
+    <section id="screen-project" class="screen" hidden>
+      <div class="row-between">
+        <button id="btn-back">&larr; Back</button>
+        <div>
+          <button id="btn-save-project">Save project file</button>
+          <button id="btn-export">Export unchecked to Excel</button>
+        </div>
+      </div>
+      <h2 id="project-title"></h2>
+      <div class="progress"><div id="project-progress-bar" class="progress-bar"></div></div>
+      <p id="project-progress-label" class="muted"></p>
+      <div class="project-body">
+        <aside id="inputs-panel" class="inputs-panel"></aside>
+        <div id="items-list" class="items-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
