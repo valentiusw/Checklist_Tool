@@ -13,13 +13,13 @@ export function computeProgress(model, project) {
 }
 
 export function buildExportRows(model, project) {
-  const header = ['Item ID', 'Description', 'Code', 'Note', 'Example (how to complete)', 'Your comment'];
+  const header = ['Item ID', 'Description', 'Code', 'Comments', 'Example'];
   const checks = project.checks || {};
   const comments = project.comments || {};
   const rows = [header];
   for (const item of applicableItems(model, project.inputs || {})) {
     if (checks[item.id] === true) continue;
-    rows.push([item.id, item.description, item.code, item.note, item.example, comments[item.id] || '']);
+    rows.push([item.id, item.description, item.code, comments[item.id] || '', item.example]);
   }
   return rows;
 }

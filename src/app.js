@@ -103,9 +103,9 @@ function renderDashboard() {
     li.innerHTML = `
       <div class="row-between">
         <strong>${escapeHtml(project.name)}</strong>
-        <span>
-          <button data-open="${project.id}">Open</button>
-          <button data-delete="${project.id}">Delete</button>
+        <span class="btn-row">
+          <button class="btn-primary btn-sm" data-open="${project.id}">Open</button>
+          <button class="btn-danger btn-sm" data-delete="${project.id}">Delete</button>
         </span>
       </div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
@@ -207,9 +207,8 @@ function renderItems(project) {
         <input type="checkbox" data-check="${escapeHtml(item.id)}" ${checked ? 'checked' : ''} />
         <div>
           <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}
-          ${item.code ? `<span class="muted">[${escapeHtml(item.code)}]</span>` : ''}
+          ${item.code ? `<span class="code-tag">${escapeHtml(item.code)}</span>` : ''}
           ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
-          ${item.example ? `<div class="item-example"><em>How to complete:</em> ${escapeHtml(item.example)}</div>` : ''}
         </div>
       </div>`;
     const ta = document.createElement('textarea');

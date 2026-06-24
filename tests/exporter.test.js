@@ -46,8 +46,9 @@ test('buildExportRows lists applicable unchecked items with header', () => {
     comments: { A10: 'pending part' },
   };
   const rows = buildExportRows(model, project);
-  assert.deepEqual(rows[0], ['Item ID', 'Description', 'Code', 'Note', 'Example (how to complete)', 'Your comment']);
+  assert.deepEqual(rows[0], ['Item ID', 'Description', 'Code', 'Comments', 'Example']);
   const ids = rows.slice(1).map(r => r[0]);
   assert.deepEqual(ids, ['A10', 'A11']); // A08 checked -> excluded
-  assert.equal(rows[1][5], 'pending part');
+  assert.equal(rows[1][3], 'pending part'); // Comments column
+  assert.equal(rows[1][4], 'ex10'); // Example column
 });
