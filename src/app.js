@@ -30,17 +30,26 @@ function sheetToRows(workbook, name) {
   return XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: '' });
 }
 
+function optionalSheetToRows(workbook, name) {
+  const ws = workbook.Sheets[name];
+  if (!ws) return undefined;
+  return XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: '' });
+}
+
 function loadModelFromWorkbook(workbook) {
   const checklistRows = sheetToRows(workbook, 'Checklist');
   const inputRows = sheetToRows(workbook, 'Inputs');
-  return buildModel({ checklistRows, inputRows });
+  const sectionRows = optionalSheetToRows(workbook, 'Sections');
+  const glossaryRows = optionalSheetToRows(workbook, 'Glossary');
+  return buildModel({ checklistRows, inputRows, sectionRows, glossaryRows });
 }
 
 function persistModel(model) {
-  // Conditions are re-parsed on load, so store raw rows-free model minus AST.
   const serializable = {
     items: model.items.map(({ condition, ...rest }) => rest),
     inputs: model.inputs,
+    sections: model.sections,
+    glossary: model.glossary,
   };
   window.localStorage.setItem(MODEL_KEY, JSON.stringify(serializable));
 }
@@ -50,7 +59,6 @@ function restoreModel() {
   if (!raw) return null;
   try {
     const data = JSON.parse(raw);
-    // Rebuild AST + inputDefs from stored text.
     const inputRows = [
       ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
       ...data.inputs.map(i => [i.name, i.type, i.label, i.unit, i.choices.join(';'), i.default]),
@@ -59,7 +67,13 @@ function restoreModel() {
       ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
       ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.example]),
     ];
-    return buildModel({ checklistRows, inputRows });
+    const sectionRows = (data.sections && data.sections.length)
+      ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
+      : undefined;
+    const glossaryRows = (data.glossary && data.glossary.length)
+      ? [['Term', 'Meaning'], ...data.glossary.map(g => [g.term, g.meaning])]
+      : undefined;
+    return buildModel({ checklistRows, inputRows, sectionRows, glossaryRows });
   } catch {
     return null;
   }
