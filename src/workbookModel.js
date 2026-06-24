@@ -10,6 +10,7 @@ export class ModelError extends Error {
 const CHECKLIST_COLS = ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'];
 const INPUT_COLS = ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'];
 const SECTION_COLS = ['Prefix', 'Name'];
+const GLOSSARY_COLS = ['Term', 'Meaning'];
 const VALID_TYPES = ['Choice', 'Float', 'Integer', 'Boolean'];
 
 function headerIndex(rows, requiredCols, sheetName) {
@@ -76,6 +77,18 @@ function resolveSectionName(prefix, sectionMap) {
   return sectionMap[prefix] || prefix;
 }
 
+function buildGlossary(glossaryRows) {
+  if (!glossaryRows || glossaryRows.length === 0) return [];
+  const idx = headerIndex(glossaryRows, GLOSSARY_COLS, 'Glossary');
+  const out = [];
+  for (let r = 1; r < glossaryRows.length; r++) {
+    const term = cell(glossaryRows[r], idx['Term']);
+    if (!term) continue;
+    out.push({ term, meaning: cell(glossaryRows[r], idx['Meaning']) });
+  }
+  return out;
+}
+
 function buildItems(checklistRows, inputDefs, sectionMap) {
   const idx = headerIndex(checklistRows, CHECKLIST_COLS, 'Checklist');
   const items = [];
@@ -110,7 +123,7 @@ function buildItems(checklistRows, inputDefs, sectionMap) {
   return items;
 }
 
-export function buildModel({ checklistRows, inputRows, sectionRows }) {
+export function buildModel({ checklistRows, inputRows, sectionRows, glossaryRows }) {
   const inputs = buildInputs(inputRows);
   const inputDefs = {};
   for (const inp of inputs) inputDefs[inp.name] = inp;
@@ -123,5 +136,6 @@ export function buildModel({ checklistRows, inputRows, sectionRows }) {
     seen.add(item.sectionPrefix);
     sections.push({ prefix: item.sectionPrefix, name: item.section });
   }
-  return { items, inputs, inputDefs, sections };
+  const glossary = buildGlossary(glossaryRows);
+  return { items, inputs, inputDefs, sections, glossary };
 }

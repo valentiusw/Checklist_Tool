@@ -95,3 +95,21 @@ test('model.sections lists present sections in first-appearance order', () => {
     { prefix: 'A', name: 'Architectural' },
   ]);
 });
+
+test('glossary parsed from Glossary sheet', () => {
+  const glossaryRows = [
+    ['Term', 'Meaning'],
+    ['EN81-20', 'Lift safety standard'],
+    ['BCA', 'Building Code of Australia'],
+  ];
+  const model = buildModel({ checklistRows, inputRows, glossaryRows });
+  assert.deepEqual(model.glossary, [
+    { term: 'EN81-20', meaning: 'Lift safety standard' },
+    { term: 'BCA', meaning: 'Building Code of Australia' },
+  ]);
+});
+
+test('glossary is empty array when sheet absent', () => {
+  const model = buildModel({ checklistRows, inputRows });
+  assert.deepEqual(model.glossary, []);
+});
