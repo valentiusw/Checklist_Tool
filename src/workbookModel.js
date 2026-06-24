@@ -9,6 +9,7 @@ export class ModelError extends Error {
 
 const CHECKLIST_COLS = ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'];
 const INPUT_COLS = ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'];
+const SECTION_COLS = ['Prefix', 'Name'];
 const VALID_TYPES = ['Choice', 'Float', 'Integer', 'Boolean'];
 
 function headerIndex(rows, requiredCols, sheetName) {
@@ -53,13 +54,36 @@ function buildInputs(inputRows) {
   return inputs;
 }
 
-function buildItems(checklistRows, inputDefs) {
+function sectionPrefix(id) {
+  const m = String(id).match(/^[A-Za-z]+/);
+  return m ? m[0].toUpperCase() : '';
+}
+
+function buildSectionMap(sectionRows) {
+  if (!sectionRows || sectionRows.length === 0) return {};
+  const idx = headerIndex(sectionRows, SECTION_COLS, 'Sections');
+  const map = {};
+  for (let r = 1; r < sectionRows.length; r++) {
+    const prefix = cell(sectionRows[r], idx['Prefix']).toUpperCase();
+    if (!prefix) continue;
+    map[prefix] = cell(sectionRows[r], idx['Name']) || prefix;
+  }
+  return map;
+}
+
+function resolveSectionName(prefix, sectionMap) {
+  if (prefix === '') return 'Other';
+  return sectionMap[prefix] || prefix;
+}
+
+function buildItems(checklistRows, inputDefs, sectionMap) {
   const idx = headerIndex(checklistRows, CHECKLIST_COLS, 'Checklist');
   const items = [];
   for (let r = 1; r < checklistRows.length; r++) {
     const row = checklistRows[r];
     const id = cell(row, idx['Item ID']);
     if (!id) continue;
+    const prefix = sectionPrefix(id);
     const conditionsText = cell(row, idx['Conditions']);
     let condition = null;
     if (conditionsText) {
@@ -73,6 +97,8 @@ function buildItems(checklistRows, inputDefs) {
     }
     items.push({
       id,
+      sectionPrefix: prefix,
+      section: resolveSectionName(prefix, sectionMap),
       conditionsText,
       condition,
       description: cell(row, idx['Description']),
@@ -84,10 +110,18 @@ function buildItems(checklistRows, inputDefs) {
   return items;
 }
 
-export function buildModel({ checklistRows, inputRows }) {
+export function buildModel({ checklistRows, inputRows, sectionRows }) {
   const inputs = buildInputs(inputRows);
   const inputDefs = {};
   for (const inp of inputs) inputDefs[inp.name] = inp;
-  const items = buildItems(checklistRows, inputDefs);
-  return { items, inputs, inputDefs };
+  const sectionMap = buildSectionMap(sectionRows);
+  const items = buildItems(checklistRows, inputDefs, sectionMap);
+  const sections = [];
+  const seen = new Set();
+  for (const item of items) {
+    if (seen.has(item.sectionPrefix)) continue;
+    seen.add(item.sectionPrefix);
+    sections.push({ prefix: item.sectionPrefix, name: item.section });
+  }
+  return { items, inputs, inputDefs, sections };
 }

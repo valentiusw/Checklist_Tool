@@ -50,3 +50,48 @@ test('condition referencing unknown input throws ModelError', () => {
   ];
   assert.throws(() => buildModel({ checklistRows: badChecklist, inputRows }), ModelError);
 });
+
+test('items get sectionPrefix and section name from Sections sheet', () => {
+  const sectionRows = [
+    ['Prefix', 'Name'],
+    ['A', 'Architectural'],
+    ['B', 'Structural'],
+  ];
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A08', '', 'arch item', '', '', ''],
+    ['B01', '', 'struct item', '', '', ''],
+  ];
+  const model = buildModel({ checklistRows: checklist, inputRows, sectionRows });
+  assert.equal(model.items[0].sectionPrefix, 'A');
+  assert.equal(model.items[0].section, 'Architectural');
+  assert.equal(model.items[1].section, 'Structural');
+});
+
+test('section name falls back to prefix when Sections missing or unlisted', () => {
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['C02', '', 'no section sheet', '', '', ''],
+    ['99x', '', 'no leading letters', '', '', ''],
+  ];
+  const model = buildModel({ checklistRows: checklist, inputRows });
+  assert.equal(model.items[0].sectionPrefix, 'C');
+  assert.equal(model.items[0].section, 'C');
+  assert.equal(model.items[1].sectionPrefix, '');
+  assert.equal(model.items[1].section, 'Other');
+});
+
+test('model.sections lists present sections in first-appearance order', () => {
+  const sectionRows = [['Prefix', 'Name'], ['A', 'Architectural'], ['B', 'Structural']];
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['B01', '', 'b', '', '', ''],
+    ['A01', '', 'a', '', '', ''],
+    ['B02', '', 'b2', '', '', ''],
+  ];
+  const model = buildModel({ checklistRows: checklist, inputRows, sectionRows });
+  assert.deepEqual(model.sections, [
+    { prefix: 'B', name: 'Structural' },
+    { prefix: 'A', name: 'Architectural' },
+  ]);
+});
