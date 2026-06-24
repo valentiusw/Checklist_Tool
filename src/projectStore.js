@@ -1,8 +1,40 @@
 const INDEX_KEY = 'dpchecklist.projects.index';
 const PROJECT_PREFIX = 'dpchecklist.project.';
 
-function newId() {
-  return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+function newId(prefix = 'p') {
+  return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+function newUnit(name) {
+  return { id: newId('u'), name: name || 'Unit 1', inputs: {}, checks: {}, comments: {} };
+}
+
+function migrateProject(p) {
+  if (!p) return p;
+  if (Array.isArray(p.units)) return p;
+  // Legacy flat project -> wrap into a single unit.
+  return {
+    id: p.id,
+    name: p.name,
+    updatedAt: p.updatedAt,
+    units: [{
+      id: newId('u'),
+      name: 'Unit 1',
+      inputs: p.inputs || {},
+      checks: p.checks || {},
+      comments: p.comments || {},
+    }],
+  };
+}
+
+function normalizeUnit(u) {
+  return {
+    id: u && u.id ? u.id : newId('u'),
+    name: (u && u.name) || 'Unit 1',
+    inputs: (u && u.inputs) || {},
+    checks: (u && u.checks) || {},
+    comments: (u && u.comments) || {},
+  };
 }
 
 export function createProjectStore(storage) {
@@ -27,7 +59,7 @@ export function createProjectStore(storage) {
   function getProject(id) {
     const raw = storage.getItem(PROJECT_PREFIX + id);
     if (!raw) return null;
-    try { return JSON.parse(raw); } catch { return null; }
+    try { return migrateProject(JSON.parse(raw)); } catch { return null; }
   }
 
   function saveProject(project) {
@@ -38,11 +70,9 @@ export function createProjectStore(storage) {
 
   function createProject(name) {
     const project = {
-      id: newId(),
+      id: newId('p'),
       name: name || 'Untitled project',
-      inputs: {},
-      checks: {},
-      comments: {},
+      units: [newUnit('Unit 1')],
       updatedAt: new Date().toISOString(),
     };
     saveProject(project);
@@ -57,20 +87,29 @@ export function createProjectStore(storage) {
   function serializeProject(project) {
     return JSON.stringify({
       name: project.name,
-      inputs: project.inputs || {},
-      checks: project.checks || {},
-      comments: project.comments || {},
+      units: (project.units || []).map(u => ({
+        name: u.name, inputs: u.inputs || {}, checks: u.checks || {}, comments: u.comments || {},
+      })),
     }, null, 2);
   }
 
   function importProject(jsonString) {
     const data = JSON.parse(jsonString);
+    let units;
+    if (Array.isArray(data.units)) {
+      units = data.units.map(normalizeUnit);
+    } else {
+      // Legacy flat shape.
+      units = [{
+        id: newId('u'), name: 'Unit 1',
+        inputs: data.inputs || {}, checks: data.checks || {}, comments: data.comments || {},
+      }];
+    }
+    if (units.length === 0) units = [newUnit('Unit 1')];
     const project = {
-      id: newId(),
+      id: newId('p'),
       name: data.name || 'Imported project',
-      inputs: data.inputs || {},
-      checks: data.checks || {},
-      comments: data.comments || {},
+      units,
       updatedAt: new Date().toISOString(),
     };
     saveProject(project);
@@ -79,6 +118,6 @@ export function createProjectStore(storage) {
 
   return {
     listProjects, getProject, createProject, saveProject,
-    deleteProject, serializeProject, importProject,
+    deleteProject, serializeProject, importProject, newUnit,
   };
 }
