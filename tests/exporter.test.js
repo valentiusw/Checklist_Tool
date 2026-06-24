@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildModel } from '../src/workbookModel.js';
-import { applicableItems, computeProgress, buildExportRows } from '../src/exporter.js';
+import { applicableItems, computeProgress, computeProjectProgress, buildExportRows } from '../src/exporter.js';
 
 const inputRows = [
   ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
@@ -51,4 +51,18 @@ test('buildExportRows lists applicable unchecked items with header', () => {
   assert.deepEqual(ids, ['A10', 'A11']); // A08 checked -> excluded
   assert.equal(rows[1][3], 'pending part'); // Comments column
   assert.equal(rows[1][4], 'ex10'); // Example column
+});
+
+test('computeProjectProgress sums across units', () => {
+  const project = {
+    units: [
+      { inputs: { PitToEarth: false, MaxFFLInt: 5 }, checks: { A08: true }, comments: {} },
+      { inputs: { PitToEarth: false, MaxFFLInt: 5 }, checks: {}, comments: {} },
+    ],
+  };
+  const p = computeProjectProgress(model, project);
+  // Each unit: A08 + A10 applicable (2 each) -> applicable 4; checked 1 (unit 1 A08).
+  assert.equal(p.applicable, 4);
+  assert.equal(p.checked, 1);
+  assert.equal(p.ratio, 0.25);
 });
