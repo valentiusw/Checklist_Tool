@@ -350,12 +350,28 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
+function sanitizeSheetName(name, used) {
+  let base = String(name || 'Unit').replace(/[\[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'Unit';
+  let candidate = base;
+  let n = 2;
+  while (used.has(candidate)) {
+    const suffix = ' (' + n + ')';
+    candidate = base.slice(0, 31 - suffix.length) + suffix;
+    n++;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
 function exportUnchecked() {
   const project = getCurrentProject();
-  const rows = buildExportRows(state.model, project);
-  const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Unchecked');
+  const used = new Set();
+  for (const unit of project.units) {
+    const rows = buildExportRows(state.model, unit);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(unit.name, used));
+  }
   const safeName = project.name.replace(/[^\w\-]+/g, '_');
   const date = new Date().toISOString().slice(0, 10);
   const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
