@@ -173,10 +173,20 @@ function getCurrentProject() {
   return state.store.getProject(state.currentProjectId);
 }
 
-function getCurrentUnit() {
-  const project = getCurrentProject();
+function unitOf(project) {
   if (!project) return null;
   return project.units.find(u => u.id === state.currentUnitId) || project.units[0];
+}
+
+function getCurrentUnit() {
+  return unitOf(getCurrentProject());
+}
+
+// Read the project once so a mutation and the save that follows act on the SAME
+// object — getCurrentProject() returns a fresh copy from storage on every call.
+function getCurrentProjectAndUnit() {
+  const project = getCurrentProject();
+  return { project, unit: unitOf(project) };
 }
 
 function saveCurrent(project) {
@@ -227,8 +237,7 @@ function renderInputs(unit) {
 }
 
 function updateInput(name, value) {
-  const project = getCurrentProject();
-  const unit = getCurrentUnit();
+  const { project, unit } = getCurrentProjectAndUnit();
   unit.inputs[name] = value;
   saveCurrent(project);
   renderItems(unit);
@@ -266,9 +275,9 @@ function renderItems(unit) {
     ta.rows = 2;
     ta.value = unit.comments[item.id] || '';
     ta.addEventListener('input', () => {
-      const u = getCurrentUnit();
+      const { project, unit: u } = getCurrentProjectAndUnit();
       u.comments[item.id] = ta.value;
-      saveCurrent(getCurrentProject());
+      saveCurrent(project);
     });
     div.appendChild(ta);
     container.appendChild(div);
@@ -276,9 +285,9 @@ function renderItems(unit) {
 
   container.querySelectorAll('[data-check]').forEach(cb =>
     cb.addEventListener('change', () => {
-      const u = getCurrentUnit();
+      const { project, unit: u } = getCurrentProjectAndUnit();
       u.checks[cb.getAttribute('data-check')] = cb.checked;
-      saveCurrent(getCurrentProject());
+      saveCurrent(project);
       renderItems(u);
       renderProgress();
     }));
@@ -331,9 +340,9 @@ function renderProject() {
   document.getElementById('project-title').textContent = project.name;
   renderUnitBar();
   renderSectionFilter();
-  const unit = getCurrentUnit();
+  const unit = unitOf(project);
   renderInputs(unit);
-  // persist any defaults just applied
+  // persist any defaults just applied (unit belongs to `project`, so they are saved)
   saveCurrent(project);
   renderItems(unit);
   renderProgress();
@@ -412,8 +421,7 @@ function init() {
     renderProject();
   });
   document.getElementById('btn-rename-unit').addEventListener('click', () => {
-    const project = getCurrentProject();
-    const unit = getCurrentUnit();
+    const { project, unit } = getCurrentProjectAndUnit();
     const name = prompt('Rename unit', unit.name);
     if (!name) return;
     unit.name = name;

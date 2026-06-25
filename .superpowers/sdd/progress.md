@@ -26,4 +26,15 @@ Task 10: complete (commit 03d225b; one worksheet per unit; CROSS-TASK INVARIANT 
 Task 11: complete (commit f9e8306; red accent, green completion signals, new control styles).
 Task 12: complete (README updated for optional sheets + units/About/Section; npm test 36/36, node --check clean).
 
-ALL 12 TASKS COMPLETE. Remaining: manual browser smoke test (Task 7/8/9/10/11/12 manual steps) not run headlessly — recommend a human pass via `python -m http.server` before merge.
+ALL 12 TASKS COMPLETE.
+
+Manual browser smoke test: AUTOMATED via CDP driver (Edge headless, zero deps) — 12/12 checks pass
+(load, sections/glossary persist, units add/independence/PERSISTENCE, section filter+headings, About,
+dashboard aggregate, multi-sheet export validated with openpyxl: cols Item ID/Description/Code/Comments/Example,
+no Note, one sheet per unit; reload persistence).
+
+REGRESSION FOUND & FIXED during smoke test (commit pending): Task 7 handlers called getCurrentProject()
+twice (getCurrentUnit mutated one fresh copy, saveCurrent saved a different fresh copy), so ticks/comments/
+input changes/renames were silently lost. getCurrentProject() returns a fresh object per call. Fixed by
+reading the project once via new getCurrentProjectAndUnit()/unitOf(project) in updateInput, both renderItems
+handlers, renderProject defaults, and rename-unit. Smoke check 6 caught it (was "0/12", now "1/8").
