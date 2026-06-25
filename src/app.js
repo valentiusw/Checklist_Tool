@@ -1,6 +1,6 @@
 import { buildModel } from './workbookModel.js';
 import { createProjectStore } from './projectStore.js';
-import { computeProgress, applicableItems, buildExportRows } from './exporter.js';
+import { computeProgress, computeProjectProgress, applicableItems, buildExportRows } from './exporter.js';
 
 const MODEL_KEY = 'dpchecklist.model';
 
@@ -8,6 +8,7 @@ const state = {
   model: null,
   store: createProjectStore(window.localStorage),
   currentProjectId: null,
+  currentUnitId: null,
 };
 
 const screens = ['setup', 'dashboard', 'project'];
@@ -111,7 +112,7 @@ function renderDashboard() {
   const projects = state.store.listProjects();
   for (const summary of projects) {
     const project = state.store.getProject(summary.id);
-    const { checked, applicable, ratio } = computeProgress(state.model, project);
+    const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
     const li = document.createElement('li');
     li.className = 'project-card';
     li.innerHTML = `
@@ -123,7 +124,7 @@ function renderDashboard() {
         </span>
       </div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
-      <p class="muted">${checked} / ${applicable} checked</p>`;
+      <p class="muted">${project.units.length} unit${project.units.length === 1 ? '' : 's'} · ${checked} / ${applicable} checked</p>`;
     list.appendChild(li);
   }
 
@@ -145,12 +146,20 @@ function escapeHtml(s) {
 
 function openProject(id) {
   state.currentProjectId = id;
+  const project = getCurrentProject();
+  state.currentUnitId = project && project.units[0] ? project.units[0].id : null;
   showScreen('project');
-  if (typeof renderProject === 'function') renderProject();
+  renderProject();
 }
 
 function getCurrentProject() {
   return state.store.getProject(state.currentProjectId);
+}
+
+function getCurrentUnit() {
+  const project = getCurrentProject();
+  if (!project) return null;
+  return project.units.find(u => u.id === state.currentUnitId) || project.units[0];
 }
 
 function saveCurrent(project) {
@@ -164,12 +173,12 @@ function defaultInputValue(def) {
   return def.default;
 }
 
-function renderInputs(project) {
+function renderInputs(unit) {
   const panel = document.getElementById('inputs-panel');
   panel.innerHTML = '<h3>Project inputs</h3>';
   for (const def of state.model.inputs) {
-    if (!(def.name in project.inputs)) project.inputs[def.name] = defaultInputValue(def);
-    const value = project.inputs[def.name];
+    if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
+    const value = unit.inputs[def.name];
     const label = document.createElement('label');
     label.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
     panel.appendChild(label);
@@ -202,18 +211,19 @@ function renderInputs(project) {
 
 function updateInput(name, value) {
   const project = getCurrentProject();
-  project.inputs[name] = value;
+  const unit = getCurrentUnit();
+  unit.inputs[name] = value;
   saveCurrent(project);
-  renderItems(project);
-  renderProgress(project);
+  renderItems(unit);
+  renderProgress();
 }
 
-function renderItems(project) {
+function renderItems(unit) {
   const container = document.getElementById('items-list');
   container.innerHTML = '';
-  const items = applicableItems(state.model, project.inputs);
+  const items = applicableItems(state.model, unit.inputs);
   for (const item of items) {
-    const checked = project.checks[item.id] === true;
+    const checked = unit.checks[item.id] === true;
     const div = document.createElement('div');
     div.className = 'item' + (checked ? ' checked' : '');
     div.innerHTML = `
@@ -228,11 +238,11 @@ function renderItems(project) {
     const ta = document.createElement('textarea');
     ta.placeholder = 'Your comment for this item…';
     ta.rows = 2;
-    ta.value = project.comments[item.id] || '';
+    ta.value = unit.comments[item.id] || '';
     ta.addEventListener('input', () => {
-      const p = getCurrentProject();
-      p.comments[item.id] = ta.value;
-      saveCurrent(p);
+      const u = getCurrentUnit();
+      u.comments[item.id] = ta.value;
+      saveCurrent(getCurrentProject());
     });
     div.appendChild(ta);
     container.appendChild(div);
@@ -240,29 +250,50 @@ function renderItems(project) {
 
   container.querySelectorAll('[data-check]').forEach(cb =>
     cb.addEventListener('change', () => {
-      const p = getCurrentProject();
-      p.checks[cb.getAttribute('data-check')] = cb.checked;
-      saveCurrent(p);
-      renderItems(p);
-      renderProgress(p);
+      const u = getCurrentUnit();
+      u.checks[cb.getAttribute('data-check')] = cb.checked;
+      saveCurrent(getCurrentProject());
+      renderItems(u);
+      renderProgress();
     }));
 }
 
-function renderProgress(project) {
-  const { checked, applicable, ratio } = computeProgress(state.model, project);
-  document.getElementById('project-progress-bar').style.width = Math.round(ratio * 100) + '%';
-  document.getElementById('project-progress-label').textContent = `${checked} / ${applicable} checked`;
+function renderProgress() {
+  const project = getCurrentProject();
+  const unit = getCurrentUnit();
+  const u = computeProgress(state.model, unit);
+  const all = computeProjectProgress(state.model, project);
+  document.getElementById('project-progress-bar').style.width = Math.round(u.ratio * 100) + '%';
+  document.getElementById('project-progress-label').textContent =
+    `${u.checked} / ${u.applicable} checked in this unit · ${all.checked} / ${all.applicable} across project`;
+}
+
+function renderUnitBar() {
+  const project = getCurrentProject();
+  const sel = document.getElementById('unit-select');
+  sel.innerHTML = '';
+  for (const u of project.units) {
+    const opt = document.createElement('option');
+    opt.value = u.id;
+    opt.textContent = u.name;
+    if (u.id === state.currentUnitId) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  document.getElementById('btn-delete-unit').disabled = project.units.length <= 1;
 }
 
 function renderProject() {
   const project = getCurrentProject();
   if (!project) { showScreen('dashboard'); return; }
+  if (!getCurrentUnit()) state.currentUnitId = project.units[0].id;
   document.getElementById('project-title').textContent = project.name;
-  renderInputs(project);
+  renderUnitBar();
+  const unit = getCurrentUnit();
+  renderInputs(unit);
   // persist any defaults just applied
   saveCurrent(project);
-  renderItems(project);
-  renderProgress(project);
+  renderItems(unit);
+  renderProgress();
 }
 
 function downloadBlob(blob, filename) {
@@ -301,6 +332,39 @@ function init() {
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
   document.getElementById('nav-setup').addEventListener('click', () => showScreen('setup'));
   document.getElementById('btn-back').addEventListener('click', () => showScreen('dashboard'));
+
+  document.getElementById('unit-select').addEventListener('change', e => {
+    state.currentUnitId = e.target.value;
+    renderProject();
+  });
+  document.getElementById('btn-add-unit').addEventListener('click', () => {
+    const name = prompt('New unit name?', 'Unit ' + (getCurrentProject().units.length + 1));
+    if (!name) return;
+    const project = getCurrentProject();
+    const unit = state.store.newUnit(name);
+    project.units.push(unit);
+    saveCurrent(project);
+    state.currentUnitId = unit.id;
+    renderProject();
+  });
+  document.getElementById('btn-rename-unit').addEventListener('click', () => {
+    const project = getCurrentProject();
+    const unit = getCurrentUnit();
+    const name = prompt('Rename unit', unit.name);
+    if (!name) return;
+    unit.name = name;
+    saveCurrent(project);
+    renderProject();
+  });
+  document.getElementById('btn-delete-unit').addEventListener('click', () => {
+    const project = getCurrentProject();
+    if (project.units.length <= 1) { alert('A project needs at least one unit.'); return; }
+    if (!confirm('Delete this unit?')) return;
+    project.units = project.units.filter(u => u.id !== state.currentUnitId);
+    state.currentUnitId = project.units[0].id;
+    saveCurrent(project);
+    renderProject();
+  });
 
   document.getElementById('btn-new-project').addEventListener('click', () => {
     if (!state.model) { alert('Load a checklist workbook in Setup first.'); return; }
