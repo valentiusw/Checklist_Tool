@@ -280,6 +280,9 @@ input[type="checkbox"] {
   gap: 10px;
 }
 
+/* `display: flex` above would otherwise defeat the [hidden] attribute */
+.unit-breakdown[hidden] { display: none; }
+
 .unit-row {
   display: grid;
   grid-template-columns: 160px 1fr auto;
