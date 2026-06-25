@@ -13,9 +13,14 @@ const state = {
 };
 
 const screens = ['setup', 'dashboard', 'project', 'about'];
+// Which sidebar link is highlighted for each screen (project lives under Projects).
+const NAV_FOR_SCREEN = { setup: 'nav-setup', dashboard: 'nav-dashboard', project: 'nav-dashboard', about: 'nav-about' };
 function showScreen(name) {
   for (const s of screens) {
     document.getElementById('screen-' + s).hidden = s !== name;
+  }
+  for (const id of ['nav-dashboard', 'nav-about', 'nav-setup']) {
+    document.getElementById(id).classList.toggle('active', NAV_FOR_SCREEN[name] === id);
   }
   if (name === 'dashboard') renderDashboard();
   if (name === 'about') renderAbout();
