@@ -9,6 +9,7 @@ const state = {
   store: createProjectStore(window.localStorage),
   currentProjectId: null,
   currentUnitId: null,
+  sectionFilter: '',
 };
 
 const screens = ['setup', 'dashboard', 'project'];
@@ -221,8 +222,17 @@ function updateInput(name, value) {
 function renderItems(unit) {
   const container = document.getElementById('items-list');
   container.innerHTML = '';
-  const items = applicableItems(state.model, unit.inputs);
+  let items = applicableItems(state.model, unit.inputs);
+  if (state.sectionFilter) items = items.filter(i => i.sectionPrefix === state.sectionFilter);
+  let currentSection = null;
   for (const item of items) {
+    if (item.section !== currentSection) {
+      currentSection = item.section;
+      const h = document.createElement('h3');
+      h.className = 'section-heading';
+      h.textContent = currentSection;
+      container.appendChild(h);
+    }
     const checked = unit.checks[item.id] === true;
     const div = document.createElement('div');
     div.className = 'item' + (checked ? ' checked' : '');
@@ -282,12 +292,29 @@ function renderUnitBar() {
   document.getElementById('btn-delete-unit').disabled = project.units.length <= 1;
 }
 
+function renderSectionFilter() {
+  const sel = document.getElementById('section-select');
+  sel.innerHTML = '';
+  const allOpt = document.createElement('option');
+  allOpt.value = '';
+  allOpt.textContent = 'All sections';
+  sel.appendChild(allOpt);
+  for (const s of state.model.sections) {
+    const opt = document.createElement('option');
+    opt.value = s.prefix;
+    opt.textContent = s.name;
+    if (s.prefix === state.sectionFilter) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
 function renderProject() {
   const project = getCurrentProject();
   if (!project) { showScreen('dashboard'); return; }
   if (!getCurrentUnit()) state.currentUnitId = project.units[0].id;
   document.getElementById('project-title').textContent = project.name;
   renderUnitBar();
+  renderSectionFilter();
   const unit = getCurrentUnit();
   renderInputs(unit);
   // persist any defaults just applied
@@ -336,6 +363,10 @@ function init() {
   document.getElementById('unit-select').addEventListener('change', e => {
     state.currentUnitId = e.target.value;
     renderProject();
+  });
+  document.getElementById('section-select').addEventListener('change', e => {
+    state.sectionFilter = e.target.value;
+    renderItems(getCurrentUnit());
   });
   document.getElementById('btn-add-unit').addEventListener('click', () => {
     const name = prompt('New unit name?', 'Unit ' + (getCurrentProject().units.length + 1));
