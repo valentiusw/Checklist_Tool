@@ -13,6 +13,7 @@
     <h1>Smart Checklist</h1>
     <nav>
       <button id="nav-dashboard" class="btn-ghost">Dashboard</button>
+      <button id="nav-about" class="btn-ghost">About</button>
       <button id="nav-setup" class="btn-ghost">Setup</button>
     </nav>
   </header>
@@ -68,6 +69,18 @@
         <aside id="inputs-panel" class="inputs-panel"></aside>
         <div id="items-list" class="items-list"></div>
       </div>
+    </section>
+
+    <section id="screen-about" class="screen" hidden>
+      <h2>About &mdash; Sections &amp; Glossary</h2>
+      <p class="muted">Reference information from the loaded workbook's <code>Sections</code> and
+        <code>Glossary</code> sheets.</p>
+      <div id="about-empty" class="muted" hidden>This workbook has no reference info &mdash; add
+        <code>Sections</code> and <code>Glossary</code> sheets to populate this page.</div>
+      <h3>Sections</h3>
+      <table id="about-sections" class="info-table"></table>
+      <h3>Glossary</h3>
+      <table id="about-glossary" class="info-table"></table>
     </section>
   </main>
 

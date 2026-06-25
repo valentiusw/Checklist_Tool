@@ -12,12 +12,13 @@ const state = {
   sectionFilter: '',
 };
 
-const screens = ['setup', 'dashboard', 'project'];
+const screens = ['setup', 'dashboard', 'project', 'about'];
 function showScreen(name) {
   for (const s of screens) {
     document.getElementById('screen-' + s).hidden = s !== name;
   }
   if (name === 'dashboard') renderDashboard();
+  if (name === 'about') renderAbout();
 }
 
 function setStatus(msg, kind) {
@@ -143,6 +144,21 @@ function renderDashboard() {
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderAbout() {
+  const model = state.model;
+  const sections = (model && model.sections) || [];
+  const glossary = (model && model.glossary) || [];
+  document.getElementById('about-empty').hidden = !(sections.length === 0 && glossary.length === 0);
+
+  const secTable = document.getElementById('about-sections');
+  secTable.innerHTML = '<tr><th>Prefix</th><th>Section</th></tr>' +
+    sections.map(s => `<tr><td>${escapeHtml(s.prefix)}</td><td>${escapeHtml(s.name)}</td></tr>`).join('');
+
+  const gloTable = document.getElementById('about-glossary');
+  gloTable.innerHTML = '<tr><th>Term</th><th>Meaning</th></tr>' +
+    glossary.map(g => `<tr><td>${escapeHtml(g.term)}</td><td>${escapeHtml(g.meaning)}</td></tr>`).join('');
 }
 
 function openProject(id) {
@@ -357,6 +373,7 @@ function init() {
   state.model = restoreModel();
   wireSetup();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
+  document.getElementById('nav-about').addEventListener('click', () => showScreen('about'));
   document.getElementById('nav-setup').addEventListener('click', () => showScreen('setup'));
   document.getElementById('btn-back').addEventListener('click', () => showScreen('dashboard'));
 
