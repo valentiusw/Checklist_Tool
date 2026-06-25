@@ -19,4 +19,11 @@ Task 5: complete (commit ddd1315..8181059, review clean, Approved)
   Minor: test local var still named 'project'; no explicit zero-units progress test.
 Task 6: complete (commit 8181059..16d49b0; npm test 36/36; node --check clean; review APPROVED)
   Review verdict: all 4 functions (optionalSheetToRows, loadModelFromWorkbook, persistModel, restoreModel) match plan verbatim; round-trip field-consistent; no xlsx re-import; cross-task invariant respected.
-Task 7: IN PROGRESS (multi-unit project UI in index.html + src/app.js).
+Task 7: complete (commit 58eb497; unit selector + per-unit render; node --check clean, 36/36).
+Task 8: complete (commit 1c9af98; section filter + grouped headings).
+Task 9: complete (commit 96f8fdb; About page with sections/glossary tables).
+Task 10: complete (commit 03d225b; one worksheet per unit; CROSS-TASK INVARIANT RESOLVED — no flat project.inputs/checks/comments access remains in app.js, verified by grep).
+Task 11: complete (commit f9e8306; red accent, green completion signals, new control styles).
+Task 12: complete (README updated for optional sheets + units/About/Section; npm test 36/36, node --check clean).
+
+ALL 12 TASKS COMPLETE. Remaining: manual browser smoke test (Task 7/8/9/10/11/12 manual steps) not run headlessly — recommend a human pass via `python -m http.server` before merge.

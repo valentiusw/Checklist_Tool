@@ -42,6 +42,21 @@ one ships with Windows' Python install.)
 Projects also autosave in the browser, so they're waiting for you on the Dashboard next
 time.
 
+### Units
+
+A project can hold several **units** (e.g. individual lifts or apartments) that share the
+same checklist but track their own inputs, ticks, and comments. Use the **Unit** dropdown
+on the project screen to switch units, and **Add unit** / **Rename** / **Delete unit** to
+manage them (a project always keeps at least one). The progress label shows both the
+current unit and the project-wide total, and the Dashboard card shows the unit count plus
+aggregate progress. **Export unchecked to Excel** then produces one worksheet per unit.
+
+### Sections & About
+
+If your workbook includes a `Sections` sheet, the checklist is grouped under section
+headings and the **Section** dropdown filters to a single section. The **About** page (top
+bar) lists the workbook's sections and glossary for quick reference.
+
 ## Workbook format
 
 Your `.xlsx` must contain two sheets, named exactly **`Checklist`** and **`Inputs`**.
@@ -67,6 +82,22 @@ Your `.xlsx` must contain two sheets, named exactly **`Checklist`** and **`Input
 - **Unit** — optional, shown beside numeric fields (e.g. `m`).
 - **Default** — optional starting value. For `Choice`, if the default isn't one of the
   listed choices, the first choice is used.
+
+### Sheet `Sections` (optional)
+
+| Prefix | Name |
+|--------|------|
+
+Maps the **leading letters of each Item ID** to a section name (`A` → `Architectural`).
+Items are grouped and filterable by section. If this sheet is absent, the bare prefix
+letter is used as the section name.
+
+### Sheet `Glossary` (optional)
+
+| Term | Meaning |
+|------|---------|
+
+Powers the **About** page — a reference list of the codes/acronyms used in your checklist.
 
 ## Condition grammar
 
