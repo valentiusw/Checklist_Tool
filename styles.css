@@ -11,9 +11,11 @@
   --border-strong: #d8d4ca;
   --text: #2a2a26;
   --text-muted: #8a867d;
-  --accent: #5f7d35;
-  --accent-hover: #4e692b;
-  --accent-soft: #eef2e6;
+  --accent: #c0392b;
+  --accent-hover: #a5281c;
+  --accent-soft: #fbe9e7;
+  --success: #5f7d35;
+  --success-soft: #eef2e6;
   --danger: #b3261e;
   --shadow: 0 1px 2px rgba(28, 28, 24, .04), 0 4px 16px rgba(28, 28, 24, .04);
   --radius: 12px;
@@ -267,7 +269,7 @@ input[type="checkbox"] {
 }
 
 .progress-bar {
-  background: var(--accent);
+  background: var(--success);
   height: 100%;
   width: 0%;
   border-radius: 999px;
@@ -322,9 +324,11 @@ input[type="checkbox"] {
 .item:hover { border-color: var(--border-strong); }
 
 .item.checked {
-  background: var(--accent-soft);
+  background: var(--success-soft);
   border-color: #d2e0bd;
 }
+
+.items-list input[type="checkbox"] { accent-color: var(--success); }
 
 .item-head { display: flex; gap: 12px; align-items: flex-start; }
 
@@ -369,3 +373,59 @@ input[type="checkbox"] {
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius);
 }
+
+/* ---- Unit bar & section filter --------------------------------------- */
+
+.unit-bar, .section-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.unit-bar label, .section-filter label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.unit-bar select, .section-filter select { width: auto; min-width: 160px; }
+
+.section-heading {
+  font-size: 13px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+  margin: 18px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-heading:first-child { margin-top: 0; }
+
+/* ---- About tables ----------------------------------------------------- */
+
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 24px;
+  font-size: 14px;
+}
+
+.info-table th, .info-table td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.info-table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+}
+
+.info-table td:first-child { font-weight: 600; white-space: nowrap; }
