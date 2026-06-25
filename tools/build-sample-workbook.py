@@ -9,32 +9,34 @@ from openpyxl import Workbook
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "SampleChecklist.xlsx")
 
+# "Example Image" (last column) is optional: a filename in the examples/ folder.
+# Leave blank for items without a picture; the report export inlines any present.
 checklist = [
-    ["Item ID", "Conditions", "Description", "Code", "Note", "Example"],
+    ["Item ID", "Conditions", "Description", "Code", "Note", "Example", "Example Image"],
     ["A08", "", "Lifts are not exposed to weather", "AS3000",
      "Lift opening to an outdoor area must protect electrical components from moisture ingress.",
-     "Fit IP-rated enclosures and weather seals to the landing door head."],
+     "Fit IP-rated enclosures and weather seals to the landing door head.", "a08-weather-seal.svg"],
     ["A09", "", "Lifts do not open directly into a dwelling", "SL", "",
-     "Provide a protected lobby between the lift and the dwelling entrance."],
+     "Provide a protected lobby between the lift and the dwelling entrance.", ""],
     ["A10", "PitToEarth: FALSE", "If pit is not to solid earth, need CWT safety device", "EN81-20",
      "Counterweight safety gear required when pit is not founded on solid earth.",
-     "Install counterweight safety gear and certify per EN81-20."],
+     "Install counterweight safety gear and certify per EN81-20.", "a10-cwt-safety.svg"],
     ["A11", "MaxFFLInt: >11m", "Must have lift-well emergency doors", "EN81-20, RDM",
      "Required where the travel between landings exceeds 11 m.",
-     "Add emergency doors at max 11 m spacing along the well."],
+     "Add emergency doors at max 11 m spacing along the well.", ""],
     ["A13", 'BuildingClass: "Class 9b" OR MaxFFLInt: >=20', "Enhanced fire service controls", "BCA",
      "High-rise or assembly buildings need fire service lift controls.",
-     "Provide fire service control switch and compliant signage."],
+     "Provide fire service control switch and compliant signage.", ""],
     ["B01", "", "Pit structure designed for buffer impact loads", "AS1170", "",
-     "Confirm structural design accounts for buffer reaction forces."],
+     "Confirm structural design accounts for buffer reaction forces.", ""],
     ["B02", "FloorsServed: >=10", "Guide rail bracket spacing verified for travel", "EN81-20",
      "Taller installations need verified bracket spacing.",
-     "Document guide-rail bracket spacing calculations."],
+     "Document guide-rail bracket spacing calculations.", ""],
     ["C01", "", "Machine room power isolation provided", "AS3000", "",
-     "Install a lockable main switch for the lift supply."],
+     "Install a lockable main switch for the lift supply.", ""],
     ["C02", "PitToEarth: FALSE", "Earthing of car and well per wiring rules", "AS3000",
      "Earthing continuity required where pit is not to solid earth.",
-     "Measure and record earth continuity resistance."],
+     "Measure and record earth continuity resistance.", ""],
 ]
 
 inputs = [

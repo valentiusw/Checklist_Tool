@@ -113,3 +113,19 @@ test('glossary is empty array when sheet absent', () => {
   const model = buildModel({ checklistRows, inputRows });
   assert.deepEqual(model.glossary, []);
 });
+
+test('exampleImage is empty when the optional column is absent', () => {
+  const model = buildModel({ checklistRows, inputRows });
+  assert.equal(model.items[0].exampleImage, '');
+});
+
+test('exampleImage is read from the optional Example Image column', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example', 'Example Image'],
+    ['A08', '', 'Lifts not exposed to weather', 'AS3000', '', 'Seal it', 'a08.svg'],
+    ['A09', '', 'No image item', 'SL', '', 'Do thing', ''],
+  ];
+  const model = buildModel({ checklistRows: rows, inputRows });
+  assert.equal(model.items[0].exampleImage, 'a08.svg');
+  assert.equal(model.items[1].exampleImage, '');
+});

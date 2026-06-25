@@ -30,6 +30,12 @@ function cell(row, i) {
   return v === undefined || v === null ? '' : String(v).trim();
 }
 
+// Index of an optional column by header name; -1 when the column is absent.
+function optionalColIndex(rows, colName) {
+  if (!rows || rows.length === 0) return -1;
+  return rows[0].map(c => String(c ?? '').trim()).indexOf(colName);
+}
+
 function buildInputs(inputRows) {
   const idx = headerIndex(inputRows, INPUT_COLS, 'Inputs');
   const inputs = [];
@@ -91,6 +97,7 @@ function buildGlossary(glossaryRows) {
 
 function buildItems(checklistRows, inputDefs, sectionMap) {
   const idx = headerIndex(checklistRows, CHECKLIST_COLS, 'Checklist');
+  const imgIdx = optionalColIndex(checklistRows, 'Example Image');
   const items = [];
   for (let r = 1; r < checklistRows.length; r++) {
     const row = checklistRows[r];
@@ -118,6 +125,7 @@ function buildItems(checklistRows, inputDefs, sectionMap) {
       code: cell(row, idx['Code']),
       note: cell(row, idx['Note']),
       example: cell(row, idx['Example']),
+      exampleImage: imgIdx === -1 ? '' : cell(row, imgIdx),
     });
   }
   return items;
