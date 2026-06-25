@@ -11,9 +11,9 @@
   --border-strong: #d8d4ca;
   --text: #2a2a26;
   --text-muted: #8a867d;
-  --accent: #c0392b;
-  --accent-hover: #a5281c;
-  --accent-soft: #fbe9e7;
+  --accent: #5f7d35;
+  --accent-hover: #4e692b;
+  --accent-soft: #eef2e6;
   --success: #5f7d35;
   --success-soft: #eef2e6;
   --danger: #b3261e;
@@ -206,6 +206,17 @@ textarea {
   background: var(--surface);
 }
 
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%238a867d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1.5 6 6.5 11 1.5'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -257,6 +268,36 @@ input[type="checkbox"] {
 }
 
 .project-card strong { font-size: 16px; font-weight: 600; }
+
+/* ---- Dashboard per-unit breakdown ------------------------------------- */
+
+.unit-breakdown {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.unit-row {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.unit-row .unit-name {
+  font-size: 14px;
+  font-weight: 550;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unit-row .unit-count { font-size: 13px; white-space: nowrap; }
+
+.progress-sm { height: 6px; margin: 0; }
 
 /* ---- Progress bars ---------------------------------------------------- */
 

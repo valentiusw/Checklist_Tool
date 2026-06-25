@@ -115,21 +115,40 @@ function renderDashboard() {
   for (const summary of projects) {
     const project = state.store.getProject(summary.id);
     const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
+    const unitRows = project.units.map(u => {
+      const p = computeProgress(state.model, u);
+      return `
+        <div class="unit-row">
+          <span class="unit-name">${escapeHtml(u.name)}</span>
+          <div class="progress progress-sm"><div class="progress-bar" style="width:${Math.round(p.ratio * 100)}%"></div></div>
+          <span class="unit-count muted">${p.checked} / ${p.applicable}</span>
+        </div>`;
+    }).join('');
     const li = document.createElement('li');
     li.className = 'project-card';
     li.innerHTML = `
       <div class="row-between">
         <strong>${escapeHtml(project.name)}</strong>
         <span class="btn-row">
+          <button class="btn-ghost btn-sm" data-toggle="${project.id}" aria-expanded="false">Expand</button>
           <button class="btn-primary btn-sm" data-open="${project.id}">Open</button>
           <button class="btn-danger btn-sm" data-delete="${project.id}">Delete</button>
         </span>
       </div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
-      <p class="muted">${project.units.length} unit${project.units.length === 1 ? '' : 's'} · ${checked} / ${applicable} checked</p>`;
+      <p class="muted">${project.units.length} unit${project.units.length === 1 ? '' : 's'} · ${checked} / ${applicable} checked</p>
+      <div class="unit-breakdown" hidden>${unitRows}</div>`;
     list.appendChild(li);
   }
 
+  list.querySelectorAll('[data-toggle]').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const breakdown = btn.closest('.project-card').querySelector('.unit-breakdown');
+      const show = breakdown.hidden;
+      breakdown.hidden = !show;
+      btn.textContent = show ? 'Collapse' : 'Expand';
+      btn.setAttribute('aria-expanded', String(show));
+    }));
   list.querySelectorAll('[data-open]').forEach(btn =>
     btn.addEventListener('click', () => openProject(btn.getAttribute('data-open'))));
   list.querySelectorAll('[data-delete]').forEach(btn =>
