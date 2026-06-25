@@ -114,18 +114,21 @@ test('glossary is empty array when sheet absent', () => {
   assert.deepEqual(model.glossary, []);
 });
 
-test('exampleImage is empty when the optional column is absent', () => {
+test('a prose Example is text, with no image', () => {
   const model = buildModel({ checklistRows, inputRows });
+  assert.equal(model.items[0].example, 'Seal the enclosure');
   assert.equal(model.items[0].exampleImage, '');
 });
 
-test('exampleImage is read from the optional Example Image column', () => {
+test('an Example cell that is an image filename becomes exampleImage', () => {
   const rows = [
-    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example', 'Example Image'],
-    ['A08', '', 'Lifts not exposed to weather', 'AS3000', '', 'Seal it', 'a08.svg'],
-    ['A09', '', 'No image item', 'SL', '', 'Do thing', ''],
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A08', '', 'Lifts not exposed to weather', 'AS3000', '', 'a08-weather-seal.png'],
+    ['A09', '', 'Prose item', 'SL', '', 'Provide a protected lobby.'],
   ];
   const model = buildModel({ checklistRows: rows, inputRows });
-  assert.equal(model.items[0].exampleImage, 'a08.svg');
+  assert.equal(model.items[0].exampleImage, 'a08-weather-seal.png');
+  assert.equal(model.items[0].example, '');
   assert.equal(model.items[1].exampleImage, '');
+  assert.equal(model.items[1].example, 'Provide a protected lobby.');
 });

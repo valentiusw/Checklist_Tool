@@ -30,10 +30,10 @@ function cell(row, i) {
   return v === undefined || v === null ? '' : String(v).trim();
 }
 
-// Index of an optional column by header name; -1 when the column is absent.
-function optionalColIndex(rows, colName) {
-  if (!rows || rows.length === 0) return -1;
-  return rows[0].map(c => String(c ?? '').trim()).indexOf(colName);
+// An Example cell is treated as an image when its whole value is an image
+// filename (ends in a known extension); otherwise it is explanatory text.
+function isImageFilename(value) {
+  return /\.(png|jpe?g|gif|svg|webp|bmp)$/i.test(String(value).trim());
 }
 
 function buildInputs(inputRows) {
@@ -97,7 +97,6 @@ function buildGlossary(glossaryRows) {
 
 function buildItems(checklistRows, inputDefs, sectionMap) {
   const idx = headerIndex(checklistRows, CHECKLIST_COLS, 'Checklist');
-  const imgIdx = optionalColIndex(checklistRows, 'Example Image');
   const items = [];
   for (let r = 1; r < checklistRows.length; r++) {
     const row = checklistRows[r];
@@ -124,8 +123,9 @@ function buildItems(checklistRows, inputDefs, sectionMap) {
       description: cell(row, idx['Description']),
       code: cell(row, idx['Code']),
       note: cell(row, idx['Note']),
-      example: cell(row, idx['Example']),
-      exampleImage: imgIdx === -1 ? '' : cell(row, imgIdx),
+      // One Example column: either prose guidance or a single image filename.
+      example: isImageFilename(cell(row, idx['Example'])) ? '' : cell(row, idx['Example']),
+      exampleImage: isImageFilename(cell(row, idx['Example'])) ? cell(row, idx['Example']) : '',
     });
   }
   return items;

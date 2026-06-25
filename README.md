@@ -75,13 +75,13 @@ Your `.xlsx` must contain two sheets, named exactly **`Checklist`** and **`Input
 
 - **Conditions** — leave blank for items that always apply. Otherwise reference your
   inputs (see grammar below).
-- **Example** — optional "how to complete this item" guidance, included in the export.
-- **Example Image** *(optional column)* — a filename (e.g. `weather-seal.png`) of a picture
-  that illustrates the item. Put the actual image files in an `examples/` folder next to
-  `index.html`. The images appear in both image-bearing exports below. Leave the cell blank
-  for items without a picture; the column itself can be omitted entirely.
-  *Use **PNG or JPG** for the Excel export — SVG works in the HTML report but cannot be
-  embedded in an `.xlsx`.*
+- **Example** — how to complete the item. Each cell is **either**:
+  - a paragraph of explanatory text, **or**
+  - a single image filename (e.g. `weather-seal.png`) — the tool detects this by the file
+    extension. Put the actual image files in an `examples/` folder next to `index.html`.
+
+  Both forms flow into the exports below. *Use **PNG or JPG** for an image you want in the
+  Excel export — SVG works in the HTML report but cannot be embedded in an `.xlsx`.*
 
 ### Sheet `Inputs`
 

@@ -67,8 +67,9 @@ function restoreModel() {
       ...data.inputs.map(i => [i.name, i.type, i.label, i.unit, i.choices.join(';'), i.default]),
     ];
     const checklistRows = [
-      ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example', 'Example Image'],
-      ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.example, i.exampleImage || '']),
+      ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+      // The single Example cell holds either the prose or the image filename.
+      ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleImage || i.example]),
     ];
     const sectionRows = (data.sections && data.sections.length)
       ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
