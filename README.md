@@ -35,12 +35,14 @@ one ships with Windows' Python install.)
 2. Go to **Dashboard**, click **New project**, give it a name.
 3. Fill in the project **inputs** on the left — the checklist items filter live.
 4. Tick items off and add per-item comments. The progress bar updates as you go.
-5. **Export unchecked to Excel** produces a spreadsheet of everything still outstanding
-   (one worksheet per unit; columns Item ID, Description, Code, Comments, Example).
-6. **Export report (with images)** produces a self-contained `.html` report of the
-   outstanding items — one section per unit, each item showing its guidance and, where an
-   `Example Image` is set, the picture inlined. Hand this to clients so they can see what
-   each item refers to; it opens in any browser and can be printed to PDF.
+5. **Export Excel (with photos)** produces a spreadsheet of everything still outstanding
+   (one worksheet per unit; columns Item ID, Description, Code, Comments, Example, Example
+   image). Where an `Example Image` (PNG/JPG) is set, the picture is **embedded** in the
+   row so clients see it in Excel itself.
+6. **Export report (HTML)** produces a self-contained `.html` report of the outstanding
+   items — one section per unit, each item showing its guidance and, where an `Example
+   Image` is set, the picture inlined. Opens in any browser and prints cleanly to PDF;
+   handy to email.
 7. **Save project file** downloads the project as `.json` (back it up or move it to
    another machine); **Import project** loads it back.
 
@@ -76,8 +78,10 @@ Your `.xlsx` must contain two sheets, named exactly **`Checklist`** and **`Input
 - **Example** — optional "how to complete this item" guidance, included in the export.
 - **Example Image** *(optional column)* — a filename (e.g. `weather-seal.png`) of a picture
   that illustrates the item. Put the actual image files in an `examples/` folder next to
-  `index.html`. The images appear in the **Export report (with images)** output. Leave the
-  cell blank for items without a picture; the column itself can be omitted entirely.
+  `index.html`. The images appear in both image-bearing exports below. Leave the cell blank
+  for items without a picture; the column itself can be omitted entirely.
+  *Use **PNG or JPG** for the Excel export — SVG works in the HTML report but cannot be
+  embedded in an `.xlsx`.*
 
 ### Sheet `Inputs`
 
