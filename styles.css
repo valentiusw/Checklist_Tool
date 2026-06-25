@@ -59,10 +59,9 @@ body {
 
 .topbar h1::before {
   content: "";
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  background: var(--accent);
+  width: 26px;
+  height: 26px;
+  background: url("logo.svg") center / contain no-repeat;
   display: inline-block;
 }
 
