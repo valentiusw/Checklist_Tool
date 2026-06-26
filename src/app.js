@@ -1,6 +1,8 @@
 import { buildModel } from './workbookModel.js';
 import { createProjectStore } from './projectStore.js';
-import { computeProgress, computeProjectProgress, applicableItems } from './exporter.js';
+import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
+import * as exampleStore from './exampleStore.js';
+import { readSetupZip, buildExportZip } from './zipBundle.js';
 
 const MODEL_KEY = 'dpchecklist.model';
 
@@ -73,8 +75,8 @@ function restoreModel() {
     ];
     const checklistRows = [
       ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
-      // The single Example cell holds either the prose or the image filename.
-      ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleImage || i.example]),
+      // The single Example cell holds either the prose or the file name.
+      ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleFile || i.exampleImage || i.example]),
     ];
     const sectionRows = (data.sections && data.sections.length)
       ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
@@ -88,25 +90,34 @@ function restoreModel() {
   }
 }
 
-async function handleWorkbookFile(file) {
+async function handleSetupFile(file) {
   try {
-    setStatus('Reading workbook…');
+    setStatus('Reading setup…');
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array' });
+    let workbookBuffer = buffer;
+    let files = new Map();
+    if (/\.zip$/i.test(file.name)) {
+      const res = await readSetupZip(buffer);
+      workbookBuffer = res.workbookArrayBuffer;
+      files = res.files;
+    }
+    const workbook = XLSX.read(workbookBuffer, { type: 'array' });
     const model = loadModelFromWorkbook(workbook);
+    await exampleStore.clear();
+    if (files.size) await exampleStore.putAll(files);
     state.model = model;
     persistModel(model);
-    setStatus(`Loaded ${model.items.length} items and ${model.inputs.length} inputs.`, 'ok');
+    setStatus(`Loaded ${model.items.length} items, ${model.inputs.length} inputs, ${files.size} example file${files.size === 1 ? '' : 's'}.`, 'ok');
   } catch (err) {
     state.model = null;
-    setStatus('Could not load workbook: ' + err.message, 'error');
+    setStatus('Could not load setup: ' + err.message, 'error');
   }
 }
 
 function wireSetup() {
   document.getElementById('workbook-file').addEventListener('change', e => {
     const file = e.target.files[0];
-    if (file) handleWorkbookFile(file);
+    if (file) handleSetupFile(file);
   });
 }
 
@@ -385,6 +396,65 @@ function downloadBlob(blob, filename) {
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
 }
 
+function sanitizeSheetName(name, used) {
+  let base = String(name || 'Unit').replace(/[\[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'Unit';
+  let candidate = base;
+  let n = 2;
+  while (used.has(candidate)) {
+    const suffix = ' (' + n + ')';
+    candidate = base.slice(0, 31 - suffix.length) + suffix;
+    n++;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
+async function downloadProjectZip() {
+  try {
+    const project = getCurrentProject();
+    const plan = buildExportPlan(state.model, project);
+    const wb = XLSX.utils.book_new();
+    const used = new Set();
+    for (const unit of plan.units) {
+      const header = ['Item ID', 'Description', 'Code', 'Comments', 'Example'];
+      const aoa = [header, ...unit.rows.map(r => [r.id, r.description, r.code, r.comment, r.exampleFile || r.example])];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 14 }, { wch: 28 }, { wch: 40 }];
+      // Example column is index 4; file rows get a relative hyperlink to Examples/.
+      unit.rows.forEach((r, i) => {
+        if (!r.exampleFile) return;
+        const addr = XLSX.utils.encode_cell({ r: i + 1, c: 4 });
+        if (!ws[addr]) ws[addr] = { t: 's', v: r.exampleFile };
+        ws[addr].l = { Target: 'Examples/' + r.exampleFile, Tooltip: 'Open ' + r.exampleFile };
+      });
+      XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(unit.name, used));
+    }
+    const workbookArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+
+    const files = new Map();
+    const missing = [];
+    for (const name of plan.referencedFiles) {
+      const blob = await exampleStore.get(name);
+      if (blob) files.set(name, blob);
+      else missing.push(name);
+    }
+
+    const safeName = project.name.replace(/[^\w\-]+/g, '_');
+    const date = new Date().toISOString().slice(0, 10);
+    const zipBlob = await buildExportZip({
+      workbookName: `${safeName}_unchecked_${date}.xlsx`,
+      workbookArrayBuffer,
+      files,
+    });
+    downloadBlob(zipBlob, `${safeName}_${date}.zip`);
+    if (missing.length) {
+      alert(`Exported. These referenced files weren't in your library:\n${missing.join('\n')}`);
+    }
+  } catch (err) {
+    alert('Could not build the ZIP: ' + err.message);
+  }
+}
+
 function saveProjectFile() {
   const project = getCurrentProject();
   const json = state.store.serializeProject(project);
@@ -404,96 +474,6 @@ function saveLibraryFile() {
   setStatus(`Saved a backup of ${count} project${count === 1 ? '' : 's'}.`, 'ok');
 }
 
-function blobToDataUri(blob) {
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result);
-    fr.onerror = reject;
-    fr.readAsDataURL(blob);
-  });
-}
-
-// Load an example image (from the local examples/ folder) as a data URI so the
-// report is fully self-contained. Returns '' if absent or unreachable.
-async function loadExampleImage(name, cache) {
-  if (!name) return '';
-  if (cache.has(name)) return cache.get(name);
-  let uri = '';
-  try {
-    const res = await fetch('examples/' + encodeURIComponent(name));
-    if (res.ok) uri = await blobToDataUri(await res.blob());
-  } catch { /* missing image — report renders without it */ }
-  cache.set(name, uri);
-  return uri;
-}
-
-function reportItemHtml(item, comment, imgUri) {
-  return `
-    <article class="item">
-      <div class="item-main">
-        <p class="item-head"><span class="item-id">${escapeHtml(item.id)}</span>
-          ${escapeHtml(item.description)}
-          ${item.code ? `<span class="code">${escapeHtml(item.code)}</span>` : ''}</p>
-        ${item.example ? `<p class="example"><strong>How to complete:</strong> ${escapeHtml(item.example)}</p>` : ''}
-        ${comment ? `<p class="comment"><strong>Comment:</strong> ${escapeHtml(comment)}</p>` : ''}
-      </div>
-      ${imgUri ? `<div class="item-img"><img src="${imgUri}" alt="Example for ${escapeHtml(item.id)}"></div>` : ''}
-    </article>`;
-}
-
-async function exportReport() {
-  const project = getCurrentProject();
-  const cache = new Map();
-  let body = '';
-  for (const unit of project.units) {
-    const items = applicableItems(state.model, unit.inputs).filter(it => unit.checks[it.id] !== true);
-    body += `<section class="unit"><h2>${escapeHtml(unit.name)}</h2>`;
-    if (items.length === 0) {
-      body += `<p class="all-done">All applicable items have been checked. &#10003;</p>`;
-    } else {
-      for (const item of items) {
-        const uri = await loadExampleImage(item.exampleImage, cache);
-        body += reportItemHtml(item, unit.comments[item.id] || '', uri);
-      }
-    }
-    body += `</section>`;
-  }
-  const date = new Date().toISOString().slice(0, 10);
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(project.name)} — outstanding items</title>
-<style>
-  :root { --ink:#2a2a26; --muted:#6f6b62; --line:#e3e0d9; --accent:#5f7d35; }
-  * { box-sizing: border-box; }
-  body { font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; color: var(--ink);
-    margin: 0; padding: 32px; line-height: 1.5; background: #fff; }
-  header { border-bottom: 2px solid var(--accent); padding-bottom: 12px; margin-bottom: 24px; }
-  h1 { margin: 0 0 4px; font-size: 22px; }
-  .meta { color: var(--muted); font-size: 13px; }
-  .unit { margin-bottom: 32px; }
-  .unit h2 { font-size: 16px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
-  .item { display: flex; gap: 18px; align-items: flex-start; justify-content: space-between;
-    border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0;
-    page-break-inside: avoid; }
-  .item-main { min-width: 0; flex: 1; }
-  .item-head { margin: 0 0 6px; font-size: 15px; }
-  .item-id { font-weight: 700; margin-right: 6px; }
-  .code { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line);
-    border-radius: 5px; padding: 1px 6px; margin-left: 6px; }
-  .example, .comment { margin: 4px 0; font-size: 14px; color: #44423c; }
-  .item-img { flex: none; }
-  .item-img img { width: 200px; max-width: 38vw; height: auto; border: 1px solid var(--line);
-    border-radius: 8px; display: block; }
-  .all-done { color: var(--accent); font-weight: 600; }
-  @media print { body { padding: 0; } .item-img img { max-width: 220px; } }
-</style></head><body>
-<header><h1>${escapeHtml(project.name)} — outstanding checklist items</h1>
-<p class="meta">Generated ${date} · ${project.units.length} unit${project.units.length === 1 ? '' : 's'}</p></header>
-${body}
-</body></html>`;
-  const safeName = project.name.replace(/[^\w\-]+/g, '_');
-  downloadBlob(new Blob([html], { type: 'text/html' }), `${safeName}_report_${date}.html`);
-}
 
 const THEME_KEY = 'dpchecklist.theme';
 function wireThemeToggle() {
@@ -572,8 +552,8 @@ function init() {
     e.target.value = '';
   });
 
-  document.getElementById('btn-report').addEventListener('click', exportReport);
   document.getElementById('btn-save-project').addEventListener('click', saveProjectFile);
+  document.getElementById('btn-download-zip').addEventListener('click', downloadProjectZip);
   document.getElementById('btn-save-library').addEventListener('click', saveLibraryFile);
 
   document.getElementById('restore-library-file').addEventListener('change', async e => {

@@ -35,3 +35,32 @@ export function buildExportRows(model, unit) {
   }
   return rows;
 }
+
+export function buildExportPlan(model, project) {
+  const units = (project.units || []).map(unit => {
+    const comments = unit.comments || {};
+    const checks = unit.checks || {};
+    const rows = applicableItems(model, unit.inputs || {})
+      .filter(item => checks[item.id] !== true)
+      .map(item => ({
+        id: item.id,
+        description: item.description,
+        code: item.code,
+        comment: comments[item.id] || '',
+        example: item.example,
+        exampleFile: item.exampleFile || '',
+      }));
+    return { name: unit.name, rows };
+  });
+  const referencedFiles = [];
+  const seen = new Set();
+  for (const unit of units) {
+    for (const row of unit.rows) {
+      if (row.exampleFile && !seen.has(row.exampleFile)) {
+        seen.add(row.exampleFile);
+        referencedFiles.push(row.exampleFile);
+      }
+    }
+  }
+  return { units, referencedFiles };
+}

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildModel } from '../src/workbookModel.js';
-import { applicableItems, computeProgress, computeProjectProgress, buildExportRows } from '../src/exporter.js';
+import { applicableItems, computeProgress, computeProjectProgress, buildExportRows, buildExportPlan } from '../src/exporter.js';
 
 const inputRows = [
   ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
@@ -65,4 +65,42 @@ test('computeProjectProgress sums across units', () => {
   assert.equal(p.applicable, 4);
   assert.equal(p.checked, 1);
   assert.equal(p.ratio, 0.25);
+});
+
+test('buildExportPlan returns per-unit outstanding rows', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A08', '', 'Always applies', 'AS3000', '', 'a08.png'],
+    ['A10', '', 'Second item', 'EN81', '', 'Prose guidance'],
+  ];
+  const m = buildModel({ checklistRows: rows, inputRows });
+  const project = {
+    units: [
+      { name: 'Lift 1', inputs: {}, checks: { A08: true }, comments: { A10: 'note' } },
+      { name: 'Lift 2', inputs: {}, checks: {}, comments: {} },
+    ],
+  };
+  const plan = buildExportPlan(m, project);
+  assert.equal(plan.units.length, 2);
+  // Unit 1: A08 checked -> only A10 outstanding (prose, no file)
+  assert.deepEqual(plan.units[0].rows.map(r => r.id), ['A10']);
+  assert.equal(plan.units[0].rows[0].comment, 'note');
+  assert.equal(plan.units[0].rows[0].exampleFile, '');
+  assert.equal(plan.units[0].rows[0].example, 'Prose guidance');
+  // Unit 2: nothing checked -> A08 (file) + A10 (prose)
+  assert.deepEqual(plan.units[1].rows.map(r => r.id), ['A08', 'A10']);
+  assert.equal(plan.units[1].rows[0].exampleFile, 'a08.png');
+});
+
+test('buildExportPlan collects referenced files once, in order', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A08', '', 'Item', 'AS3000', '', 'a08.png'],
+    ['A09', '', 'Item', 'AS3000', '', 'a09.pdf'],
+    ['A10', '', 'Item', 'AS3000', '', 'a08.png'],
+  ];
+  const m = buildModel({ checklistRows: rows, inputRows });
+  const project = { units: [{ name: 'U', inputs: {}, checks: {}, comments: {} }] };
+  const plan = buildExportPlan(m, project);
+  assert.deepEqual(plan.referencedFiles, ['a08.png', 'a09.pdf']);
 });

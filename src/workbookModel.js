@@ -30,10 +30,10 @@ function cell(row, i) {
   return v === undefined || v === null ? '' : String(v).trim();
 }
 
-// An Example cell is treated as an image when its whole value is an image
-// filename (ends in a known extension); otherwise it is explanatory text.
-function isImageFilename(value) {
-  return /\.(png|jpe?g|gif|svg|webp|bmp)$/i.test(String(value).trim());
+// An Example cell is treated as a file reference when its whole value is a
+// filename ending in a known extension; otherwise it is explanatory text.
+function isExampleFile(value) {
+  return /\.(png|jpe?g|gif|svg|webp|bmp|pdf)$/i.test(String(value).trim());
 }
 
 function buildInputs(inputRows) {
@@ -123,9 +123,9 @@ function buildItems(checklistRows, inputDefs, sectionMap) {
       description: cell(row, idx['Description']),
       code: cell(row, idx['Code']),
       note: cell(row, idx['Note']),
-      // One Example column: either prose guidance or a single image filename.
-      example: isImageFilename(cell(row, idx['Example'])) ? '' : cell(row, idx['Example']),
-      exampleImage: isImageFilename(cell(row, idx['Example'])) ? cell(row, idx['Example']) : '',
+      // One Example column: either prose guidance or a single file name.
+      example: isExampleFile(cell(row, idx['Example'])) ? '' : cell(row, idx['Example']),
+      exampleFile: isExampleFile(cell(row, idx['Example'])) ? cell(row, idx['Example']) : '',
     });
   }
   return items;
