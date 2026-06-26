@@ -23,6 +23,31 @@
   --font: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* ---- Dark theme ------------------------------------------------------- */
+html[data-theme="dark"] {
+  --bg: #16181d;
+  --surface: #1e2128;
+  --surface-muted: #262a32;
+  --border: #2e333c;
+  --border-strong: #3a414c;
+  --text: #e6e8eb;
+  --text-muted: #9aa1ab;
+  --accent: #7d9e4a;
+  --accent-hover: #8bad57;
+  --accent-soft: #29311d;
+  --success: #7d9e4a;
+  --success-soft: #29311d;
+  --danger: #e06b62;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .4);
+}
+
+/* A few component colours are hard-coded; restate them for dark. */
+html[data-theme="dark"] .item.checked { border-color: #3c4a26; }
+html[data-theme="dark"] .btn-danger:hover { background: #3a2422; border-color: #5a302c; color: #e87b72; }
+html[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%239aa1ab' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1.5 6 6.5 11 1.5'/></svg>");
+}
+
 * { box-sizing: border-box; }
 
 html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
@@ -268,6 +293,51 @@ input[type="checkbox"] {
   accent-color: var(--accent);
   cursor: pointer;
 }
+
+/* ---- Settings rows & toggle switch ------------------------------------ */
+
+.setting-group { margin-top: 28px; }
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+
+.setting-title { font-weight: 600; }
+.setting-desc { font-size: 13px; margin-top: 2px; }
+
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; flex: none; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.switch-slider {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  background: var(--border-strong);
+  border-radius: 999px;
+  transition: background .15s ease;
+}
+
+.switch-slider::before {
+  content: "";
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+  transition: transform .15s ease;
+}
+
+.switch input:checked + .switch-slider { background: var(--accent); }
+.switch input:checked + .switch-slider::before { transform: translateX(20px); }
+.switch input:focus-visible + .switch-slider { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- Status messages -------------------------------------------------- */
 

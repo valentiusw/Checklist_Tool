@@ -555,9 +555,21 @@ ${body}
   downloadBlob(new Blob([html], { type: 'text/html' }), `${safeName}_report_${date}.html`);
 }
 
+const THEME_KEY = 'dpchecklist.theme';
+function wireThemeToggle() {
+  const toggle = document.getElementById('toggle-dark');
+  toggle.checked = document.documentElement.getAttribute('data-theme') === 'dark';
+  toggle.addEventListener('change', () => {
+    const dark = toggle.checked;
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    try { window.localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch { /* ignore */ }
+  });
+}
+
 function init() {
   state.model = restoreModel();
   wireSetup();
+  wireThemeToggle();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
   document.getElementById('nav-about').addEventListener('click', () => showScreen('about'));
   document.getElementById('nav-setup').addEventListener('click', () => showScreen('setup'));
