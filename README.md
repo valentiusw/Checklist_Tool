@@ -30,15 +30,18 @@ one ships with Windows' Python install.)
 
 ## First use
 
-1. Go to **Setup** and load your checklist workbook (or `SampleChecklist.xlsx` included
-   here to try it out).
+1. Go to **Setup** and load your checklist workbook. Upload a setup `.zip` (workbook at
+   the root plus an `Examples/` subfolder of the PDFs/images its Example column
+   references), or a bare `.xlsx` if you have no example files. `SampleChecklist.xlsx`
+   is included here to try it out.
 2. Go to **Dashboard**, click **New project**, give it a name.
 3. Fill in the project **inputs** on the left — the checklist items filter live.
 4. Tick items off and add per-item comments. The progress bar updates as you go.
-5. **Export report (HTML)** produces a self-contained `.html` report of the outstanding
-   items — one section per unit, each item showing its guidance and, where an `Example
-   Image` is set, the picture inlined. Opens in any browser and prints cleanly to PDF;
-   handy to email.
+5. **Download ZIP** produces a `.zip` containing a spreadsheet of everything still
+   outstanding (one worksheet per unit; columns Item ID, Description, Code, Comments,
+   Example) alongside an `Examples` subfolder with the referenced PDFs/images. Where an
+   item's Example is a file, the Example cell is a **relative hyperlink** — unzip the
+   bundle and the links open the adjacent files from `Examples/`.
 6. **Save project file** downloads the project as `.json` (back it up or move it to
    another machine); **Import project** loads it back.
 
@@ -52,7 +55,7 @@ same checklist but track their own inputs, ticks, and comments. Use the **Unit**
 on the project screen to switch units, and **Add unit** / **Rename** / **Delete unit** to
 manage them (a project always keeps at least one). The progress label shows both the
 current unit and the project-wide total, and the Dashboard card shows the unit count plus
-aggregate progress. **Export unchecked to Excel** then produces one worksheet per unit.
+aggregate progress. **Download ZIP** then produces one worksheet per unit.
 
 ### Sections & About
 
@@ -73,11 +76,12 @@ Your `.xlsx` must contain two sheets, named exactly **`Checklist`** and **`Input
   inputs (see grammar below).
 - **Example** — how to complete the item. Each cell is **either**:
   - a paragraph of explanatory text, **or**
-  - a single image filename (e.g. `weather-seal.png`) — the tool detects this by the file
-    extension. Put the actual image files in an `examples/` folder next to `index.html`.
+  - a single file name (e.g. `weather-seal.png`, `detail.pdf`) — the tool detects this by
+    the file extension (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.pdf`). Bundle
+    the actual files in an `Examples/` subfolder of your setup `.zip` (see First use §1).
 
-  Both forms flow into the exports below. *Use **PNG or JPG** for an image you want in the
-  Excel export — SVG works in the HTML report but cannot be embedded in an `.xlsx`.*
+  Both forms flow into the **Download ZIP** export. *Use **PNG or JPG** for images — SVG
+  and PDF are carried as files but cannot be embedded directly in `.xlsx` cells.*
 
 ### Sheet `Inputs`
 
