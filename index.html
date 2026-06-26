@@ -57,6 +57,21 @@
           <span class="switch-slider"></span>
         </label>
       </div>
+
+      <h3 class="setting-group">Backup</h3>
+      <div class="setting-row">
+        <div>
+          <div class="setting-title">Save project library</div>
+          <div class="muted setting-desc">Download a single file with every project and all its
+            units. Keep it somewhere safe in case browser data is cleared.</div>
+        </div>
+        <div class="btn-row">
+          <label class="import-label">Restore library
+            <input type="file" id="restore-library-file" accept=".json" hidden />
+          </label>
+          <button id="btn-save-library" class="btn-primary">Save project library</button>
+        </div>
+      </div>
     </section>
 
     <section id="screen-dashboard" class="screen" hidden>

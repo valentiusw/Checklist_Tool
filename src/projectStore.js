@@ -116,8 +116,45 @@ export function createProjectStore(storage) {
     return project;
   }
 
+  // Full backup of every project (with ids, units, and timestamps) for data-loss recovery.
+  function serializeLibrary() {
+    const projects = readIndex()
+      .map(s => getProject(s.id))
+      .filter(Boolean);
+    return JSON.stringify({
+      type: 'dpchecklist.library',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      projects,
+    }, null, 2);
+  }
+
+  // Restore a backup. Projects are merged by id (same id overwrites, new id is added),
+  // preserving ids and updatedAt so the library is reproduced as-is. Returns the count.
+  function importLibrary(jsonString) {
+    const data = JSON.parse(jsonString);
+    const list = Array.isArray(data) ? data : (data && data.projects) || [];
+    if (!Array.isArray(list)) throw new Error('Not a valid project library file');
+    const index = readIndex();
+    for (const raw of list) {
+      const project = migrateProject(raw);
+      if (!project.id) project.id = newId('p');
+      project.name = project.name || 'Imported project';
+      const units = (project.units && project.units.length ? project.units : [newUnit('Unit 1')]).map(normalizeUnit);
+      project.units = units;
+      project.updatedAt = project.updatedAt || new Date().toISOString();
+      storage.setItem(PROJECT_PREFIX + project.id, JSON.stringify(project));
+      const entry = { id: project.id, name: project.name, updatedAt: project.updatedAt };
+      const i = index.findIndex(s => s.id === project.id);
+      if (i === -1) index.push(entry); else index[i] = entry;
+    }
+    writeIndex(index);
+    return list.length;
+  }
+
   return {
     listProjects, getProject, createProject, saveProject,
     deleteProject, serializeProject, importProject, newUnit,
+    serializeLibrary, importLibrary,
   };
 }

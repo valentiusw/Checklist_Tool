@@ -464,6 +464,12 @@ function saveProjectFile() {
   downloadBlob(new Blob([json], { type: 'application/json' }), `${safeName}.json`);
 }
 
+function saveLibraryFile() {
+  const json = state.store.serializeLibrary();
+  const date = new Date().toISOString().slice(0, 10);
+  downloadBlob(new Blob([json], { type: 'application/json' }), `checklist-library-${date}.json`);
+}
+
 function blobToDataUri(blob) {
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
@@ -635,6 +641,22 @@ function init() {
   document.getElementById('btn-export').addEventListener('click', exportExcelWithPhotos);
   document.getElementById('btn-report').addEventListener('click', exportReport);
   document.getElementById('btn-save-project').addEventListener('click', saveProjectFile);
+  document.getElementById('btn-save-library').addEventListener('click', saveLibraryFile);
+
+  document.getElementById('restore-library-file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (confirm('Restore projects from this file? Projects with the same id will be overwritten.')) {
+      try {
+        const n = state.store.importLibrary(await file.text());
+        alert(`Restored ${n} project${n === 1 ? '' : 's'} into your library.`);
+        renderDashboard();
+      } catch (err) {
+        alert('Could not restore library: ' + err.message);
+      }
+    }
+    e.target.value = '';
+  });
 
   showScreen(state.model ? 'dashboard' : 'setup');
 }

@@ -86,3 +86,33 @@ test('importProject rejects malformed JSON', () => {
   const store = createProjectStore(memStorage());
   assert.throws(() => store.importProject('{not json'));
 });
+
+test('serializeLibrary then importLibrary into a fresh store reproduces all projects', () => {
+  const src = createProjectStore(memStorage());
+  const a = src.createProject('Tower A');
+  a.units[0].checks = { A08: true };
+  a.units.push(src.newUnit('Penthouse'));
+  src.saveProject(a);
+  const b = src.createProject('Tower B');
+  src.saveProject(b);
+
+  const backup = src.serializeLibrary();
+
+  const dst = createProjectStore(memStorage());
+  const n = dst.importLibrary(backup);
+  assert.equal(n, 2);
+  assert.deepEqual(dst.listProjects().map(s => s.name).sort(), ['Tower A', 'Tower B']);
+  const restoredA = dst.getProject(a.id); // ids preserved
+  assert.equal(restoredA.name, 'Tower A');
+  assert.equal(restoredA.units.length, 2);
+  assert.equal(restoredA.units[0].checks.A08, true);
+});
+
+test('importLibrary merges by id (same id overwrites, not duplicates)', () => {
+  const store = createProjectStore(memStorage());
+  const p = store.createProject('Tower A');
+  const n = store.importLibrary(store.serializeLibrary()); // restore onto itself
+  assert.equal(n, 1);
+  assert.equal(store.listProjects().length, 1); // not duplicated
+  assert.equal(store.getProject(p.id).name, 'Tower A');
+});
