@@ -378,10 +378,11 @@ function downloadBlob(blob, filename) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.rel = 'noopener';
   document.body.appendChild(a);
   a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  // Defer cleanup: revoking the URL synchronously can cancel the download in some browsers.
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
 }
 
 function sanitizeSheetName(name, used) {
@@ -465,9 +466,15 @@ function saveProjectFile() {
 }
 
 function saveLibraryFile() {
+  const count = state.store.listProjects().length;
+  if (count === 0) {
+    alert('There are no projects to save yet. Create at least one project first.');
+    return;
+  }
   const json = state.store.serializeLibrary();
   const date = new Date().toISOString().slice(0, 10);
   downloadBlob(new Blob([json], { type: 'application/json' }), `checklist-library-${date}.json`);
+  setStatus(`Saved a backup of ${count} project${count === 1 ? '' : 's'}.`, 'ok');
 }
 
 function blobToDataUri(blob) {
