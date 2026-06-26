@@ -35,15 +35,11 @@ one ships with Windows' Python install.)
 2. Go to **Dashboard**, click **New project**, give it a name.
 3. Fill in the project **inputs** on the left — the checklist items filter live.
 4. Tick items off and add per-item comments. The progress bar updates as you go.
-5. **Export Excel (with photos)** produces a spreadsheet of everything still outstanding
-   (one worksheet per unit; columns Item ID, Description, Code, Comments, Example, Example
-   image). Where an `Example Image` (PNG/JPG) is set, the picture is **embedded** in the
-   row so clients see it in Excel itself.
-6. **Export report (HTML)** produces a self-contained `.html` report of the outstanding
+5. **Export report (HTML)** produces a self-contained `.html` report of the outstanding
    items — one section per unit, each item showing its guidance and, where an `Example
    Image` is set, the picture inlined. Opens in any browser and prints cleanly to PDF;
    handy to email.
-7. **Save project file** downloads the project as `.json` (back it up or move it to
+6. **Save project file** downloads the project as `.json` (back it up or move it to
    another machine); **Import project** loads it back.
 
 Projects also autosave in the browser, so they're waiting for you on the Dashboard next

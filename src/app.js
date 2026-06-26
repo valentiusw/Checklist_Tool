@@ -385,79 +385,6 @@ function downloadBlob(blob, filename) {
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
 }
 
-function sanitizeSheetName(name, used) {
-  let base = String(name || 'Unit').replace(/[\[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'Unit';
-  let candidate = base;
-  let n = 2;
-  while (used.has(candidate)) {
-    const suffix = ' (' + n + ')';
-    candidate = base.slice(0, 31 - suffix.length) + suffix;
-    n++;
-  }
-  used.add(candidate);
-  return candidate;
-}
-
-// ExcelJS supports only these raster formats for embedded images.
-const EXCEL_IMG_EXT = { 'image/png': 'png', 'image/jpeg': 'jpeg', 'image/gif': 'gif' };
-
-function dataUriExt(uri) {
-  const m = /^data:([^;]+);/.exec(uri || '');
-  return m ? EXCEL_IMG_EXT[m[1]] || null : null;
-}
-
-async function exportExcelWithPhotos() {
-  const project = getCurrentProject();
-  const wb = new ExcelJS.Workbook();
-  const cache = new Map();
-  const used = new Set();
-  let skipped = 0;
-  for (const unit of project.units) {
-    const ws = wb.addWorksheet(sanitizeSheetName(unit.name, used));
-    ws.columns = [
-      { header: 'Item ID', key: 'id', width: 10 },
-      { header: 'Description', key: 'desc', width: 42 },
-      { header: 'Code', key: 'code', width: 14 },
-      { header: 'Comments', key: 'comment', width: 28 },
-      { header: 'Example', key: 'example', width: 46 },
-      { header: 'Example image', key: 'img', width: 30 },
-    ];
-    ws.getRow(1).font = { bold: true };
-    const items = applicableItems(state.model, unit.inputs).filter(it => unit.checks[it.id] !== true);
-    let r = 2;
-    for (const item of items) {
-      const row = ws.getRow(r);
-      row.getCell('id').value = item.id;
-      row.getCell('desc').value = item.description;
-      row.getCell('code').value = item.code;
-      row.getCell('comment').value = unit.comments[item.id] || '';
-      row.getCell('example').value = item.example;
-      row.alignment = { vertical: 'top', wrapText: true };
-
-      const uri = await loadExampleImage(item.exampleImage, cache);
-      const ext = dataUriExt(uri);
-      if (uri && ext) {
-        const imgId = wb.addImage({ base64: uri, extension: ext });
-        // Anchor the picture in the "Example image" column (col index 5, 0-based) on this row.
-        ws.addImage(imgId, { tl: { col: 5.05, row: r - 1 + 0.05 }, ext: { width: 200, height: 134 } });
-        row.height = 104;
-      } else if (uri && !ext) {
-        // Image exists but is an unsupported format (e.g. SVG) — note it instead of dropping silently.
-        row.getCell('img').value = item.exampleImage + ' (not embeddable; use PNG/JPG)';
-        skipped++;
-      }
-      r++;
-    }
-  }
-  const safeName = project.name.replace(/[^\w\-]+/g, '_');
-  const date = new Date().toISOString().slice(0, 10);
-  const buf = await wb.xlsx.writeBuffer();
-  downloadBlob(
-    new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    `${safeName}_unchecked_${date}.xlsx`);
-  if (skipped) alert(`Exported. ${skipped} image(s) were not embedded because they aren't PNG/JPG/GIF (e.g. SVG).`);
-}
-
 function saveProjectFile() {
   const project = getCurrentProject();
   const json = state.store.serializeProject(project);
@@ -645,7 +572,6 @@ function init() {
     e.target.value = '';
   });
 
-  document.getElementById('btn-export').addEventListener('click', exportExcelWithPhotos);
   document.getElementById('btn-report').addEventListener('click', exportReport);
   document.getElementById('btn-save-project').addEventListener('click', saveProjectFile);
   document.getElementById('btn-save-library').addEventListener('click', saveLibraryFile);
