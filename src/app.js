@@ -404,96 +404,6 @@ function saveLibraryFile() {
   setStatus(`Saved a backup of ${count} project${count === 1 ? '' : 's'}.`, 'ok');
 }
 
-function blobToDataUri(blob) {
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result);
-    fr.onerror = reject;
-    fr.readAsDataURL(blob);
-  });
-}
-
-// Load an example image (from the local examples/ folder) as a data URI so the
-// report is fully self-contained. Returns '' if absent or unreachable.
-async function loadExampleImage(name, cache) {
-  if (!name) return '';
-  if (cache.has(name)) return cache.get(name);
-  let uri = '';
-  try {
-    const res = await fetch('examples/' + encodeURIComponent(name));
-    if (res.ok) uri = await blobToDataUri(await res.blob());
-  } catch { /* missing image — report renders without it */ }
-  cache.set(name, uri);
-  return uri;
-}
-
-function reportItemHtml(item, comment, imgUri) {
-  return `
-    <article class="item">
-      <div class="item-main">
-        <p class="item-head"><span class="item-id">${escapeHtml(item.id)}</span>
-          ${escapeHtml(item.description)}
-          ${item.code ? `<span class="code">${escapeHtml(item.code)}</span>` : ''}</p>
-        ${item.example ? `<p class="example"><strong>How to complete:</strong> ${escapeHtml(item.example)}</p>` : ''}
-        ${comment ? `<p class="comment"><strong>Comment:</strong> ${escapeHtml(comment)}</p>` : ''}
-      </div>
-      ${imgUri ? `<div class="item-img"><img src="${imgUri}" alt="Example for ${escapeHtml(item.id)}"></div>` : ''}
-    </article>`;
-}
-
-async function exportReport() {
-  const project = getCurrentProject();
-  const cache = new Map();
-  let body = '';
-  for (const unit of project.units) {
-    const items = applicableItems(state.model, unit.inputs).filter(it => unit.checks[it.id] !== true);
-    body += `<section class="unit"><h2>${escapeHtml(unit.name)}</h2>`;
-    if (items.length === 0) {
-      body += `<p class="all-done">All applicable items have been checked. &#10003;</p>`;
-    } else {
-      for (const item of items) {
-        const uri = await loadExampleImage(item.exampleImage, cache);
-        body += reportItemHtml(item, unit.comments[item.id] || '', uri);
-      }
-    }
-    body += `</section>`;
-  }
-  const date = new Date().toISOString().slice(0, 10);
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(project.name)} — outstanding items</title>
-<style>
-  :root { --ink:#2a2a26; --muted:#6f6b62; --line:#e3e0d9; --accent:#5f7d35; }
-  * { box-sizing: border-box; }
-  body { font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; color: var(--ink);
-    margin: 0; padding: 32px; line-height: 1.5; background: #fff; }
-  header { border-bottom: 2px solid var(--accent); padding-bottom: 12px; margin-bottom: 24px; }
-  h1 { margin: 0 0 4px; font-size: 22px; }
-  .meta { color: var(--muted); font-size: 13px; }
-  .unit { margin-bottom: 32px; }
-  .unit h2 { font-size: 16px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
-  .item { display: flex; gap: 18px; align-items: flex-start; justify-content: space-between;
-    border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0;
-    page-break-inside: avoid; }
-  .item-main { min-width: 0; flex: 1; }
-  .item-head { margin: 0 0 6px; font-size: 15px; }
-  .item-id { font-weight: 700; margin-right: 6px; }
-  .code { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line);
-    border-radius: 5px; padding: 1px 6px; margin-left: 6px; }
-  .example, .comment { margin: 4px 0; font-size: 14px; color: #44423c; }
-  .item-img { flex: none; }
-  .item-img img { width: 200px; max-width: 38vw; height: auto; border: 1px solid var(--line);
-    border-radius: 8px; display: block; }
-  .all-done { color: var(--accent); font-weight: 600; }
-  @media print { body { padding: 0; } .item-img img { max-width: 220px; } }
-</style></head><body>
-<header><h1>${escapeHtml(project.name)} — outstanding checklist items</h1>
-<p class="meta">Generated ${date} · ${project.units.length} unit${project.units.length === 1 ? '' : 's'}</p></header>
-${body}
-</body></html>`;
-  const safeName = project.name.replace(/[^\w\-]+/g, '_');
-  downloadBlob(new Blob([html], { type: 'text/html' }), `${safeName}_report_${date}.html`);
-}
 
 const THEME_KEY = 'dpchecklist.theme';
 function wireThemeToggle() {
@@ -572,7 +482,6 @@ function init() {
     e.target.value = '';
   });
 
-  document.getElementById('btn-report').addEventListener('click', exportReport);
   document.getElementById('btn-save-project').addEventListener('click', saveProjectFile);
   document.getElementById('btn-save-library').addEventListener('click', saveLibraryFile);
 
