@@ -114,21 +114,24 @@ test('glossary is empty array when sheet absent', () => {
   assert.deepEqual(model.glossary, []);
 });
 
-test('a prose Example is text, with no image', () => {
+test('a prose Example is text, with no exampleFile', () => {
   const model = buildModel({ checklistRows, inputRows });
   assert.equal(model.items[0].example, 'Seal the enclosure');
-  assert.equal(model.items[0].exampleImage, '');
+  assert.equal(model.items[0].exampleFile, '');
 });
 
-test('an Example cell that is an image filename becomes exampleImage', () => {
+test('an Example cell that is a file name becomes exampleFile (image or pdf)', () => {
   const rows = [
     ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
     ['A08', '', 'Lifts not exposed to weather', 'AS3000', '', 'a08-weather-seal.png'],
     ['A09', '', 'Prose item', 'SL', '', 'Provide a protected lobby.'],
+    ['A10', '', 'Spec sheet item', 'EN81', '', 'a10-spec.pdf'],
   ];
   const model = buildModel({ checklistRows: rows, inputRows });
-  assert.equal(model.items[0].exampleImage, 'a08-weather-seal.png');
+  assert.equal(model.items[0].exampleFile, 'a08-weather-seal.png');
   assert.equal(model.items[0].example, '');
-  assert.equal(model.items[1].exampleImage, '');
+  assert.equal(model.items[1].exampleFile, '');
   assert.equal(model.items[1].example, 'Provide a protected lobby.');
+  assert.equal(model.items[2].exampleFile, 'a10-spec.pdf');
+  assert.equal(model.items[2].example, '');
 });

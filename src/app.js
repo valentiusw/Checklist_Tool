@@ -73,8 +73,8 @@ function restoreModel() {
     ];
     const checklistRows = [
       ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
-      // The single Example cell holds either the prose or the image filename.
-      ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleImage || i.example]),
+      // The single Example cell holds either the prose or the file name.
+      ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleFile || i.exampleImage || i.example]),
     ];
     const sectionRows = (data.sections && data.sections.length)
       ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
