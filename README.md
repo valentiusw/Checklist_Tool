@@ -80,8 +80,7 @@ Your `.xlsx` must contain two sheets, named exactly **`Checklist`** and **`Input
     the file extension (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.pdf`). Bundle
     the actual files in an `Examples/` subfolder of your setup `.zip` (see First use §1).
 
-  Both forms flow into the **Download ZIP** export. *Use **PNG or JPG** for images — SVG
-  and PDF are carried as files but cannot be embedded directly in `.xlsx` cells.*
+  Both forms flow into the **Download ZIP** export. Files are carried as **relative hyperlinks** — the Example cell links to the adjacent file in the `Examples/` folder, so any format (PNG, JPG, SVG, PDF, …) works.
 
 ### Sheet `Inputs`
 

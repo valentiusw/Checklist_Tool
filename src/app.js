@@ -103,10 +103,10 @@ async function handleSetupFile(file) {
     }
     const workbook = XLSX.read(workbookBuffer, { type: 'array' });
     const model = loadModelFromWorkbook(workbook);
-    state.model = model;
-    persistModel(model);
     await exampleStore.clear();
     if (files.size) await exampleStore.putAll(files);
+    state.model = model;
+    persistModel(model);
     setStatus(`Loaded ${model.items.length} items, ${model.inputs.length} inputs, ${files.size} example file${files.size === 1 ? '' : 's'}.`, 'ok');
   } catch (err) {
     state.model = null;
@@ -410,44 +410,48 @@ function sanitizeSheetName(name, used) {
 }
 
 async function downloadProjectZip() {
-  const project = getCurrentProject();
-  const plan = buildExportPlan(state.model, project);
-  const wb = XLSX.utils.book_new();
-  const used = new Set();
-  for (const unit of plan.units) {
-    const header = ['Item ID', 'Description', 'Code', 'Comments', 'Example'];
-    const aoa = [header, ...unit.rows.map(r => [r.id, r.description, r.code, r.comment, r.exampleFile || r.example])];
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 14 }, { wch: 28 }, { wch: 40 }];
-    // Example column is index 4; file rows get a relative hyperlink to Examples/.
-    unit.rows.forEach((r, i) => {
-      if (!r.exampleFile) return;
-      const addr = XLSX.utils.encode_cell({ r: i + 1, c: 4 });
-      if (!ws[addr]) ws[addr] = { t: 's', v: r.exampleFile };
-      ws[addr].l = { Target: 'Examples/' + r.exampleFile, Tooltip: 'Open ' + r.exampleFile };
+  try {
+    const project = getCurrentProject();
+    const plan = buildExportPlan(state.model, project);
+    const wb = XLSX.utils.book_new();
+    const used = new Set();
+    for (const unit of plan.units) {
+      const header = ['Item ID', 'Description', 'Code', 'Comments', 'Example'];
+      const aoa = [header, ...unit.rows.map(r => [r.id, r.description, r.code, r.comment, r.exampleFile || r.example])];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 14 }, { wch: 28 }, { wch: 40 }];
+      // Example column is index 4; file rows get a relative hyperlink to Examples/.
+      unit.rows.forEach((r, i) => {
+        if (!r.exampleFile) return;
+        const addr = XLSX.utils.encode_cell({ r: i + 1, c: 4 });
+        if (!ws[addr]) ws[addr] = { t: 's', v: r.exampleFile };
+        ws[addr].l = { Target: 'Examples/' + r.exampleFile, Tooltip: 'Open ' + r.exampleFile };
+      });
+      XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(unit.name, used));
+    }
+    const workbookArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+
+    const files = new Map();
+    const missing = [];
+    for (const name of plan.referencedFiles) {
+      const blob = await exampleStore.get(name);
+      if (blob) files.set(name, blob);
+      else missing.push(name);
+    }
+
+    const safeName = project.name.replace(/[^\w\-]+/g, '_');
+    const date = new Date().toISOString().slice(0, 10);
+    const zipBlob = await buildExportZip({
+      workbookName: `${safeName}_unchecked_${date}.xlsx`,
+      workbookArrayBuffer,
+      files,
     });
-    XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(unit.name, used));
-  }
-  const workbookArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-
-  const files = new Map();
-  const missing = [];
-  for (const name of plan.referencedFiles) {
-    const blob = await exampleStore.get(name);
-    if (blob) files.set(name, blob);
-    else missing.push(name);
-  }
-
-  const safeName = project.name.replace(/[^\w\-]+/g, '_');
-  const date = new Date().toISOString().slice(0, 10);
-  const zipBlob = await buildExportZip({
-    workbookName: `${safeName}_unchecked_${date}.xlsx`,
-    workbookArrayBuffer,
-    files,
-  });
-  downloadBlob(zipBlob, `${safeName}_${date}.zip`);
-  if (missing.length) {
-    alert(`Exported. These referenced files weren't in your library:\n${missing.join('\n')}`);
+    downloadBlob(zipBlob, `${safeName}_${date}.zip`);
+    if (missing.length) {
+      alert(`Exported. These referenced files weren't in your library:\n${missing.join('\n')}`);
+    }
+  } catch (err) {
+    alert('Could not build the ZIP: ' + err.message);
   }
 }
 

@@ -24,7 +24,7 @@ export async function readSetupZip(arrayBuffer) {
       files.set(name, await entry.async('blob'));
     }
   }
-  if (!workbookArrayBuffer) throw new Error('ZIP has no .xlsx workbook at its root');
+  if (!workbookArrayBuffer) throw new Error('ZIP has no .xlsx workbook at its top level (place the workbook at the root of the ZIP, not inside a folder)');
   return { workbookArrayBuffer, files };
 }
 

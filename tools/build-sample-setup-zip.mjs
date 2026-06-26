@@ -1,4 +1,4 @@
-// Build SampleSetup.zip: ExampleChecklist.xlsx at root + Examples/*.png.
+// Build SampleSetup.zip: SampleChecklist.xlsx at root + Examples/*.png.
 // Store-only (no compression) — valid ZIP, zero dependencies.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { crc32 } from 'node:zlib';
