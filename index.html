@@ -41,9 +41,11 @@
     <main>
     <section id="screen-setup" class="screen">
       <h2>Load checklist workbook</h2>
-      <p class="muted">Your workbook must contain a sheet named <code>Checklist</code> and a sheet named
-        <code>Inputs</code>. Nothing is uploaded &mdash; parsing happens in your browser.</p>
-      <input type="file" id="workbook-file" accept=".xlsx,.xls" />
+      <p class="muted">Upload a setup <code>.zip</code> containing your checklist workbook
+        (<code>.xlsx</code>) at the root and an <code>Examples</code> subfolder of the PDFs and
+        images its Example column references. A bare <code>.xlsx</code> also works (no examples).
+        Nothing is uploaded &mdash; everything stays in your browser.</p>
+      <input type="file" id="workbook-file" accept=".zip,.xlsx,.xls" />
       <p id="setup-status" class="status"></p>
 
       <h3 class="setting-group">Appearance</h3>
@@ -93,6 +95,7 @@
         <button id="btn-back" class="btn-ghost">&larr; Back</button>
         <div class="btn-row">
           <button id="btn-save-project">Save project file</button>
+          <button id="btn-download-zip" class="btn-primary">Download ZIP</button>
         </div>
       </div>
       <h2 id="project-title"></h2>

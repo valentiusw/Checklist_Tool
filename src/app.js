@@ -1,6 +1,8 @@
 import { buildModel } from './workbookModel.js';
 import { createProjectStore } from './projectStore.js';
-import { computeProgress, computeProjectProgress, applicableItems } from './exporter.js';
+import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
+import * as exampleStore from './exampleStore.js';
+import { readSetupZip, buildExportZip } from './zipBundle.js';
 
 const MODEL_KEY = 'dpchecklist.model';
 
@@ -88,25 +90,34 @@ function restoreModel() {
   }
 }
 
-async function handleWorkbookFile(file) {
+async function handleSetupFile(file) {
   try {
-    setStatus('Reading workbook…');
+    setStatus('Reading setup…');
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array' });
+    let workbookBuffer = buffer;
+    let files = new Map();
+    if (/\.zip$/i.test(file.name)) {
+      const res = await readSetupZip(buffer);
+      workbookBuffer = res.workbookArrayBuffer;
+      files = res.files;
+    }
+    const workbook = XLSX.read(workbookBuffer, { type: 'array' });
     const model = loadModelFromWorkbook(workbook);
     state.model = model;
     persistModel(model);
-    setStatus(`Loaded ${model.items.length} items and ${model.inputs.length} inputs.`, 'ok');
+    await exampleStore.clear();
+    if (files.size) await exampleStore.putAll(files);
+    setStatus(`Loaded ${model.items.length} items, ${model.inputs.length} inputs, ${files.size} example file${files.size === 1 ? '' : 's'}.`, 'ok');
   } catch (err) {
     state.model = null;
-    setStatus('Could not load workbook: ' + err.message, 'error');
+    setStatus('Could not load setup: ' + err.message, 'error');
   }
 }
 
 function wireSetup() {
   document.getElementById('workbook-file').addEventListener('change', e => {
     const file = e.target.files[0];
-    if (file) handleWorkbookFile(file);
+    if (file) handleSetupFile(file);
   });
 }
 
@@ -385,6 +396,61 @@ function downloadBlob(blob, filename) {
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
 }
 
+function sanitizeSheetName(name, used) {
+  let base = String(name || 'Unit').replace(/[\[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'Unit';
+  let candidate = base;
+  let n = 2;
+  while (used.has(candidate)) {
+    const suffix = ' (' + n + ')';
+    candidate = base.slice(0, 31 - suffix.length) + suffix;
+    n++;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
+async function downloadProjectZip() {
+  const project = getCurrentProject();
+  const plan = buildExportPlan(state.model, project);
+  const wb = XLSX.utils.book_new();
+  const used = new Set();
+  for (const unit of plan.units) {
+    const header = ['Item ID', 'Description', 'Code', 'Comments', 'Example'];
+    const aoa = [header, ...unit.rows.map(r => [r.id, r.description, r.code, r.comment, r.exampleFile || r.example])];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 14 }, { wch: 28 }, { wch: 40 }];
+    // Example column is index 4; file rows get a relative hyperlink to Examples/.
+    unit.rows.forEach((r, i) => {
+      if (!r.exampleFile) return;
+      const addr = XLSX.utils.encode_cell({ r: i + 1, c: 4 });
+      if (!ws[addr]) ws[addr] = { t: 's', v: r.exampleFile };
+      ws[addr].l = { Target: 'Examples/' + r.exampleFile, Tooltip: 'Open ' + r.exampleFile };
+    });
+    XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(unit.name, used));
+  }
+  const workbookArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+
+  const files = new Map();
+  const missing = [];
+  for (const name of plan.referencedFiles) {
+    const blob = await exampleStore.get(name);
+    if (blob) files.set(name, blob);
+    else missing.push(name);
+  }
+
+  const safeName = project.name.replace(/[^\w\-]+/g, '_');
+  const date = new Date().toISOString().slice(0, 10);
+  const zipBlob = await buildExportZip({
+    workbookName: `${safeName}_unchecked_${date}.xlsx`,
+    workbookArrayBuffer,
+    files,
+  });
+  downloadBlob(zipBlob, `${safeName}_${date}.zip`);
+  if (missing.length) {
+    alert(`Exported. These referenced files weren't in your library:\n${missing.join('\n')}`);
+  }
+}
+
 function saveProjectFile() {
   const project = getCurrentProject();
   const json = state.store.serializeProject(project);
@@ -483,6 +549,7 @@ function init() {
   });
 
   document.getElementById('btn-save-project').addEventListener('click', saveProjectFile);
+  document.getElementById('btn-download-zip').addEventListener('click', downloadProjectZip);
   document.getElementById('btn-save-library').addEventListener('click', saveLibraryFile);
 
   document.getElementById('restore-library-file').addEventListener('change', async e => {
