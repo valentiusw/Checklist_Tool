@@ -485,16 +485,15 @@ input[type="checkbox"] {
 
 .item-head input[type="checkbox"] { margin-top: 2px; flex: none; }
 
-/* Circular info button — opens the item's example image/PDF. */
+/* Info symbol — opens the item's example image/PDF. Just the icon, no ring. */
 .item-info {
   margin-left: auto;
   flex: none;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
+  border: none;
+  background: transparent;
   color: var(--text-muted);
   display: inline-flex;
   align-items: center;
@@ -503,11 +502,11 @@ input[type="checkbox"] {
 
 .item-info:hover {
   color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  background: transparent;
+  border-color: transparent;
 }
 
-.item-info svg { width: 16px; height: 16px; }
+.item-info svg { width: 18px; height: 18px; }
 
 .item-head .id {
   font-weight: 650;
