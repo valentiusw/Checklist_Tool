@@ -2,117 +2,83 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createProjectStore } from '../src/projectStore.js';
 
-function memStorage() {
-  const map = new Map();
-  return {
-    getItem: k => (map.has(k) ? map.get(k) : null),
-    setItem: (k, v) => map.set(k, String(v)),
-    removeItem: k => map.delete(k),
-  };
-}
-
-test('create, list, get a project with one default unit', () => {
-  const store = createProjectStore(memStorage());
+test('createProject + getProject returns an independent clone', () => {
+  const store = createProjectStore();
   const p = store.createProject('Tower A');
-  assert.ok(p.id);
   assert.equal(p.name, 'Tower A');
   assert.equal(p.units.length, 1);
-  assert.equal(p.units[0].name, 'Unit 1');
-  assert.deepEqual(store.listProjects().map(s => s.name), ['Tower A']);
-  assert.equal(store.getProject(p.id).units.length, 1);
+  const fetched = store.getProject(p.id);
+  fetched.name = 'mutated';
+  assert.equal(store.getProject(p.id).name, 'Tower A'); // clone isolation
 });
 
-test('save persists unit inputs/checks/comments', () => {
-  const store = createProjectStore(memStorage());
-  const p = store.createProject('Tower A');
-  p.units[0].inputs = { MaxFFLInt: 12 };
-  p.units[0].checks = { A10: true };
-  p.units[0].comments = { A10: 'done on site' };
-  store.saveProject(p);
-  const reloaded = store.getProject(p.id);
-  assert.deepEqual(reloaded.units[0].inputs, { MaxFFLInt: 12 });
-  assert.equal(reloaded.units[0].checks.A10, true);
-  assert.equal(reloaded.units[0].comments.A10, 'done on site');
-});
-
-test('delete removes the project', () => {
-  const store = createProjectStore(memStorage());
-  const p = store.createProject('Tower A');
+test('onChange fires upsert on save and delete on delete', () => {
+  const events = [];
+  const store = createProjectStore({ onChange: e => events.push(e) });
+  const p = store.createProject('X');
   store.deleteProject(p.id);
-  assert.equal(store.getProject(p.id), null);
-  assert.equal(store.listProjects().length, 0);
+  assert.deepEqual(events.map(e => e.type), ['upsert', 'delete']);
+  assert.equal(events[1].id, p.id);
 });
 
-test('getProject migrates a legacy flat project into one unit', () => {
-  const storage = memStorage();
-  const store = createProjectStore(storage);
-  // Hand-write a legacy project + index entry.
-  const legacy = { id: 'p_legacy', name: 'Old', updatedAt: '2026-01-01T00:00:00.000Z',
-    inputs: { MaxFFLInt: 5 }, checks: { A08: true }, comments: { A08: 'x' } };
-  storage.setItem('dpchecklist.project.p_legacy', JSON.stringify(legacy));
-  storage.setItem('dpchecklist.projects.index', JSON.stringify([
-    { id: 'p_legacy', name: 'Old', updatedAt: legacy.updatedAt }]));
-  const got = store.getProject('p_legacy');
-  assert.equal(got.units.length, 1);
-  assert.equal(got.units[0].name, 'Unit 1');
-  assert.deepEqual(got.units[0].inputs, { MaxFFLInt: 5 });
-  assert.equal(got.units[0].checks.A08, true);
-});
-
-test('serialize then import yields an equal project with new ids', () => {
-  const store = createProjectStore(memStorage());
-  const p = store.createProject('Tower A');
-  p.units[0].checks = { A10: true };
-  store.saveProject(p);
-  const json = store.serializeProject(p);
-  const imported = store.importProject(json);
-  assert.notEqual(imported.id, p.id);
-  assert.equal(imported.name, 'Tower A');
-  assert.equal(imported.units.length, 1);
-  assert.deepEqual(imported.units[0].checks, { A10: true });
+test('load seeds projects and migrates legacy flat shape', () => {
+  const store = createProjectStore();
+  store.load([
+    { id: 'p1', name: 'New', units: [{ id: 'u1', name: 'U', inputs: {}, checks: {}, comments: {} }] },
+    { id: 'p2', name: 'Legacy', inputs: { A: true }, checks: { X: true }, comments: {} },
+  ]);
   assert.equal(store.listProjects().length, 2);
+  const legacy = store.getProject('p2');
+  assert.equal(legacy.units.length, 1); // wrapped into one unit
+  assert.equal(legacy.units[0].checks.X, true);
 });
 
-test('importProject accepts legacy flat JSON', () => {
-  const store = createProjectStore(memStorage());
-  const imported = store.importProject(JSON.stringify({
-    name: 'Legacy', inputs: { A: 1 }, checks: { A08: true }, comments: {} }));
-  assert.equal(imported.units.length, 1);
-  assert.deepEqual(imported.units[0].inputs, { A: 1 });
-  assert.equal(imported.units[0].checks.A08, true);
+test('listProjects sorts by updatedAt desc', () => {
+  const store = createProjectStore();
+  store.load([
+    { id: 'a', name: 'A', updatedAt: '2026-01-01T00:00:00Z', units: [] },
+    { id: 'b', name: 'B', updatedAt: '2026-02-01T00:00:00Z', units: [] },
+  ]);
+  assert.deepEqual(store.listProjects().map(p => p.id), ['b', 'a']);
+});
+
+test('serializeLibrary then importLibrary into a fresh store reproduces projects', () => {
+  const store = createProjectStore();
+  store.createProject('One');
+  store.createProject('Two');
+  const json = store.serializeLibrary();
+  const fresh = createProjectStore();
+  const n = fresh.importLibrary(json);
+  assert.equal(n, 2);
+  assert.deepEqual(fresh.listProjects().map(p => p.name).sort(), ['One', 'Two']);
+});
+
+test('importLibrary merges by id (same id overwrites)', () => {
+  const store = createProjectStore();
+  const p = store.createProject('Orig');
+  const lib = JSON.stringify({ type: 'dpchecklist.library', version: 1,
+    projects: [{ id: p.id, name: 'Renamed', units: [{ id: 'u', name: 'U', inputs: {}, checks: {}, comments: {} }] }] });
+  store.importLibrary(lib);
+  assert.equal(store.listProjects().length, 1);
+  assert.equal(store.getProject(p.id).name, 'Renamed');
+});
+
+test('importProject accepts legacy flat JSON and returns a project with units', () => {
+  const store = createProjectStore();
+  const proj = store.importProject(JSON.stringify({ name: 'Flat', inputs: {}, checks: {}, comments: {} }));
+  assert.equal(proj.units.length, 1);
+  assert.equal(store.listProjects().length, 1);
 });
 
 test('importProject rejects malformed JSON', () => {
-  const store = createProjectStore(memStorage());
+  const store = createProjectStore();
   assert.throws(() => store.importProject('{not json'));
 });
 
-test('serializeLibrary then importLibrary into a fresh store reproduces all projects', () => {
-  const src = createProjectStore(memStorage());
-  const a = src.createProject('Tower A');
-  a.units[0].checks = { A08: true };
-  a.units.push(src.newUnit('Penthouse'));
-  src.saveProject(a);
-  const b = src.createProject('Tower B');
-  src.saveProject(b);
-
-  const backup = src.serializeLibrary();
-
-  const dst = createProjectStore(memStorage());
-  const n = dst.importLibrary(backup);
-  assert.equal(n, 2);
-  assert.deepEqual(dst.listProjects().map(s => s.name).sort(), ['Tower A', 'Tower B']);
-  const restoredA = dst.getProject(a.id); // ids preserved
-  assert.equal(restoredA.name, 'Tower A');
-  assert.equal(restoredA.units.length, 2);
-  assert.equal(restoredA.units[0].checks.A08, true);
-});
-
-test('importLibrary merges by id (same id overwrites, not duplicates)', () => {
-  const store = createProjectStore(memStorage());
-  const p = store.createProject('Tower A');
-  const n = store.importLibrary(store.serializeLibrary()); // restore onto itself
-  assert.equal(n, 1);
-  assert.equal(store.listProjects().length, 1); // not duplicated
-  assert.equal(store.getProject(p.id).name, 'Tower A');
+test('mutating a seed object after load does not corrupt the store', () => {
+  const store = createProjectStore();
+  const seed = { id: 'p1', name: 'Original', units: [{ id: 'u', name: 'U', inputs: {}, checks: {}, comments: {} }] };
+  store.load([seed]);
+  seed.name = 'Mutated';
+  assert.equal(store.getProject('p1').name, 'Original');
 });

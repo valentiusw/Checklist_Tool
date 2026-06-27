@@ -3,12 +3,14 @@ import { createProjectStore } from './projectStore.js';
 import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
 import * as exampleStore from './exampleStore.js';
 import { readSetupZip, buildExportZip } from './zipBundle.js';
-
-const MODEL_KEY = 'dpchecklist.model';
+import * as db from './db.js';
+import { readLegacy } from './legacyMigration.js';
+import * as fileBackup from './fileBackup.js';
+import { buildSnapshot, parseSnapshot, chooseNewer } from './librarySnapshot.js';
 
 const state = {
   model: null,
-  store: createProjectStore(window.localStorage),
+  store: createProjectStore({ onChange: onStoreChange }),
   currentProjectId: null,
   currentUnitId: null,
   sectionFilter: '',
@@ -55,39 +57,166 @@ function loadModelFromWorkbook(workbook) {
   return buildModel({ checklistRows, inputRows, sectionRows, glossaryRows });
 }
 
-function persistModel(model) {
-  const serializable = {
+function serializeModel(model) {
+  return {
     items: model.items.map(({ condition, ...rest }) => rest),
     inputs: model.inputs,
     sections: model.sections,
     glossary: model.glossary,
   };
-  window.localStorage.setItem(MODEL_KEY, JSON.stringify(serializable));
 }
 
-function restoreModel() {
-  const raw = window.localStorage.getItem(MODEL_KEY);
-  if (!raw) return null;
+function rebuildModel(data) {
+  const inputRows = [
+    ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
+    ...data.inputs.map(i => [i.name, i.type, i.label, i.unit, i.choices.join(';'), i.default]),
+  ];
+  const checklistRows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleFile || i.exampleImage || i.example]),
+  ];
+  const sectionRows = (data.sections && data.sections.length)
+    ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
+    : undefined;
+  const glossaryRows = (data.glossary && data.glossary.length)
+    ? [['Term', 'Meaning'], ...data.glossary.map(g => [g.term, g.meaning])]
+    : undefined;
+  return buildModel({ checklistRows, inputRows, sectionRows, glossaryRows });
+}
+
+// --- Persistence: in-memory edits flushed to IndexedDB (debounced) ----------
+const dirty = { model: false, upserts: new Set(), deletes: new Set() };
+let flushTimer = null;
+const backup = { handle: null, savedAt: null };
+let fileTimer = null;
+
+function onStoreChange(info) {
+  if (info.type === 'delete') { dirty.deletes.add(info.id); dirty.upserts.delete(info.id); }
+  else { dirty.upserts.add(info.id); dirty.deletes.delete(info.id); }
+  scheduleFlush();
+}
+
+function markModelDirty() { dirty.model = true; scheduleFlush(); }
+
+function scheduleFlush() {
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flushToDb, 300);
+  scheduleBackup();
+}
+
+let flushing = false;
+async function flushToDb() {
+  if (flushing) { scheduleFlush(); return; } // a flush is mid-await; retry after it finishes
+  flushing = true;
+  const modelDirty = dirty.model;
+  const upserts = [...dirty.upserts];
+  const deletes = [...dirty.deletes];
+  dirty.model = false;
+  dirty.upserts.clear();
+  dirty.deletes.clear();
   try {
-    const data = JSON.parse(raw);
-    const inputRows = [
-      ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
-      ...data.inputs.map(i => [i.name, i.type, i.label, i.unit, i.choices.join(';'), i.default]),
-    ];
-    const checklistRows = [
-      ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
-      // The single Example cell holds either the prose or the file name.
-      ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleFile || i.exampleImage || i.example]),
-    ];
-    const sectionRows = (data.sections && data.sections.length)
-      ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
-      : undefined;
-    const glossaryRows = (data.glossary && data.glossary.length)
-      ? [['Term', 'Meaning'], ...data.glossary.map(g => [g.term, g.meaning])]
-      : undefined;
-    return buildModel({ checklistRows, inputRows, sectionRows, glossaryRows });
-  } catch {
-    return null;
+    if (modelDirty && state.model) await db.setMeta('model', serializeModel(state.model));
+    for (const id of deletes) await db.deleteProject(id);
+    for (const id of upserts) {
+      const p = state.store.getProject(id);
+      if (p) await db.putProject(p);
+    }
+    await db.setMeta('savedAt', new Date().toISOString());
+  } catch (err) {
+    console.error('Persist failed:', err);
+    // Re-queue the unpersisted work so a later flush retries it.
+    if (modelDirty) dirty.model = true;
+    for (const id of upserts) dirty.upserts.add(id);
+    for (const id of deletes) dirty.deletes.add(id);
+    scheduleFlush();
+  } finally {
+    flushing = false;
+  }
+}
+
+function currentSnapshotText() {
+  const projects = state.store.listProjects().map(s => state.store.getProject(s.id)).filter(Boolean);
+  backup.savedAt = new Date().toISOString();
+  return buildSnapshot(state.model ? serializeModel(state.model) : null, projects, backup.savedAt);
+}
+
+function scheduleBackup() {
+  if (!backup.handle) return;
+  clearTimeout(fileTimer);
+  fileTimer = setTimeout(writeBackup, 1000);
+}
+
+async function writeBackup() {
+  if (!backup.handle) return;
+  try {
+    if (!(await fileBackup.ensurePermission(backup.handle, 'readwrite'))) { setBackupStatus('reconnect needed', 'warn'); return; }
+    await fileBackup.writeSnapshot(backup.handle, currentSnapshotText());
+    setBackupStatus('saved ✓', 'ok');
+  } catch (err) {
+    console.error('Backup write failed:', err);
+    setBackupStatus('auto-save paused — reconnect', 'warn');
+  }
+}
+
+function setBackupStatus(text, kind) {
+  const el = document.getElementById('backup-status');
+  if (!el) return;
+  el.textContent = text ? '· ' + text : '';
+  el.className = kind || '';
+}
+
+// Load a parsed snapshot into memory + IndexedDB (used by reconcile/recovery).
+async function applySnapshot(snap) {
+  await db.clearProjects();
+  state.store.load(snap.projects);
+  for (const s of state.store.listProjects()) {
+    const p = state.store.getProject(s.id);
+    if (p) await db.putProject(p);
+  }
+  if (snap.model) { await db.setMeta('model', snap.model); state.model = rebuildModel(snap.model); }
+  await db.setMeta('savedAt', snap.savedAt || new Date().toISOString());
+}
+
+async function reconcileWithFile() {
+  const text = await fileBackup.readSnapshot(backup.handle);
+  let fileSnap = null;
+  try { fileSnap = parseSnapshot(text); } catch { fileSnap = null; }
+  const localSavedAt = await db.getMeta('savedAt');
+  if (!fileSnap) { await writeBackup(); return; } // empty/new file: seed it
+  const winner = chooseNewer(localSavedAt, fileSnap.savedAt);
+  if (winner === 'file') { await applySnapshot(fileSnap); renderDashboard(); showScreen(state.model ? 'dashboard' : 'setup'); }
+  else if (winner === 'local') { await writeBackup(); }
+}
+
+function renderBackupControls() {
+  const controls = document.getElementById('backup-controls');
+  if (!fileBackup.isSupported()) {
+    controls.innerHTML = '';
+    setBackupStatus('not available in this browser — use Save/Restore above', '');
+    return;
+  }
+  controls.innerHTML = backup.handle
+    ? `<button id="btn-disconnect-backup" class="btn-sm">Disconnect</button>`
+    : `<button id="btn-open-backup" class="btn-sm">Open existing backup…</button>` +
+      `<button id="btn-connect-backup" class="btn-primary">Back up to a file…</button>`;
+  if (backup.handle) {
+    document.getElementById('btn-disconnect-backup').addEventListener('click', async () => {
+      backup.handle = null; await db.setMeta('backupHandle', null); setBackupStatus('disconnected', ''); renderBackupControls();
+    });
+  } else {
+    document.getElementById('btn-connect-backup').addEventListener('click', async () => {
+      const handle = await fileBackup.connect();
+      if (!handle) return;
+      backup.handle = handle; await db.setMeta('backupHandle', handle);
+      await writeBackup(); renderBackupControls();
+    });
+    document.getElementById('btn-open-backup').addEventListener('click', async () => {
+      const handle = await fileBackup.connectExisting();
+      if (!handle) return;
+      backup.handle = handle; await db.setMeta('backupHandle', handle);
+      try { await reconcileWithFile(); } catch (err) { setBackupStatus('could not read file', 'warn'); }
+      renderBackupControls();
+    });
   }
 }
 
@@ -107,7 +236,7 @@ async function handleSetupFile(file) {
     await exampleStore.clear();
     if (files.size) await exampleStore.putAll(files);
     state.model = model;
-    persistModel(model);
+    markModelDirty();
     setStatus(`Loaded ${model.items.length} items, ${model.inputs.length} inputs, ${files.size} example file${files.size === 1 ? '' : 's'}.`, 'ok');
   } catch (err) {
     state.model = null;
@@ -564,8 +693,25 @@ function wireThemeToggle() {
   });
 }
 
-function init() {
-  state.model = restoreModel();
+async function init() {
+  let snap = { model: null, projects: [], savedAt: null };
+  try {
+    await db.open();
+    snap = await db.loadSnapshot();
+    if (!snap.model && snap.projects.length === 0) {
+      const legacy = readLegacy(window.localStorage);
+      if (legacy.model || legacy.projects.length) {
+        if (legacy.model) await db.setMeta('model', legacy.model);
+        for (const p of legacy.projects) await db.putProject(p);
+        await db.setMeta('savedAt', new Date().toISOString());
+        snap = { model: legacy.model, projects: legacy.projects, savedAt: new Date().toISOString() };
+      }
+    }
+  } catch (err) {
+    console.error('Storage unavailable, running in-memory for this session:', err);
+  }
+  state.model = snap.model ? rebuildModel(snap.model) : null;
+  state.store.load(snap.projects);
   wireSetup();
   wireThemeToggle();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
@@ -652,6 +798,25 @@ function init() {
     }
     e.target.value = '';
   });
+
+  try {
+    const storedHandle = await db.getMeta('backupHandle');
+    if (storedHandle && fileBackup.isSupported()) {
+      backup.handle = storedHandle;
+      setBackupStatus('reconnect to resume auto-save', 'warn');
+    }
+  } catch { /* no stored handle */ }
+  renderBackupControls();
+  if (backup.handle) {
+    // Permission must be re-granted with a user gesture; expose a one-click reconnect.
+    const controls = document.getElementById('backup-controls');
+    controls.insertAdjacentHTML('afterbegin', `<button id="btn-reconnect-backup" class="btn-primary">Reconnect backup</button>`);
+    document.getElementById('btn-reconnect-backup').addEventListener('click', async () => {
+      if (!(await fileBackup.ensurePermission(backup.handle, 'readwrite'))) { setBackupStatus('permission denied', 'warn'); return; }
+      try { await reconcileWithFile(); setBackupStatus('saved ✓', 'ok'); renderBackupControls(); }
+      catch (err) { setBackupStatus('could not read file', 'warn'); }
+    });
+  }
 
   showScreen(state.model ? 'dashboard' : 'setup');
 }

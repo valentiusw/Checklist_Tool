@@ -63,6 +63,16 @@ If your workbook includes a `Sections` sheet, the checklist is grouped under sec
 headings and the **Section** dropdown filters to a single section. The **About** page (top
 bar) lists the workbook's sections and glossary for quick reference.
 
+### Backups & durability
+
+Your projects are stored in your browser. To make them durable, open **Settings**
+and use **Auto-save to a file** (Edge/Chrome): pick a backup file — ideally inside
+a synced folder like OneDrive — and the app writes your work to it automatically.
+After a browser-data wipe or on a new machine, **Settings → Open existing backup…**
+restores everything (re-import your setup ZIP to bring back the example images).
+In browsers without this feature, use the manual **Save project library** /
+**Restore library** buttons.
+
 ## Workbook format
 
 Your `.xlsx` must contain two sheets, named exactly **`Checklist`** and **`Inputs`**.
