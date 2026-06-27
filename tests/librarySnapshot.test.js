@@ -20,11 +20,17 @@ test('parseSnapshot rejects a non-library document', () => {
 test('chooseNewer: file newer, local newer, equal', () => {
   assert.equal(chooseNewer('2026-06-27T10:00:00Z', '2026-06-27T11:00:00Z'), 'file');
   assert.equal(chooseNewer('2026-06-27T12:00:00Z', '2026-06-27T11:00:00Z'), 'local');
-  assert.equal(chooseNewer('2026-06-27T10:00:00Z', '2026-06-27T10:00:00Z'), 'equal');
+  assert.equal(chooseNewer('2026-06-27T10:00:00Z', '2026-06-27T10:00:00Z'), 'file');
 });
 
 test('chooseNewer: ties and missing timestamps prefer the file (never lose the backup)', () => {
   assert.equal(chooseNewer(null, '2026-06-27T10:00:00Z'), 'file');
   assert.equal(chooseNewer('2026-06-27T10:00:00Z', null), 'local');
   assert.equal(chooseNewer(null, null), 'equal');
+});
+
+test('chooseNewer: an invalid timestamp on one side defers to the valid side', () => {
+  assert.equal(chooseNewer('not-a-date', '2026-06-27T10:00:00Z'), 'file');
+  assert.equal(chooseNewer('2026-06-27T10:00:00Z', 'not-a-date'), 'local');
+  assert.equal(chooseNewer('not-a-date', 'also-bad'), 'equal');
 });
