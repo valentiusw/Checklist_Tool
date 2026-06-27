@@ -74,3 +74,11 @@ test('importProject rejects malformed JSON', () => {
   const store = createProjectStore();
   assert.throws(() => store.importProject('{not json'));
 });
+
+test('mutating a seed object after load does not corrupt the store', () => {
+  const store = createProjectStore();
+  const seed = { id: 'p1', name: 'Original', units: [{ id: 'u', name: 'U', inputs: {}, checks: {}, comments: {} }] };
+  store.load([seed]);
+  seed.name = 'Mutated';
+  assert.equal(store.getProject('p1').name, 'Original');
+});

@@ -36,7 +36,7 @@ export function createProjectStore({ onChange } = {}) {
     projects.clear();
     for (const raw of list || []) {
       const p = migrateProject(raw);
-      if (p && p.id) projects.set(p.id, p);
+      if (p && p.id) projects.set(p.id, clone(p));
     }
   }
 
@@ -52,9 +52,10 @@ export function createProjectStore({ onChange } = {}) {
   }
 
   function saveProject(project) {
-    project.updatedAt = new Date().toISOString();
-    projects.set(project.id, clone(project));
-    notify('upsert', project.id);
+    const stored = clone(project);
+    stored.updatedAt = new Date().toISOString();
+    projects.set(stored.id, stored);
+    notify('upsert', stored.id);
   }
 
   function createProject(name) {
@@ -68,8 +69,7 @@ export function createProjectStore({ onChange } = {}) {
   }
 
   function deleteProject(id) {
-    projects.delete(id);
-    notify('delete', id);
+    if (projects.delete(id)) notify('delete', id);
   }
 
   function serializeProject(project) {
@@ -106,7 +106,7 @@ export function createProjectStore({ onChange } = {}) {
     const list = Array.isArray(data) ? data : (data && data.projects) || [];
     if (!Array.isArray(list)) throw new Error('Not a valid project library file');
     for (const raw of list) {
-      const project = migrateProject(raw);
+      const project = clone(migrateProject(raw));
       if (!project.id) project.id = newId('p');
       project.name = project.name || 'Imported project';
       project.units = (project.units && project.units.length ? project.units : [newUnit('Unit 1')]).map(normalizeUnit);
