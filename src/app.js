@@ -104,18 +104,33 @@ function scheduleFlush() {
   scheduleBackup();
 }
 
+let flushing = false;
 async function flushToDb() {
+  if (flushing) { scheduleFlush(); return; } // a flush is mid-await; retry after it finishes
+  flushing = true;
+  const modelDirty = dirty.model;
+  const upserts = [...dirty.upserts];
+  const deletes = [...dirty.deletes];
+  dirty.model = false;
+  dirty.upserts.clear();
+  dirty.deletes.clear();
   try {
-    if (dirty.model && state.model) { await db.setMeta('model', serializeModel(state.model)); dirty.model = false; }
-    for (const id of [...dirty.deletes]) { await db.deleteProject(id); dirty.deletes.delete(id); }
-    for (const id of [...dirty.upserts]) {
+    if (modelDirty && state.model) await db.setMeta('model', serializeModel(state.model));
+    for (const id of deletes) await db.deleteProject(id);
+    for (const id of upserts) {
       const p = state.store.getProject(id);
       if (p) await db.putProject(p);
-      dirty.upserts.delete(id);
     }
     await db.setMeta('savedAt', new Date().toISOString());
   } catch (err) {
     console.error('Persist failed:', err);
+    // Re-queue the unpersisted work so a later flush retries it.
+    if (modelDirty) dirty.model = true;
+    for (const id of upserts) dirty.upserts.add(id);
+    for (const id of deletes) dirty.deletes.add(id);
+    scheduleFlush();
+  } finally {
+    flushing = false;
   }
 }
 
@@ -154,7 +169,10 @@ function setBackupStatus(text, kind) {
 async function applySnapshot(snap) {
   await db.clearProjects();
   state.store.load(snap.projects);
-  for (const p of snap.projects) await db.putProject(p);
+  for (const s of state.store.listProjects()) {
+    const p = state.store.getProject(s.id);
+    if (p) await db.putProject(p);
+  }
   if (snap.model) { await db.setMeta('model', snap.model); state.model = rebuildModel(snap.model); }
   await db.setMeta('savedAt', snap.savedAt || new Date().toISOString());
 }
@@ -166,7 +184,7 @@ async function reconcileWithFile() {
   const localSavedAt = await db.getMeta('savedAt');
   if (!fileSnap) { await writeBackup(); return; } // empty/new file: seed it
   const winner = chooseNewer(localSavedAt, fileSnap.savedAt);
-  if (winner === 'file') { await applySnapshot(fileSnap); renderDashboard(); }
+  if (winner === 'file') { await applySnapshot(fileSnap); renderDashboard(); showScreen(state.model ? 'dashboard' : 'setup'); }
   else if (winner === 'local') { await writeBackup(); }
 }
 
