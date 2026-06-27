@@ -420,16 +420,23 @@ async function downloadProjectZip() {
       const aoa = [header, ...unit.rows.map(r => [r.id, r.description, r.code, r.comment, r.exampleFile || r.example])];
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 14 }, { wch: 28 }, { wch: 40 }];
-      // Example column is index 4; file rows get a relative hyperlink to Examples/.
+      // Bold the header row.
+      for (let c = 0; c < header.length; c++) {
+        const addr = XLSX.utils.encode_cell({ r: 0, c });
+        if (ws[addr]) ws[addr].s = { font: { bold: true } };
+      }
+      // Example column is index 4; file rows get a relative hyperlink to Examples/,
+      // styled like a clickable link (blue + underlined).
       unit.rows.forEach((r, i) => {
         if (!r.exampleFile) return;
         const addr = XLSX.utils.encode_cell({ r: i + 1, c: 4 });
         if (!ws[addr]) ws[addr] = { t: 's', v: r.exampleFile };
         ws[addr].l = { Target: 'Examples/' + r.exampleFile, Tooltip: 'Open ' + r.exampleFile };
+        ws[addr].s = { font: { color: { rgb: 'FF0563C1' }, underline: true } };
       });
       XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(unit.name, used));
     }
-    const workbookArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const workbookArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
 
     const files = new Map();
     const missing = [];

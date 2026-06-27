@@ -141,7 +141,9 @@ Pure logic (condition engine, workbook model, project store, export helpers) liv
 npm test        # runs node --test
 ```
 
-The browser glue is `src/app.js`; `index.html` loads the vendored SheetJS build
-(`vendor/`) and then `app.js`.
+The browser glue is `src/app.js`; `index.html` loads the vendored spreadsheet
+engine (`vendor/xlsx.bundle.js` — xlsx-js-style, a SheetJS fork that can write
+cell styles such as the bold header and blue hyperlinked Example cells) and
+JSZip (`vendor/jszip.min.js`), then `app.js`.
 
 Design and implementation notes are under `docs/superpowers/`.
