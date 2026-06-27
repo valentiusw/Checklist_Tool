@@ -12,6 +12,7 @@ const state = {
   currentProjectId: null,
   currentUnitId: null,
   sectionFilter: '',
+  hideChecked: false,
 };
 
 const screens = ['setup', 'dashboard', 'project', 'about'];
@@ -280,18 +281,33 @@ function updateInput(name, value) {
   renderProgress();
 }
 
+// Circular info button shown on items that carry an example file (image/PDF).
+const INFO_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8"/></svg>`;
+
 function renderItems(unit) {
   const container = document.getElementById('items-list');
   container.innerHTML = '';
   let items = applicableItems(state.model, unit.inputs);
   if (state.sectionFilter) items = items.filter(i => i.sectionPrefix === state.sectionFilter);
+
+  // Per-section totals computed from the full applicable list so the counts
+  // stay stable regardless of the "hide checked" view filter.
+  const total = new Map();
+  const done = new Map();
+  for (const i of items) {
+    total.set(i.section, (total.get(i.section) || 0) + 1);
+    if (unit.checks[i.id] === true) done.set(i.section, (done.get(i.section) || 0) + 1);
+  }
+
+  const visible = state.hideChecked ? items.filter(i => unit.checks[i.id] !== true) : items;
   let currentSection = null;
-  for (const item of items) {
+  for (const item of visible) {
     if (item.section !== currentSection) {
       currentSection = item.section;
       const h = document.createElement('h3');
       h.className = 'section-heading';
-      h.textContent = currentSection;
+      h.innerHTML = `<span>${escapeHtml(currentSection)}</span>` +
+        `<span class="section-count">${done.get(currentSection) || 0} / ${total.get(currentSection) || 0}</span>`;
       container.appendChild(h);
     }
     const checked = unit.checks[item.id] === true;
@@ -305,6 +321,7 @@ function renderItems(unit) {
           ${item.code ? `<span class="code-tag">${escapeHtml(item.code)}</span>` : ''}
           ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
         </div>
+        ${item.exampleFile ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleFile)}" title="View example" aria-label="View example for ${escapeHtml(item.id)}">${INFO_ICON}</button>` : ''}
       </div>`;
     const ta = document.createElement('textarea');
     ta.placeholder = 'Your comment for this item…';
@@ -319,6 +336,15 @@ function renderItems(unit) {
     container.appendChild(div);
   }
 
+  if (visible.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'muted';
+    p.textContent = state.hideChecked
+      ? 'All applicable items are checked. ✓'
+      : 'No applicable items for the current inputs.';
+    container.appendChild(p);
+  }
+
   container.querySelectorAll('[data-check]').forEach(cb =>
     cb.addEventListener('change', () => {
       const { project, unit: u } = getCurrentProjectAndUnit();
@@ -327,6 +353,51 @@ function renderItems(unit) {
       renderItems(u);
       renderProgress();
     }));
+  container.querySelectorAll('[data-example]').forEach(btn =>
+    btn.addEventListener('click', () => openExample(btn.getAttribute('data-example'))));
+}
+
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
+
+// Open an item's example file from the in-browser library: images in a
+// lightbox, everything else (PDFs) in a new tab.
+async function openExample(name) {
+  let blob;
+  try {
+    blob = await exampleStore.get(name);
+  } catch {
+    alert(`Could not read example "${name}" from your library.`);
+    return;
+  }
+  if (!blob) {
+    alert(`Example file "${name}" isn't in your library. Re-import your setup ZIP to include it.`);
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  if (IMAGE_EXT.test(name)) {
+    showLightbox(url, name);
+  } else {
+    window.open(url, '_blank', 'noopener');
+    // The new tab now owns the URL; revoke after a grace period.
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+}
+
+function showLightbox(url, name) {
+  const overlay = document.createElement('div');
+  overlay.className = 'lightbox';
+  overlay.innerHTML =
+    `<figure class="lightbox-fig"><img src="${url}" alt="Example: ${escapeHtml(name)}">` +
+    `<figcaption>${escapeHtml(name)}</figcaption></figure>`;
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  function close() {
+    overlay.remove();
+    URL.revokeObjectURL(url);
+    document.removeEventListener('keydown', onKey);
+  }
+  overlay.addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(overlay);
 }
 
 function renderProgress() {
@@ -508,6 +579,10 @@ function init() {
   });
   document.getElementById('section-select').addEventListener('change', e => {
     state.sectionFilter = e.target.value;
+    renderItems(getCurrentUnit());
+  });
+  document.getElementById('toggle-hide-checked').addEventListener('change', e => {
+    state.hideChecked = e.target.checked;
     renderItems(getCurrentUnit());
   });
   document.getElementById('btn-add-unit').addEventListener('click', () => {
