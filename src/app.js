@@ -5,6 +5,8 @@ import * as exampleStore from './exampleStore.js';
 import { readSetupZip, buildExportZip } from './zipBundle.js';
 import * as db from './db.js';
 import { readLegacy } from './legacyMigration.js';
+import * as fileBackup from './fileBackup.js';
+import { buildSnapshot, parseSnapshot, chooseNewer } from './librarySnapshot.js';
 
 const state = {
   model: null,
@@ -85,6 +87,8 @@ function rebuildModel(data) {
 // --- Persistence: in-memory edits flushed to IndexedDB (debounced) ----------
 const dirty = { model: false, upserts: new Set(), deletes: new Set() };
 let flushTimer = null;
+const backup = { handle: null, savedAt: null };
+let fileTimer = null;
 
 function onStoreChange(info) {
   if (info.type === 'delete') { dirty.deletes.add(info.id); dirty.upserts.delete(info.id); }
@@ -97,6 +101,7 @@ function markModelDirty() { dirty.model = true; scheduleFlush(); }
 function scheduleFlush() {
   clearTimeout(flushTimer);
   flushTimer = setTimeout(flushToDb, 300);
+  scheduleBackup();
 }
 
 async function flushToDb() {
@@ -111,6 +116,89 @@ async function flushToDb() {
     await db.setMeta('savedAt', new Date().toISOString());
   } catch (err) {
     console.error('Persist failed:', err);
+  }
+}
+
+function currentSnapshotText() {
+  const projects = state.store.listProjects().map(s => state.store.getProject(s.id)).filter(Boolean);
+  backup.savedAt = new Date().toISOString();
+  return buildSnapshot(state.model ? serializeModel(state.model) : null, projects, backup.savedAt);
+}
+
+function scheduleBackup() {
+  if (!backup.handle) return;
+  clearTimeout(fileTimer);
+  fileTimer = setTimeout(writeBackup, 1000);
+}
+
+async function writeBackup() {
+  if (!backup.handle) return;
+  try {
+    if (!(await fileBackup.ensurePermission(backup.handle, 'readwrite'))) { setBackupStatus('reconnect needed', 'warn'); return; }
+    await fileBackup.writeSnapshot(backup.handle, currentSnapshotText());
+    setBackupStatus('saved ✓', 'ok');
+  } catch (err) {
+    console.error('Backup write failed:', err);
+    setBackupStatus('auto-save paused — reconnect', 'warn');
+  }
+}
+
+function setBackupStatus(text, kind) {
+  const el = document.getElementById('backup-status');
+  if (!el) return;
+  el.textContent = text ? '· ' + text : '';
+  el.className = kind || '';
+}
+
+// Load a parsed snapshot into memory + IndexedDB (used by reconcile/recovery).
+async function applySnapshot(snap) {
+  await db.clearProjects();
+  state.store.load(snap.projects);
+  for (const p of snap.projects) await db.putProject(p);
+  if (snap.model) { await db.setMeta('model', snap.model); state.model = rebuildModel(snap.model); }
+  await db.setMeta('savedAt', snap.savedAt || new Date().toISOString());
+}
+
+async function reconcileWithFile() {
+  const text = await fileBackup.readSnapshot(backup.handle);
+  let fileSnap = null;
+  try { fileSnap = parseSnapshot(text); } catch { fileSnap = null; }
+  const localSavedAt = await db.getMeta('savedAt');
+  if (!fileSnap) { await writeBackup(); return; } // empty/new file: seed it
+  const winner = chooseNewer(localSavedAt, fileSnap.savedAt);
+  if (winner === 'file') { await applySnapshot(fileSnap); renderDashboard(); }
+  else if (winner === 'local') { await writeBackup(); }
+}
+
+function renderBackupControls() {
+  const controls = document.getElementById('backup-controls');
+  if (!fileBackup.isSupported()) {
+    controls.innerHTML = '';
+    setBackupStatus('not available in this browser — use Save/Restore above', '');
+    return;
+  }
+  controls.innerHTML = backup.handle
+    ? `<button id="btn-disconnect-backup" class="btn-sm">Disconnect</button>`
+    : `<button id="btn-open-backup" class="btn-sm">Open existing backup…</button>` +
+      `<button id="btn-connect-backup" class="btn-primary">Back up to a file…</button>`;
+  if (backup.handle) {
+    document.getElementById('btn-disconnect-backup').addEventListener('click', async () => {
+      backup.handle = null; await db.setMeta('backupHandle', null); setBackupStatus('disconnected', ''); renderBackupControls();
+    });
+  } else {
+    document.getElementById('btn-connect-backup').addEventListener('click', async () => {
+      const handle = await fileBackup.connect();
+      if (!handle) return;
+      backup.handle = handle; await db.setMeta('backupHandle', handle);
+      await writeBackup(); renderBackupControls();
+    });
+    document.getElementById('btn-open-backup').addEventListener('click', async () => {
+      const handle = await fileBackup.connectExisting();
+      if (!handle) return;
+      backup.handle = handle; await db.setMeta('backupHandle', handle);
+      try { await reconcileWithFile(); } catch (err) { setBackupStatus('could not read file', 'warn'); }
+      renderBackupControls();
+    });
   }
 }
 
@@ -692,6 +780,25 @@ async function init() {
     }
     e.target.value = '';
   });
+
+  try {
+    const storedHandle = await db.getMeta('backupHandle');
+    if (storedHandle && fileBackup.isSupported()) {
+      backup.handle = storedHandle;
+      setBackupStatus('reconnect to resume auto-save', 'warn');
+    }
+  } catch { /* no stored handle */ }
+  renderBackupControls();
+  if (backup.handle) {
+    // Permission must be re-granted with a user gesture; expose a one-click reconnect.
+    const controls = document.getElementById('backup-controls');
+    controls.insertAdjacentHTML('afterbegin', `<button id="btn-reconnect-backup" class="btn-primary">Reconnect backup</button>`);
+    document.getElementById('btn-reconnect-backup').addEventListener('click', async () => {
+      if (!(await fileBackup.ensurePermission(backup.handle, 'readwrite'))) { setBackupStatus('permission denied', 'warn'); return; }
+      try { await reconcileWithFile(); setBackupStatus('saved ✓', 'ok'); renderBackupControls(); }
+      catch (err) { setBackupStatus('could not read file', 'warn'); }
+    });
+  }
 
   showScreen(state.model ? 'dashboard' : 'setup');
 }

@@ -657,3 +657,8 @@ input[type="checkbox"] {
 }
 
 .info-table td:first-child { font-weight: 600; white-space: nowrap; }
+
+/* ---- Auto-save / backup status --------------------------------------- */
+#backup-status { font-weight: 600; color: var(--text-muted); }
+#backup-status.ok { color: var(--accent); }
+#backup-status.warn { color: var(--danger); }
