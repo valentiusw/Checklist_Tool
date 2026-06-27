@@ -3,12 +3,12 @@ import { createProjectStore } from './projectStore.js';
 import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
 import * as exampleStore from './exampleStore.js';
 import { readSetupZip, buildExportZip } from './zipBundle.js';
-
-const MODEL_KEY = 'dpchecklist.model';
+import * as db from './db.js';
+import { readLegacy } from './legacyMigration.js';
 
 const state = {
   model: null,
-  store: createProjectStore(window.localStorage),
+  store: createProjectStore({ onChange: onStoreChange }),
   currentProjectId: null,
   currentUnitId: null,
   sectionFilter: '',
@@ -55,39 +55,62 @@ function loadModelFromWorkbook(workbook) {
   return buildModel({ checklistRows, inputRows, sectionRows, glossaryRows });
 }
 
-function persistModel(model) {
-  const serializable = {
+function serializeModel(model) {
+  return {
     items: model.items.map(({ condition, ...rest }) => rest),
     inputs: model.inputs,
     sections: model.sections,
     glossary: model.glossary,
   };
-  window.localStorage.setItem(MODEL_KEY, JSON.stringify(serializable));
 }
 
-function restoreModel() {
-  const raw = window.localStorage.getItem(MODEL_KEY);
-  if (!raw) return null;
+function rebuildModel(data) {
+  const inputRows = [
+    ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
+    ...data.inputs.map(i => [i.name, i.type, i.label, i.unit, i.choices.join(';'), i.default]),
+  ];
+  const checklistRows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleFile || i.exampleImage || i.example]),
+  ];
+  const sectionRows = (data.sections && data.sections.length)
+    ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
+    : undefined;
+  const glossaryRows = (data.glossary && data.glossary.length)
+    ? [['Term', 'Meaning'], ...data.glossary.map(g => [g.term, g.meaning])]
+    : undefined;
+  return buildModel({ checklistRows, inputRows, sectionRows, glossaryRows });
+}
+
+// --- Persistence: in-memory edits flushed to IndexedDB (debounced) ----------
+const dirty = { model: false, upserts: new Set(), deletes: new Set() };
+let flushTimer = null;
+
+function onStoreChange(info) {
+  if (info.type === 'delete') { dirty.deletes.add(info.id); dirty.upserts.delete(info.id); }
+  else { dirty.upserts.add(info.id); dirty.deletes.delete(info.id); }
+  scheduleFlush();
+}
+
+function markModelDirty() { dirty.model = true; scheduleFlush(); }
+
+function scheduleFlush() {
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flushToDb, 300);
+}
+
+async function flushToDb() {
   try {
-    const data = JSON.parse(raw);
-    const inputRows = [
-      ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
-      ...data.inputs.map(i => [i.name, i.type, i.label, i.unit, i.choices.join(';'), i.default]),
-    ];
-    const checklistRows = [
-      ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
-      // The single Example cell holds either the prose or the file name.
-      ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleFile || i.exampleImage || i.example]),
-    ];
-    const sectionRows = (data.sections && data.sections.length)
-      ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
-      : undefined;
-    const glossaryRows = (data.glossary && data.glossary.length)
-      ? [['Term', 'Meaning'], ...data.glossary.map(g => [g.term, g.meaning])]
-      : undefined;
-    return buildModel({ checklistRows, inputRows, sectionRows, glossaryRows });
-  } catch {
-    return null;
+    if (dirty.model && state.model) { await db.setMeta('model', serializeModel(state.model)); dirty.model = false; }
+    for (const id of [...dirty.deletes]) { await db.deleteProject(id); dirty.deletes.delete(id); }
+    for (const id of [...dirty.upserts]) {
+      const p = state.store.getProject(id);
+      if (p) await db.putProject(p);
+      dirty.upserts.delete(id);
+    }
+    await db.setMeta('savedAt', new Date().toISOString());
+  } catch (err) {
+    console.error('Persist failed:', err);
   }
 }
 
@@ -107,7 +130,7 @@ async function handleSetupFile(file) {
     await exampleStore.clear();
     if (files.size) await exampleStore.putAll(files);
     state.model = model;
-    persistModel(model);
+    markModelDirty();
     setStatus(`Loaded ${model.items.length} items, ${model.inputs.length} inputs, ${files.size} example file${files.size === 1 ? '' : 's'}.`, 'ok');
   } catch (err) {
     state.model = null;
@@ -564,8 +587,25 @@ function wireThemeToggle() {
   });
 }
 
-function init() {
-  state.model = restoreModel();
+async function init() {
+  let snap = { model: null, projects: [], savedAt: null };
+  try {
+    await db.open();
+    snap = await db.loadSnapshot();
+    if (!snap.model && snap.projects.length === 0) {
+      const legacy = readLegacy(window.localStorage);
+      if (legacy.model || legacy.projects.length) {
+        if (legacy.model) await db.setMeta('model', legacy.model);
+        for (const p of legacy.projects) await db.putProject(p);
+        await db.setMeta('savedAt', new Date().toISOString());
+        snap = { model: legacy.model, projects: legacy.projects, savedAt: new Date().toISOString() };
+      }
+    }
+  } catch (err) {
+    console.error('Storage unavailable, running in-memory for this session:', err);
+  }
+  state.model = snap.model ? rebuildModel(snap.model) : null;
+  state.store.load(snap.projects);
   wireSetup();
   wireThemeToggle();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
