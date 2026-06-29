@@ -7,7 +7,7 @@ import * as db from './db.js';
 import { readLegacy } from './legacyMigration.js';
 import * as fileBackup from './fileBackup.js';
 import { buildSnapshot, parseSnapshot, chooseNewer } from './librarySnapshot.js';
-import { defaultInputValue, defaultInputs, formatInputValue } from './projectDraft.js';
+import { defaultInputValue, formatInputValue, validateDraft, newBlankDraft, newDraftUnit } from './projectDraft.js';
 
 const state = {
   model: null,
@@ -16,11 +16,12 @@ const state = {
   currentUnitId: null,
   sectionFilter: '',
   hideChecked: false,
+  editor: null, // { draft, isNew, dirty }
 };
 
-const screens = ['setup', 'dashboard', 'project', 'about'];
+const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
 // Which sidebar link is highlighted for each screen (project lives under Projects).
-const NAV_FOR_SCREEN = { setup: 'nav-setup', dashboard: 'nav-dashboard', project: 'nav-dashboard', about: 'nav-about' };
+const NAV_FOR_SCREEN = { setup: 'nav-setup', dashboard: 'nav-dashboard', project: 'nav-dashboard', about: 'nav-about', editor: 'nav-dashboard' };
 function showScreen(name) {
   for (const s of screens) {
     document.getElementById('screen-' + s).hidden = s !== name;
@@ -311,6 +312,90 @@ function renderDashboard() {
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Build an editable control for one input definition. `onChange(value)` is
+// called with the typed value (boolean / number / string) on every change.
+function buildInputControl(def, value, onChange) {
+  if (def.type === 'Boolean') {
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = value === true;
+    input.addEventListener('change', () => onChange(input.checked));
+    return input;
+  }
+  if (def.type === 'Choice') {
+    const select = document.createElement('select');
+    for (const c of def.choices) {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      if (c === value) opt.selected = true;
+      select.appendChild(opt);
+    }
+    select.addEventListener('change', () => onChange(select.value));
+    return select;
+  }
+  const input = document.createElement('input');
+  input.type = 'number';
+  if (def.type === 'Integer') input.step = '1';
+  input.value = value;
+  input.addEventListener('input', () => onChange(input.value === '' ? '' : Number(input.value)));
+  return input;
+}
+
+function markEditorDirty() { if (state.editor) state.editor.dirty = true; }
+
+function renderEditor() {
+  const { draft, isNew } = state.editor;
+  document.getElementById('editor-heading').textContent = isNew ? 'New project' : 'Edit project';
+  document.getElementById('editor-name-error').hidden = true;
+
+  const nameInput = document.getElementById('editor-project-name');
+  nameInput.value = draft.name;
+  nameInput.oninput = () => { draft.name = nameInput.value; markEditorDirty(); };
+
+  const container = document.getElementById('editor-units');
+  container.innerHTML = '';
+  draft.units.forEach((unit, index) => {
+    const card = document.createElement('div');
+    card.className = 'unit-edit-card';
+
+    const head = document.createElement('div');
+    head.className = 'row-between';
+    const nameField = document.createElement('input');
+    nameField.type = 'text';
+    nameField.className = 'unit-edit-name';
+    nameField.value = unit.name;
+    nameField.placeholder = 'Unit name';
+    nameField.oninput = () => { unit.name = nameField.value; markEditorDirty(); };
+    head.appendChild(nameField);
+
+    const del = document.createElement('button');
+    del.className = 'btn-sm btn-danger';
+    del.textContent = 'Delete';
+    del.disabled = draft.units.length <= 1;
+    del.addEventListener('click', () => {
+      draft.units.splice(index, 1);
+      markEditorDirty();
+      renderEditor();
+    });
+    head.appendChild(del);
+    card.appendChild(head);
+
+    for (const def of state.model.inputs) {
+      if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
+      const label = document.createElement('label');
+      label.className = 'editor-input-label';
+      label.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
+      const control = buildInputControl(def, unit.inputs[def.name], (v) => {
+        unit.inputs[def.name] = v;
+        markEditorDirty();
+      });
+      label.appendChild(control);
+      card.appendChild(label);
+    }
+    container.appendChild(card);
+  });
 }
 
 function renderAbout() {
