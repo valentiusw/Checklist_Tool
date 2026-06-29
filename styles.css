@@ -662,3 +662,66 @@ input[type="checkbox"] {
 #backup-status { font-weight: 600; color: var(--text-muted); }
 #backup-status.ok { color: var(--accent); }
 #backup-status.warn { color: var(--danger); }
+
+/* ---- Project editor screen ------------------------------------------- */
+.editor-field { display: block; margin: 16px 0; }
+.editor-field input,
+#editor-project-name {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.editor-units-head { margin-top: 8px; }
+
+.unit-edit-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.unit-edit-name {
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 8px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  min-width: 200px;
+}
+.editor-input-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.editor-input-label input[type="number"],
+.editor-input-label select {
+  flex: none;
+  min-width: 160px;
+}
+
+/* ---- Read-only inputs summary on the checklist ----------------------- */
+.input-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-top: 1px solid var(--border);
+}
+.input-summary-label { color: var(--text-muted); }
+.input-summary-value { font-weight: 600; color: var(--text); }
+.input-summary-hint { margin-top: 10px; font-size: 13px; }
