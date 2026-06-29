@@ -422,11 +422,17 @@ function saveEditor() {
   }
   state.store.saveProject(draft);
   const id = draft.id;
+  // Preserve the unit the user was working on across an edit; fall back to the
+  // first unit only when it was deleted (or for a brand-new project).
+  const keepUnitId = (!isNew && draft.units.some(u => u.id === state.currentUnitId))
+    ? state.currentUnitId : null;
   state.editor = null;
-  if (isNew) {
-    openProject(id);
+  if (keepUnitId) {
+    state.currentProjectId = id;
+    state.currentUnitId = keepUnitId;
+    showScreen('project');
+    renderProject();
   } else {
-    // If the open unit was deleted, openProject's first-unit fallback applies.
     openProject(id);
   }
 }
