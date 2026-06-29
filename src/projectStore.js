@@ -1,8 +1,8 @@
-function newId(prefix = 'p') {
+export function newId(prefix = 'p') {
   return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
 
-function newUnit(name) {
+export function newUnit(name) {
   return { id: newId('u'), name: name || 'Unit 1', inputs: {}, checks: {}, comments: {} };
 }
 
