@@ -7,6 +7,7 @@ import * as db from './db.js';
 import { readLegacy } from './legacyMigration.js';
 import * as fileBackup from './fileBackup.js';
 import { buildSnapshot, parseSnapshot, chooseNewer } from './librarySnapshot.js';
+import { defaultInputValue, defaultInputs, formatInputValue } from './projectDraft.js';
 
 const state = {
   model: null,
@@ -359,55 +360,29 @@ function saveCurrent(project) {
   state.store.saveProject(project);
 }
 
-function defaultInputValue(def) {
-  if (def.type === 'Boolean') return /^true$/i.test(String(def.default)) ;
-  if (def.type === 'Float' || def.type === 'Integer') return def.default === '' ? 0 : Number(def.default);
-  if (def.type === 'Choice') return def.choices.includes(def.default) ? def.default : (def.choices[0] ?? '');
-  return def.default;
-}
 
-function renderInputs(unit) {
+function renderInputsSummary(unit) {
   const panel = document.getElementById('inputs-panel');
-  panel.innerHTML = '<h3>Project inputs</h3>';
+  panel.innerHTML = '<h3>Inputs</h3>';
+  // Ensure any input added to the workbook since the unit was created has a value.
   for (const def of state.model.inputs) {
     if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
-    const value = unit.inputs[def.name];
-    const label = document.createElement('label');
+    const row = document.createElement('div');
+    row.className = 'input-summary-row';
+    const label = document.createElement('span');
+    label.className = 'input-summary-label';
     label.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
-    panel.appendChild(label);
-
-    let control;
-    if (def.type === 'Boolean') {
-      control = document.createElement('input');
-      control.type = 'checkbox';
-      control.checked = value === true;
-      control.addEventListener('change', () => updateInput(def.name, control.checked));
-    } else if (def.type === 'Choice') {
-      control = document.createElement('select');
-      for (const c of def.choices) {
-        const opt = document.createElement('option');
-        opt.value = c; opt.textContent = c;
-        if (c === value) opt.selected = true;
-        control.appendChild(opt);
-      }
-      control.addEventListener('change', () => updateInput(def.name, control.value));
-    } else {
-      control = document.createElement('input');
-      control.type = 'number';
-      if (def.type === 'Integer') control.step = '1';
-      control.value = value;
-      control.addEventListener('input', () => updateInput(def.name, control.value === '' ? '' : Number(control.value)));
-    }
-    panel.appendChild(control);
+    const value = document.createElement('span');
+    value.className = 'input-summary-value';
+    value.textContent = formatInputValue(def, unit.inputs[def.name]);
+    row.appendChild(label);
+    row.appendChild(value);
+    panel.appendChild(row);
   }
-}
-
-function updateInput(name, value) {
-  const { project, unit } = getCurrentProjectAndUnit();
-  unit.inputs[name] = value;
-  saveCurrent(project);
-  renderItems(unit);
-  renderProgress();
+  const hint = document.createElement('p');
+  hint.className = 'muted input-summary-hint';
+  hint.textContent = 'Edit project to change these.';
+  panel.appendChild(hint);
 }
 
 // Circular info button shown on items that carry an example file (image/PDF).
@@ -550,7 +525,6 @@ function renderUnitBar() {
     if (u.id === state.currentUnitId) opt.selected = true;
     sel.appendChild(opt);
   }
-  document.getElementById('btn-delete-unit').disabled = project.units.length <= 1;
 }
 
 function renderSectionFilter() {
@@ -577,7 +551,7 @@ function renderProject() {
   renderUnitBar();
   renderSectionFilter();
   const unit = unitOf(project);
-  renderInputs(unit);
+  renderInputsSummary(unit);
   // persist any defaults just applied (unit belongs to `project`, so they are saved)
   saveCurrent(project);
   renderItems(unit);
@@ -731,34 +705,6 @@ async function init() {
     state.hideChecked = e.target.checked;
     renderItems(getCurrentUnit());
   });
-  document.getElementById('btn-add-unit').addEventListener('click', () => {
-    const name = prompt('New unit name?', 'Unit ' + (getCurrentProject().units.length + 1));
-    if (!name) return;
-    const project = getCurrentProject();
-    const unit = state.store.newUnit(name);
-    project.units.push(unit);
-    saveCurrent(project);
-    state.currentUnitId = unit.id;
-    renderProject();
-  });
-  document.getElementById('btn-rename-unit').addEventListener('click', () => {
-    const { project, unit } = getCurrentProjectAndUnit();
-    const name = prompt('Rename unit', unit.name);
-    if (!name) return;
-    unit.name = name;
-    saveCurrent(project);
-    renderProject();
-  });
-  document.getElementById('btn-delete-unit').addEventListener('click', () => {
-    const project = getCurrentProject();
-    if (project.units.length <= 1) { alert('A project needs at least one unit.'); return; }
-    if (!confirm('Delete this unit?')) return;
-    project.units = project.units.filter(u => u.id !== state.currentUnitId);
-    state.currentUnitId = project.units[0].id;
-    saveCurrent(project);
-    renderProject();
-  });
-
   document.getElementById('btn-new-project').addEventListener('click', () => {
     if (!state.model) { alert('Load a checklist workbook in Setup first.'); return; }
     const name = prompt('Project name?');
