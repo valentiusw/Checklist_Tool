@@ -103,6 +103,7 @@
       <div class="row-between">
         <button id="btn-back" class="btn-ghost">&larr; Back</button>
         <div class="btn-row">
+          <button id="btn-edit-project">Edit project</button>
           <button id="btn-save-project">Save project file</button>
           <button id="btn-download-zip" class="btn-primary">Download ZIP</button>
         </div>
@@ -111,9 +112,6 @@
       <div id="unit-bar" class="unit-bar">
         <label for="unit-select">Unit</label>
         <select id="unit-select"></select>
-        <button id="btn-add-unit" class="btn-sm">Add unit</button>
-        <button id="btn-rename-unit" class="btn-sm">Rename</button>
-        <button id="btn-delete-unit" class="btn-sm btn-danger">Delete unit</button>
       </div>
       <div class="progress">
         <div id="project-progress-bar" class="progress-bar"></div>
@@ -134,6 +132,25 @@
         <aside id="inputs-panel" class="inputs-panel"></aside>
         <div id="items-list" class="items-list"></div>
       </div>
+    </section>
+
+    <section id="screen-editor" class="screen" hidden>
+      <div class="row-between">
+        <button id="editor-cancel" class="btn-ghost">&larr; Cancel</button>
+        <button id="editor-save" class="btn-primary">Save project</button>
+      </div>
+      <h2 id="editor-heading">New project</h2>
+      <label class="editor-field">
+        <span class="setting-title">Project name</span>
+        <input type="text" id="editor-project-name" placeholder="e.g. Tower A" />
+      </label>
+      <p id="editor-name-error" class="status error" hidden>Project name is required</p>
+
+      <div class="row-between editor-units-head">
+        <h3>Units</h3>
+        <button id="btn-add-editor-unit" class="btn-sm">+ Add unit</button>
+      </div>
+      <div id="editor-units"></div>
     </section>
 
     <section id="screen-about" class="screen" hidden>
