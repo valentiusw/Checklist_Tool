@@ -398,6 +398,48 @@ function renderEditor() {
   });
 }
 
+function openEditor(projectId) {
+  if (!state.model) { alert('Load a checklist workbook in Setup first.'); return; }
+  if (projectId) {
+    state.editor = { draft: state.store.getProject(projectId), isNew: false, dirty: false };
+  } else {
+    state.editor = { draft: newBlankDraft(state.model), isNew: true, dirty: false };
+  }
+  showScreen('editor');
+  renderEditor();
+  if (state.editor.isNew) document.getElementById('editor-project-name').focus();
+}
+
+function saveEditor() {
+  const { draft, isNew } = state.editor;
+  const result = validateDraft(draft);
+  if (!result.ok) {
+    const nameErr = result.errors.find(e => e.field === 'name');
+    document.getElementById('editor-name-error').hidden = !nameErr;
+    const unitErr = result.errors.find(e => e.field === 'unit' || e.field === 'units');
+    if (unitErr) alert(unitErr.message);
+    return;
+  }
+  state.store.saveProject(draft);
+  const id = draft.id;
+  state.editor = null;
+  if (isNew) {
+    openProject(id);
+  } else {
+    // If the open unit was deleted, openProject's first-unit fallback applies.
+    openProject(id);
+  }
+}
+
+function cancelEditor() {
+  const wasNew = state.editor.isNew;
+  if (state.editor.dirty && !confirm('Discard changes to this project?')) return;
+  const id = state.editor.draft.id;
+  state.editor = null;
+  if (wasNew) showScreen('dashboard');
+  else openProject(id);
+}
+
 function renderAbout() {
   const model = state.model;
   const sections = (model && model.sections) || [];
@@ -790,12 +832,15 @@ async function init() {
     state.hideChecked = e.target.checked;
     renderItems(getCurrentUnit());
   });
-  document.getElementById('btn-new-project').addEventListener('click', () => {
-    if (!state.model) { alert('Load a checklist workbook in Setup first.'); return; }
-    const name = prompt('Project name?');
-    if (!name) return;
-    const project = state.store.createProject(name);
-    openProject(project.id);
+  document.getElementById('btn-new-project').addEventListener('click', () => openEditor(null));
+  document.getElementById('btn-edit-project').addEventListener('click', () => openEditor(state.currentProjectId));
+  document.getElementById('editor-save').addEventListener('click', saveEditor);
+  document.getElementById('editor-cancel').addEventListener('click', cancelEditor);
+  document.getElementById('btn-add-editor-unit').addEventListener('click', () => {
+    const draft = state.editor.draft;
+    draft.units.push(newDraftUnit(state.model, 'Unit ' + (draft.units.length + 1)));
+    markEditorDirty();
+    renderEditor();
   });
 
   document.getElementById('import-project-file').addEventListener('change', async e => {
