@@ -7,7 +7,7 @@ import * as db from './db.js';
 import { readLegacy } from './legacyMigration.js';
 import * as fileBackup from './fileBackup.js';
 import { buildSnapshot, parseSnapshot, chooseNewer } from './librarySnapshot.js';
-import { defaultInputValue, formatInputValue, validateDraft, newBlankDraft, newDraftUnit } from './projectDraft.js';
+import { defaultInputValue, validateDraft, newBlankDraft, newDraftUnit } from './projectDraft.js';
 
 const state = {
   model: null,
@@ -550,28 +550,13 @@ function saveCurrent(project) {
 }
 
 
-function renderInputsSummary(unit) {
-  const panel = document.getElementById('inputs-panel');
-  panel.innerHTML = '<h3>Inputs</h3>';
-  // Ensure any input added to the workbook since the unit was created has a value.
+// Ensure any input added to the workbook since the unit was created has a
+// value, so item conditions evaluate correctly. (Inputs are edited from the
+// project editor; the checklist no longer shows a read-only summary panel.)
+function ensureUnitInputs(unit) {
   for (const def of state.model.inputs) {
     if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
-    const row = document.createElement('div');
-    row.className = 'input-summary-row';
-    const label = document.createElement('span');
-    label.className = 'input-summary-label';
-    label.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
-    const value = document.createElement('span');
-    value.className = 'input-summary-value';
-    value.textContent = formatInputValue(def, unit.inputs[def.name]);
-    row.appendChild(label);
-    row.appendChild(value);
-    panel.appendChild(row);
   }
-  const hint = document.createElement('p');
-  hint.className = 'muted input-summary-hint';
-  hint.textContent = 'Edit project to change these.';
-  panel.appendChild(hint);
 }
 
 // Circular info button shown on items that carry an example file (image/PDF).
@@ -740,7 +725,7 @@ function renderProject() {
   renderUnitBar();
   renderSectionFilter();
   const unit = unitOf(project);
-  renderInputsSummary(unit);
+  ensureUnitInputs(unit);
   // persist any defaults just applied (unit belongs to `project`, so they are saved)
   saveCurrent(project);
   renderItems(unit);

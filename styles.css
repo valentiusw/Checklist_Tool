@@ -490,30 +490,8 @@ input[type="checkbox"] {
 #project-title { margin: 18px 0 4px; }
 
 .project-body {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 28px;
   margin-top: 20px;
 }
-
-.inputs-panel {
-  border-right: 1px solid var(--border);
-  padding-right: 24px;
-  align-self: start;
-  position: sticky;
-  top: 20px;
-}
-
-.inputs-panel label {
-  display: block;
-  font-weight: 550;
-  font-size: 14px;
-  margin: 14px 0 5px;
-}
-
-.inputs-panel label:first-of-type { margin-top: 0; }
-
-.inputs-panel input[type="checkbox"] { width: 18px; height: 18px; }
 
 /* ---- Checklist items -------------------------------------------------- */
 
@@ -835,15 +813,3 @@ input[type="checkbox"] {
   flex: 0 0 auto;
 }
 
-/* ---- Read-only inputs summary on the checklist ----------------------- */
-.input-summary-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 5px 0;
-  border-top: 1px solid var(--border);
-}
-.input-summary-label { color: var(--text-muted); }
-.input-summary-value { font-weight: 600; color: var(--text); }
-.input-summary-hint { margin-top: 10px; font-size: 13px; }
