@@ -525,6 +525,11 @@ function openProject(id) {
   state.currentProjectId = id;
   const project = getCurrentProject();
   state.currentUnitId = project && project.units[0] ? project.units[0].id : null;
+  // Items are model-level (shared across projects), so a stale editor selection
+  // would otherwise re-populate the RHS panel when switching projects. Reset it
+  // so the editor starts on its "Select an item" placeholder.
+  state.editorItemId = null;
+  state.editorUnitId = null;
   showScreen('project');
   renderProject();
 }
