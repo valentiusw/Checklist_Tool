@@ -885,15 +885,17 @@ input[type="checkbox"] {
   border-bottom: 1px solid var(--border);
 }
 [data-screen="project"] .detail-panel .panel-section:last-child { border-bottom: none; }
+/* Neutralize the outer screen card at all widths so the two bubbles stand alone
+   (no card-within-a-card on the ≤900px stacked fallback). */
+[data-screen="project"] #screen-project {
+  max-width: none; padding: 0;
+  background: none; border: none; box-shadow: none;
+}
 /* ===== Two-bubble project screen — app-like independent scroll (desktop) ===== */
 @media (min-width: 901px) {
   /* The project screen fills the viewport; the page itself doesn't scroll here. */
   [data-screen="project"] main { height: 100vh; overflow: hidden; }
-  [data-screen="project"] #screen-project {
-    max-width: none; padding: 0; height: 100%;
-    background: none; border: none; box-shadow: none;
-    display: flex; flex-direction: column;
-  }
+  [data-screen="project"] #screen-project { height: 100%; display: flex; flex-direction: column; }
   [data-screen="project"] .project-body {
     flex: 1 1 auto; min-height: 0; align-items: stretch; margin: 0;
   }
