@@ -830,8 +830,6 @@ input[type="checkbox"] {
 .panel-section.collapsed .panel-chevron { transform: rotate(-90deg); }
 .panel-section.collapsed .panel-body { display: none; }
 .panel-body { padding: 0 14px 14px; }
-.viewer-unit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.viewer-unit-row select { flex: 1; }
 .inputs-readout { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; }
 .inputs-readout dt { color: var(--muted, #6b7480); font-size: 0.85rem; }
 .inputs-readout dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
@@ -862,3 +860,18 @@ input[type="checkbox"] {
 }
 .unit-tag.done::before { content: '✓ '; }
 .items-list .item input[type=checkbox]:indeterminate { opacity: 0.85; }
+
+/* 3-column checklist: middle column stacks a header card over the list */
+.checklist-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.checklist-head {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); padding: 16px 18px;
+}
+.checklist-head #project-title { margin: 0 0 8px; }
+.checklist-head .section-filter { margin: 12px 0 0; }
+/* Static (non-collapsing) panel header, e.g. Unit Selection */
+.panel-head-static {
+  display: flex; align-items: center; padding: 10px 14px;
+  font-weight: 600; font-size: 0.95rem;
+}
+#unit-selection select { width: 100%; }

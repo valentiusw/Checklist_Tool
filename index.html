@@ -120,35 +120,41 @@
           <button id="btn-download-zip" class="btn-primary">Download ZIP</button>
         </div>
       </div>
-      <h2 id="project-title"></h2>
-      <div class="progress">
-        <div id="project-progress-bar" class="progress-bar"></div>
-      </div>
-      <p id="project-progress-label" class="muted"></p>
-      <div class="section-filter">
-        <label for="section-select">Section</label>
-        <select id="section-select"></select>
-        <span class="toggle-inline">
-          <span class="toggle-text">Hide checked</span>
-          <label class="switch">
-            <input type="checkbox" id="toggle-hide-checked" />
-            <span class="switch-slider"></span>
-          </label>
-        </span>
-      </div>
       <div class="project-body">
-        <div id="items-list" class="items-list"></div>
+        <div class="checklist-main">
+          <div class="checklist-head">
+            <h2 id="project-title"></h2>
+            <div class="progress">
+              <div id="project-progress-bar" class="progress-bar"></div>
+            </div>
+            <p id="project-progress-label" class="muted"></p>
+            <div class="section-filter">
+              <label for="section-select">Section</label>
+              <select id="section-select"></select>
+              <span class="toggle-inline">
+                <span class="toggle-text">Hide checked</span>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-hide-checked" />
+                  <span class="switch-slider"></span>
+                </label>
+              </span>
+            </div>
+          </div>
+          <div id="items-list" class="items-list"></div>
+        </div>
         <aside id="detail-panel" class="detail-panel">
+          <section class="panel-section" id="unit-selection">
+            <div class="panel-head-static"><span>Unit Selection</span></div>
+            <div class="panel-body">
+              <select id="viewer-unit-select"></select>
+            </div>
+          </section>
           <section class="panel-section" id="inputs-viewer">
             <button id="inputs-toggle" class="panel-head" type="button" aria-expanded="true">
-              <span>Inputs</span>
+              <span>Unit Details</span>
               <svg class="panel-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div id="inputs-body" class="panel-body">
-              <label class="viewer-unit-row">
-                <span>Unit</span>
-                <select id="viewer-unit-select"></select>
-              </label>
               <dl id="inputs-readout" class="inputs-readout"></dl>
             </div>
           </section>
