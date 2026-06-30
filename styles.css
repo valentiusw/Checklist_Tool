@@ -86,11 +86,15 @@ body {
 }
 
 .brand-mark {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   flex: none;
-  background: url("logo.svg") center / contain no-repeat;
+  background-color: #54585A;
+  -webkit-mask: url("logo.svg") center / contain no-repeat;
+  mask: url("logo.svg") center / contain no-repeat;
 }
+
+html[data-theme="dark"] .brand-mark { background-color: var(--text); }
 
 .brand-name { font-weight: 650; font-size: 15px; letter-spacing: -0.01em; }
 
@@ -678,7 +682,37 @@ input[type="checkbox"] {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
 }
-.editor-units-head { margin-top: 8px; }
+.editor-units-head { margin-top: 8px; text-align: center; }
+.editor-unit-counter { margin: 2px 0 12px; color: var(--text-muted); font-size: 13px; }
+
+/* ---- Units carousel -------------------------------------------------- */
+.unit-carousel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.unit-carousel-stage { flex: 1 1 auto; min-width: 0; }
+
+.carousel-nav {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.carousel-nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.carousel-nav:disabled { opacity: 0.3; cursor: default; }
+/* The next arrow turns into a + (add unit) when on the last unit. */
+.carousel-nav.carousel-add { border-color: var(--accent); color: var(--accent); font-size: 30px; }
 
 .unit-edit-card {
   background: var(--surface);
@@ -688,7 +722,9 @@ input[type="checkbox"] {
   padding: 14px 16px;
   margin-bottom: 14px;
 }
+.unit-edit-head { display: flex; align-items: center; gap: 10px; }
 .unit-edit-name {
+  flex: 1 1 auto;
   font: inherit;
   font-weight: 600;
   padding: 6px 8px;
@@ -696,21 +732,48 @@ input[type="checkbox"] {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  min-width: 200px;
+  min-width: 0;
 }
+.unit-delete-x {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--danger);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.unit-delete-x:hover:not(:disabled) { background: rgba(220, 38, 38, 0.12); }
+.unit-delete-x:disabled { opacity: 0.3; cursor: default; }
 .editor-input-label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
+  gap: 16px;
+  padding: 12px 0;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
 }
+.editor-input-label-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.4;
+}
 .editor-input-label input[type="number"],
 .editor-input-label select {
-  flex: none;
-  min-width: 160px;
+  flex: 0 0 auto;
+  width: 180px;
+  max-width: 50%;
+  min-width: 0;
+}
+.editor-input-label input[type="checkbox"] {
+  flex: 0 0 auto;
 }
 
 /* ---- Read-only inputs summary on the checklist ----------------------- */

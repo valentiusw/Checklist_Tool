@@ -354,56 +354,103 @@ function renderEditor() {
   nameInput.value = draft.name;
   nameInput.oninput = () => { draft.name = nameInput.value; markEditorDirty(); };
 
+  // Carousel: render one unit at a time. Clamp the index into range first.
+  if (state.editor.unitIndex == null) state.editor.unitIndex = 0;
+  const index = Math.max(0, Math.min(state.editor.unitIndex, draft.units.length - 1));
+  state.editor.unitIndex = index;
+  const unit = draft.units[index];
+
+  document.getElementById('editor-unit-counter').textContent =
+    `Unit ${index + 1} of ${draft.units.length}`;
+
+  // Previous arrow is disabled on the first unit.
+  document.getElementById('editor-prev-unit').disabled = index === 0;
+
+  // The next arrow becomes an "add" (+) action when on the last unit.
+  const nextBtn = document.getElementById('editor-next-unit');
+  const onLast = index === draft.units.length - 1;
+  nextBtn.classList.toggle('carousel-add', onLast);
+  nextBtn.textContent = onLast ? '+' : '›';
+  nextBtn.setAttribute('aria-label', onLast ? 'Add unit' : 'Next unit');
+
   const container = document.getElementById('editor-units');
   container.innerHTML = '';
-  draft.units.forEach((unit, index) => {
-    const card = document.createElement('div');
-    card.className = 'unit-edit-card';
+  const card = document.createElement('div');
+  card.className = 'unit-edit-card';
 
-    const head = document.createElement('div');
-    head.className = 'row-between';
-    const nameField = document.createElement('input');
-    nameField.type = 'text';
-    nameField.className = 'unit-edit-name';
-    nameField.value = unit.name;
-    nameField.placeholder = 'Unit name';
-    nameField.oninput = () => { unit.name = nameField.value; markEditorDirty(); };
-    head.appendChild(nameField);
+  const head = document.createElement('div');
+  head.className = 'unit-edit-head';
+  const nameField = document.createElement('input');
+  nameField.type = 'text';
+  nameField.className = 'unit-edit-name';
+  nameField.value = unit.name;
+  nameField.placeholder = 'Unit name';
+  nameField.oninput = () => { unit.name = nameField.value; markEditorDirty(); };
+  head.appendChild(nameField);
 
-    const del = document.createElement('button');
-    del.className = 'btn-sm btn-danger';
-    del.textContent = 'Delete';
-    del.disabled = draft.units.length <= 1;
-    del.addEventListener('click', () => {
-      draft.units.splice(index, 1);
-      markEditorDirty();
-      renderEditor();
-    });
-    head.appendChild(del);
-    card.appendChild(head);
-
-    for (const def of state.model.inputs) {
-      if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
-      const label = document.createElement('label');
-      label.className = 'editor-input-label';
-      label.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
-      const control = buildInputControl(def, unit.inputs[def.name], (v) => {
-        unit.inputs[def.name] = v;
-        markEditorDirty();
-      });
-      label.appendChild(control);
-      card.appendChild(label);
-    }
-    container.appendChild(card);
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'unit-delete-x';
+  del.innerHTML = '&times;';
+  del.setAttribute('aria-label', 'Delete unit');
+  del.disabled = draft.units.length <= 1;
+  del.addEventListener('click', () => {
+    if (!confirm('Delete this unit?')) return;
+    draft.units.splice(index, 1);
+    markEditorDirty();
+    renderEditor();
   });
+  head.appendChild(del);
+  card.appendChild(head);
+
+  for (const def of state.model.inputs) {
+    if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
+    const label = document.createElement('label');
+    label.className = 'editor-input-label';
+    const labelText = document.createElement('span');
+    labelText.className = 'editor-input-label-text';
+    labelText.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
+    label.appendChild(labelText);
+    const control = buildInputControl(def, unit.inputs[def.name], (v) => {
+      unit.inputs[def.name] = v;
+      markEditorDirty();
+    });
+    label.appendChild(control);
+    card.appendChild(label);
+  }
+  container.appendChild(card);
+}
+
+function prevEditorUnit() {
+  if (state.editor.unitIndex > 0) { state.editor.unitIndex--; renderEditor(); }
+}
+
+function nextEditorUnit() {
+  const draft = state.editor.draft;
+  if (state.editor.unitIndex < draft.units.length - 1) {
+    state.editor.unitIndex++;
+    renderEditor();
+  } else {
+    addEditorUnit();
+  }
+}
+
+function addEditorUnit() {
+  const draft = state.editor.draft;
+  draft.units.push(newDraftUnit(state.model, 'Unit ' + (draft.units.length + 1)));
+  state.editor.unitIndex = draft.units.length - 1;
+  markEditorDirty();
+  renderEditor();
+  const nameField = document.querySelector('#editor-units .unit-edit-name');
+  if (nameField) nameField.focus();
 }
 
 function openEditor(projectId) {
   if (!state.model) { alert('Load a checklist workbook in Setup first.'); return; }
   if (projectId) {
-    state.editor = { draft: state.store.getProject(projectId), isNew: false, dirty: false };
+    state.editor = { draft: state.store.getProject(projectId), isNew: false, dirty: false, unitIndex: 0 };
   } else {
-    state.editor = { draft: newBlankDraft(state.model), isNew: true, dirty: false };
+    state.editor = { draft: newBlankDraft(state.model), isNew: true, dirty: false, unitIndex: 0 };
   }
   showScreen('editor');
   renderEditor();
@@ -842,12 +889,8 @@ async function init() {
   document.getElementById('btn-edit-project').addEventListener('click', () => openEditor(state.currentProjectId));
   document.getElementById('editor-save').addEventListener('click', saveEditor);
   document.getElementById('editor-cancel').addEventListener('click', cancelEditor);
-  document.getElementById('btn-add-editor-unit').addEventListener('click', () => {
-    const draft = state.editor.draft;
-    draft.units.push(newDraftUnit(state.model, 'Unit ' + (draft.units.length + 1)));
-    markEditorDirty();
-    renderEditor();
-  });
+  document.getElementById('editor-prev-unit').addEventListener('click', prevEditorUnit);
+  document.getElementById('editor-next-unit').addEventListener('click', nextEditorUnit);
 
   document.getElementById('import-project-file').addEventListener('change', async e => {
     const file = e.target.files[0];

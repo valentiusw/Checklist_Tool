@@ -146,11 +146,15 @@
       </label>
       <p id="editor-name-error" class="status error" hidden>Project name is required</p>
 
-      <div class="row-between editor-units-head">
+      <div class="editor-units-head">
         <h3>Units</h3>
-        <button id="btn-add-editor-unit" class="btn-sm">+ Add unit</button>
+        <p id="editor-unit-counter" class="editor-unit-counter"></p>
       </div>
-      <div id="editor-units"></div>
+      <div class="unit-carousel">
+        <button id="editor-prev-unit" class="carousel-nav" type="button" aria-label="Previous unit">&lsaquo;</button>
+        <div id="editor-units" class="unit-carousel-stage"></div>
+        <button id="editor-next-unit" class="carousel-nav" type="button" aria-label="Next unit">&rsaquo;</button>
+      </div>
     </section>
 
     <section id="screen-about" class="screen" hidden>
