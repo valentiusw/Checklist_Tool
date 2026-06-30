@@ -773,12 +773,14 @@ function renderItemEditor() {
   body.querySelector('#ed-comment').addEventListener('input', e => {
     const p = getCurrentProject();
     const u = p.units.find(x => x.id === state.editorUnitId);
+    if (!u) return;
     u.comments[item.id] = e.target.value;
     saveCurrent(p);
   });
   body.querySelector('#ed-check').addEventListener('change', e => {
     const p = getCurrentProject();
     const u = p.units.find(x => x.id === state.editorUnitId);
+    if (!u) return;
     u.checks[item.id] = e.target.checked;
     saveCurrent(p);
     renderItems(getCurrentUnit());
