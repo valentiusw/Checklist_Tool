@@ -6,9 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart Checklist</title>
   <link rel="icon" href="logo.svg" type="image/svg+xml" />
-  <!-- Apply saved theme before first paint to avoid a flash. -->
+  <!-- Apply saved theme and sidebar state before first paint to avoid a flash. -->
   <script>
     try { if (localStorage.getItem('dpchecklist.theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
+    try { if (localStorage.getItem('dpchecklist.sidebar') === 'collapsed') document.documentElement.classList.add('sidebar-collapsed'); } catch (e) {}
   </script>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -31,11 +32,22 @@
         </button>
       </nav>
       <div class="side-foot">
+        <label class="side-link side-theme" title="Dark theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <span>Dark theme</span>
+          <span class="switch side-theme-switch">
+            <input type="checkbox" id="toggle-dark-side" />
+            <span class="switch-slider"></span>
+          </span>
+        </label>
         <button id="nav-setup" class="side-link" title="Settings &amp; setup" aria-label="Settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>Settings</span>
         </button>
       </div>
+      <button id="sidebar-toggle" class="sidebar-handle" type="button" aria-label="Collapse sidebar" aria-expanded="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 6 9 12 15 18"/></svg>
+      </button>
     </aside>
 
     <main>

@@ -847,12 +847,37 @@ function saveLibraryFile() {
 
 const THEME_KEY = 'dpchecklist.theme';
 function wireThemeToggle() {
-  const toggle = document.getElementById('toggle-dark');
-  toggle.checked = document.documentElement.getAttribute('data-theme') === 'dark';
-  toggle.addEventListener('change', () => {
-    const dark = toggle.checked;
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    try { window.localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch { /* ignore */ }
+  // Two synced checkboxes: one in Setup, one at the bottom of the sidebar.
+  const toggles = ['toggle-dark', 'toggle-dark-side']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+  const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+  toggles.forEach(t => { t.checked = isDark(); });
+  toggles.forEach(toggle => {
+    toggle.addEventListener('change', () => {
+      const dark = toggle.checked;
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      try { window.localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch { /* ignore */ }
+      toggles.forEach(t => { t.checked = dark; });
+    });
+  });
+}
+
+const SIDEBAR_KEY = 'dpchecklist.sidebar';
+function wireSidebarToggle() {
+  const btn = document.getElementById('sidebar-toggle');
+  if (!btn) return;
+  const apply = (collapsed) => {
+    document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    btn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+  };
+  // Reflect the state already applied pre-paint by the <head> bootstrap.
+  apply(document.documentElement.classList.contains('sidebar-collapsed'));
+  btn.addEventListener('click', () => {
+    const collapsed = !document.documentElement.classList.contains('sidebar-collapsed');
+    apply(collapsed);
+    try { window.localStorage.setItem(SIDEBAR_KEY, collapsed ? 'collapsed' : 'expanded'); } catch { /* ignore */ }
   });
 }
 
@@ -877,6 +902,7 @@ async function init() {
   state.store.load(snap.projects);
   wireSetup();
   wireThemeToggle();
+  wireSidebarToggle();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
   document.getElementById('nav-about').addEventListener('click', () => showScreen('about'));
   document.getElementById('nav-setup').addEventListener('click', () => showScreen('setup'));
