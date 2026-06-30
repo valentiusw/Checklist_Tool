@@ -345,6 +345,13 @@ function buildInputControl(def, value, onChange) {
 
 function markEditorDirty() { if (state.editor) state.editor.dirty = true; }
 
+// Thin line icons for the unit carousel controls. currentColor lets the button
+// state (hover / disabled / add) drive the colour; flex centring keeps them
+// perfectly centred in the button.
+const ICON_PREV = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 5 5 12 12 19"/></svg>';
+const ICON_NEXT = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+const ICON_ADD = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+
 function renderEditor() {
   const { draft, isNew } = state.editor;
   document.getElementById('editor-heading').textContent = isNew ? 'New project' : 'Edit project';
@@ -364,13 +371,15 @@ function renderEditor() {
     `Unit ${index + 1} of ${draft.units.length}`;
 
   // Previous arrow is disabled on the first unit.
-  document.getElementById('editor-prev-unit').disabled = index === 0;
+  const prevBtn = document.getElementById('editor-prev-unit');
+  prevBtn.disabled = index === 0;
+  prevBtn.innerHTML = ICON_PREV;
 
   // The next arrow becomes an "add" (+) action when on the last unit.
   const nextBtn = document.getElementById('editor-next-unit');
   const onLast = index === draft.units.length - 1;
   nextBtn.classList.toggle('carousel-add', onLast);
-  nextBtn.textContent = onLast ? '+' : '›';
+  nextBtn.innerHTML = onLast ? ICON_ADD : ICON_NEXT;
   nextBtn.setAttribute('aria-label', onLast ? 'Add unit' : 'Next unit');
 
   const container = document.getElementById('editor-units');

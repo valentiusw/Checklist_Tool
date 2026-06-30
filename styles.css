@@ -695,24 +695,31 @@ input[type="checkbox"] {
 
 .carousel-nav {
   flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid var(--border-strong);
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--text);
-  font-size: 26px;
-  line-height: 1;
+  color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  box-shadow: var(--shadow);
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.08s;
 }
-.carousel-nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.carousel-nav:disabled { opacity: 0.3; cursor: default; }
+.carousel-nav svg { display: block; }
+.carousel-nav:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 2px 4px rgba(20, 23, 28, .06), 0 8px 22px rgba(20, 23, 28, .08);
+}
+.carousel-nav:active:not(:disabled) { transform: translateY(1px); }
+.carousel-nav:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
 /* The next arrow turns into a + (add unit) when on the last unit. */
-.carousel-nav.carousel-add { border-color: var(--accent); color: var(--accent); font-size: 30px; }
+.carousel-nav.carousel-add { color: var(--accent); border-color: var(--accent); }
+.carousel-nav.carousel-add:hover:not(:disabled) { background: var(--accent-soft); }
 
 .unit-edit-card {
   background: var(--surface);
