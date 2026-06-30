@@ -8,6 +8,7 @@ import { readLegacy } from './legacyMigration.js';
 import * as fileBackup from './fileBackup.js';
 import { buildSnapshot, parseSnapshot, chooseNewer } from './librarySnapshot.js';
 import { defaultInputValue, validateDraft, newBlankDraft, newDraftUnit } from './projectDraft.js';
+import { itemApplicableUnits } from './checklistView.js';
 
 const state = {
   model: null,
@@ -18,6 +19,8 @@ const state = {
   hideChecked: false,
   editor: null, // { draft, isNew, dirty }
   viewerUnitId: null,
+  editorItemId: null,
+  editorUnitId: null,
 };
 
 const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
@@ -613,6 +616,10 @@ function renderItems(unit) {
     });
     div.appendChild(ta);
     container.appendChild(div);
+    div.addEventListener('click', e => {
+      if (e.target.closest('input, textarea, button')) return;
+      openItemEditor(item.id, state.currentUnitId);
+    });
   }
 
   if (visible.length === 0) {
@@ -631,6 +638,7 @@ function renderItems(unit) {
       saveCurrent(project);
       renderItems(u);
       renderProgress();
+      renderItemEditor();
     }));
   container.querySelectorAll('[data-example]').forEach(btn =>
     btn.addEventListener('click', () => openExample(btn.getAttribute('data-example'))));
@@ -713,6 +721,73 @@ function renderInputsViewer() {
   }
 }
 
+function openItemEditor(itemId, unitId) {
+  const item = state.model.items.find(i => i.id === itemId);
+  if (!item) return;
+  const applicable = itemApplicableUnits(state.model, getCurrentProject(), item);
+  state.editorItemId = itemId;
+  if (unitId && applicable.some(u => u.id === unitId)) state.editorUnitId = unitId;
+  else if (!applicable.some(u => u.id === state.editorUnitId)) {
+    state.editorUnitId = applicable[0] ? applicable[0].id : null;
+  }
+  renderItemEditor();
+}
+
+function renderItemEditor() {
+  const empty = document.getElementById('editor-empty');
+  const body = document.getElementById('item-editor-body');
+  const item = state.editorItemId
+    ? state.model.items.find(i => i.id === state.editorItemId) : null;
+  const project = getCurrentProject();
+  const applicable = item ? itemApplicableUnits(state.model, project, item) : [];
+  if (!item || applicable.length === 0) {
+    empty.hidden = false; body.hidden = true; body.innerHTML = '';
+    return;
+  }
+  empty.hidden = true; body.hidden = false;
+  const unit = applicable.find(u => u.id === state.editorUnitId) || applicable[0];
+  state.editorUnitId = unit.id;
+
+  body.innerHTML = `
+    <div class="ed-item-head">
+      <span class="id">${escapeHtml(item.id)}</span>
+      ${item.code ? `<span class="code-tag">${escapeHtml(item.code)}</span>` : ''}
+      ${item.exampleFile ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleFile)}" title="View example" aria-label="View example">${INFO_ICON}</button>` : ''}
+    </div>
+    <p class="ed-desc">${escapeHtml(item.description)}</p>
+    ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
+    <label class="ed-unit-row"><span>Unit</span><select id="ed-unit-select"></select></label>
+    <label class="ed-check-row"><input type="checkbox" id="ed-check" ${unit.checks[item.id] === true ? 'checked' : ''}/> <span>Checked for this unit</span></label>
+    <textarea id="ed-comment" class="ed-comment" rows="4" placeholder="Comment for this unit…"></textarea>`;
+
+  const sel = body.querySelector('#ed-unit-select');
+  for (const u of applicable) {
+    const opt = document.createElement('option');
+    opt.value = u.id; opt.textContent = u.name;
+    if (u.id === unit.id) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change', () => { state.editorUnitId = sel.value; renderItemEditor(); });
+
+  body.querySelector('#ed-comment').value = unit.comments[item.id] || '';
+  body.querySelector('#ed-comment').addEventListener('input', e => {
+    const p = getCurrentProject();
+    const u = p.units.find(x => x.id === state.editorUnitId);
+    u.comments[item.id] = e.target.value;
+    saveCurrent(p);
+  });
+  body.querySelector('#ed-check').addEventListener('change', e => {
+    const p = getCurrentProject();
+    const u = p.units.find(x => x.id === state.editorUnitId);
+    u.checks[item.id] = e.target.checked;
+    saveCurrent(p);
+    renderItems(getCurrentUnit());
+    renderProgress();
+  });
+  const info = body.querySelector('[data-example]');
+  if (info) info.addEventListener('click', () => openExample(info.getAttribute('data-example')));
+}
+
 function renderProgress() {
   const project = getCurrentProject();
   const unit = getCurrentUnit();
@@ -762,6 +837,7 @@ function renderProject() {
   for (const u of project.units) ensureUnitInputs(u);
   saveCurrent(project); // persist any defaults just applied
   renderInputsViewer();
+  renderItemEditor();
   renderItems(unitOf(project));
   renderProgress();
 }

@@ -842,3 +842,11 @@ input[type="checkbox"] {
   .detail-panel { width: 100%; flex-basis: auto; position: static; }
 }
 
+
+.ed-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ed-desc { margin: 0 0 10px; font-weight: 600; }
+.ed-unit-row { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; }
+.ed-unit-row select { flex: 1; }
+.ed-check-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ed-comment { width: 100%; box-sizing: border-box; resize: vertical; }
+.items-list .item { cursor: pointer; }
