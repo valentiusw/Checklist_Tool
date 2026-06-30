@@ -817,6 +817,7 @@ function renderSectionFilter() {
 function renderProject() {
   const project = getCurrentProject();
   if (!project) { showScreen('dashboard'); return; }
+  applyDetailWidth(storedDetailWidth());
   if (!getCurrentUnit()) state.currentUnitId = project.units[0].id;
   document.getElementById('project-title').textContent = project.name;
   renderSectionFilter();
@@ -944,6 +945,77 @@ function wireThemeToggle() {
   });
 }
 
+// --- Resizable cards: drag the splitter to trade width between the two cards.
+const SPLIT_KEY = 'dpchecklist.detailWidth';
+const MIN_CARD_WIDTH = 280;
+
+function projectBodyEl() {
+  return document.querySelector('#screen-project .project-body');
+}
+
+// Clamp a desired detail-card width so neither card drops below MIN_CARD_WIDTH.
+function clampDetailWidth(px, body) {
+  const splitter = document.getElementById('card-splitter');
+  const sw = splitter ? splitter.offsetWidth : 16;
+  const max = body.clientWidth - MIN_CARD_WIDTH - sw;
+  if (max < MIN_CARD_WIDTH) return Math.max(0, max); // window too narrow to honor both mins
+  return Math.max(MIN_CARD_WIDTH, Math.min(px, max));
+}
+
+// Apply (clamped) detail width to the project body's --detail-w variable.
+function applyDetailWidth(px) {
+  const body = projectBodyEl();
+  if (!body || body.clientWidth <= 0) return;
+  body.style.setProperty('--detail-w', clampDetailWidth(px, body) + 'px');
+}
+
+function storedDetailWidth() {
+  let v = NaN;
+  try { v = Number(window.localStorage.getItem(SPLIT_KEY)); } catch { /* ignore */ }
+  return Number.isFinite(v) && v > 0 ? v : 350;
+}
+
+function currentDetailWidth(body) {
+  return parseFloat(getComputedStyle(body).getPropertyValue('--detail-w')) || storedDetailWidth();
+}
+
+function wireCardSplitter() {
+  const splitter = document.getElementById('card-splitter');
+  if (!splitter) return;
+  let dragging = false;
+  splitter.addEventListener('pointerdown', (e) => {
+    if (!projectBodyEl()) return;
+    dragging = true;
+    splitter.classList.add('dragging');
+    try { splitter.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    e.preventDefault();
+  });
+  splitter.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const body = projectBodyEl();
+    if (!body) return;
+    applyDetailWidth(body.getBoundingClientRect().right - e.clientX);
+  });
+  const end = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    splitter.classList.remove('dragging');
+    try { splitter.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    const body = projectBodyEl();
+    if (body) {
+      try { window.localStorage.setItem(SPLIT_KEY, String(Math.round(currentDetailWidth(body)))); } catch { /* ignore */ }
+    }
+  };
+  splitter.addEventListener('pointerup', end);
+  splitter.addEventListener('pointercancel', end);
+  // Keep the stored width valid when the window resizes.
+  window.addEventListener('resize', () => {
+    const screen = document.getElementById('screen-project');
+    const body = projectBodyEl();
+    if (body && screen && !screen.hidden) applyDetailWidth(currentDetailWidth(body));
+  });
+}
+
 const SIDEBAR_KEY = 'dpchecklist.sidebar';
 function wireSidebarToggle() {
   const btn = document.getElementById('sidebar-toggle');
@@ -984,6 +1056,7 @@ async function init() {
   wireSetup();
   wireThemeToggle();
   wireSidebarToggle();
+  wireCardSplitter();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
   document.getElementById('nav-about').addEventListener('click', () => showScreen('about'));
   document.getElementById('nav-setup').addEventListener('click', () => showScreen('setup'));
