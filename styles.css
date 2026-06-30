@@ -813,3 +813,32 @@ input[type="checkbox"] {
   flex: 0 0 auto;
 }
 
+/* Two-column checklist: list + docked detail panel */
+.project-body { display: flex; align-items: flex-start; gap: 20px; }
+.items-list { flex: 1 1 auto; min-width: 0; }
+.detail-panel {
+  flex: 0 0 340px; width: 340px; position: sticky; top: 16px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.panel-section { border: 1px solid var(--border, #d8dde3); border-radius: 10px; background: var(--card, #fff); overflow: hidden; }
+.panel-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: none; border: none; cursor: pointer;
+  font-weight: 600; font-size: 0.95rem; color: inherit;
+}
+.panel-chevron { transition: transform 0.15s ease; }
+.panel-section.collapsed .panel-chevron { transform: rotate(-90deg); }
+.panel-section.collapsed .panel-body { display: none; }
+.panel-body { padding: 0 14px 14px; }
+.viewer-unit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.viewer-unit-row select { flex: 1; }
+.inputs-readout { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; }
+.inputs-readout dt { color: var(--muted, #6b7480); font-size: 0.85rem; }
+.inputs-readout dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.editor-empty { padding: 14px; font-size: 0.9rem; }
+.item-editor-body { padding: 14px; }
+@media (max-width: 900px) {
+  .project-body { flex-direction: column; }
+  .detail-panel { width: 100%; flex-basis: auto; position: static; }
+}
+

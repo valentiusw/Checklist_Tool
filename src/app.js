@@ -17,6 +17,7 @@ const state = {
   sectionFilter: '',
   hideChecked: false,
   editor: null, // { draft, isNew, dirty }
+  viewerUnitId: null,
 };
 
 const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
@@ -678,6 +679,40 @@ function showLightbox(url, name) {
   document.body.appendChild(overlay);
 }
 
+function formatInputValue(def, value) {
+  if (def.type === 'Boolean') return value === true ? 'Yes' : 'No';
+  if (value === '' || value == null) return '—';
+  return String(value);
+}
+
+function renderInputsViewer() {
+  const project = getCurrentProject();
+  if (!project) return;
+  const sel = document.getElementById('viewer-unit-select');
+  // Default the viewer to the project's first unit (or keep a valid prior pick).
+  if (!project.units.some(u => u.id === state.viewerUnitId)) {
+    state.viewerUnitId = project.units[0] ? project.units[0].id : null;
+  }
+  sel.innerHTML = '';
+  for (const u of project.units) {
+    const opt = document.createElement('option');
+    opt.value = u.id; opt.textContent = u.name;
+    if (u.id === state.viewerUnitId) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  const unit = project.units.find(u => u.id === state.viewerUnitId);
+  const dl = document.getElementById('inputs-readout');
+  dl.innerHTML = '';
+  if (!unit) return;
+  for (const def of state.model.inputs) {
+    const dt = document.createElement('dt');
+    dt.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
+    const dd = document.createElement('dd');
+    dd.textContent = formatInputValue(def, unit.inputs[def.name]);
+    dl.append(dt, dd);
+  }
+}
+
 function renderProgress() {
   const project = getCurrentProject();
   const unit = getCurrentUnit();
@@ -724,11 +759,10 @@ function renderProject() {
   document.getElementById('project-title').textContent = project.name;
   renderUnitBar();
   renderSectionFilter();
-  const unit = unitOf(project);
-  ensureUnitInputs(unit);
-  // persist any defaults just applied (unit belongs to `project`, so they are saved)
-  saveCurrent(project);
-  renderItems(unit);
+  for (const u of project.units) ensureUnitInputs(u);
+  saveCurrent(project); // persist any defaults just applied
+  renderInputsViewer();
+  renderItems(unitOf(project));
   renderProgress();
 }
 
@@ -900,6 +934,15 @@ async function init() {
   document.getElementById('section-select').addEventListener('change', e => {
     state.sectionFilter = e.target.value;
     renderItems(getCurrentUnit());
+  });
+  document.getElementById('viewer-unit-select').addEventListener('change', e => {
+    state.viewerUnitId = e.target.value;
+    renderInputsViewer();
+  });
+  document.getElementById('inputs-toggle').addEventListener('click', () => {
+    const section = document.getElementById('inputs-viewer');
+    const collapsed = section.classList.toggle('collapsed');
+    document.getElementById('inputs-toggle').setAttribute('aria-expanded', String(!collapsed));
   });
   document.getElementById('toggle-hide-checked').addEventListener('change', e => {
     state.hideChecked = e.target.checked;

@@ -142,6 +142,25 @@
       </div>
       <div class="project-body">
         <div id="items-list" class="items-list"></div>
+        <aside id="detail-panel" class="detail-panel">
+          <section class="panel-section" id="inputs-viewer">
+            <button id="inputs-toggle" class="panel-head" type="button" aria-expanded="true">
+              <span>Inputs</span>
+              <svg class="panel-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div id="inputs-body" class="panel-body">
+              <label class="viewer-unit-row">
+                <span>Unit</span>
+                <select id="viewer-unit-select"></select>
+              </label>
+              <dl id="inputs-readout" class="inputs-readout"></dl>
+            </div>
+          </section>
+          <section class="panel-section" id="item-editor">
+            <div id="editor-empty" class="editor-empty muted">Select an item to add a comment and check it off per unit.</div>
+            <div id="item-editor-body" class="item-editor-body" hidden></div>
+          </section>
+        </aside>
       </div>
     </section>
 
