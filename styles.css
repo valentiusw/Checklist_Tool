@@ -919,8 +919,8 @@ input[type="checkbox"] {
   cursor: col-resize; touch-action: none; background: transparent;
 }
 .card-splitter::before {
-  content: ''; position: absolute; top: 0; bottom: 0; left: 50%;
-  width: 2px; transform: translateX(-50%);
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 2px; height: 120px; transform: translate(-50%, -50%);
   background: var(--border); border-radius: 2px;
   transition: background .12s ease;
 }
