@@ -905,7 +905,29 @@ input[type="checkbox"] {
   [data-screen="project"] #items-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
   /* Right bubble: static (not sticky); scrolls its own content */
   [data-screen="project"] .detail-panel {
-    position: static; top: auto; flex: 0 0 350px; width: 350px;
+    position: static; top: auto;
+    flex: 0 0 var(--detail-w, 350px); width: var(--detail-w, 350px);
     min-height: 0; overflow-y: auto;
   }
+  [data-screen="project"] .project-body { gap: 0; }
 }
+
+/* ===== Resizable cards: draggable splitter + hidden checklist scrollbar ===== */
+/* Slim vertical splitter that trades width between the two cards (desktop only). */
+.card-splitter {
+  flex: 0 0 16px; align-self: stretch; position: relative;
+  cursor: col-resize; touch-action: none; background: transparent;
+}
+.card-splitter::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 50%;
+  width: 2px; transform: translateX(-50%);
+  background: var(--border); border-radius: 2px;
+  transition: background .12s ease;
+}
+.card-splitter:hover::before,
+.card-splitter.dragging::before { background: var(--accent); }
+@media (max-width: 900px) { .card-splitter { display: none; } }
+
+/* Hide the Checklist card's scrollbar but keep it scrollable. */
+[data-screen="project"] #items-list { scrollbar-width: none; }
+[data-screen="project"] #items-list::-webkit-scrollbar { display: none; }
