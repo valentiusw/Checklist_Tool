@@ -850,3 +850,15 @@ input[type="checkbox"] {
 .ed-check-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .ed-comment { width: 100%; box-sizing: border-box; resize: vertical; }
 .items-list .item { cursor: pointer; }
+
+.unit-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.unit-tag {
+  font-size: 0.78rem; line-height: 1; padding: 4px 8px; border-radius: 999px;
+  border: 1px solid var(--accent, #2f6feb); color: var(--accent, #2f6feb);
+  background: none; cursor: pointer;
+}
+.unit-tag.done {
+  background: var(--accent, #2f6feb); color: #fff;
+}
+.unit-tag.done::before { content: '✓ '; }
+.items-list .item input[type=checkbox]:indeterminate { opacity: 0.85; }

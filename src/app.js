@@ -8,7 +8,7 @@ import { readLegacy } from './legacyMigration.js';
 import * as fileBackup from './fileBackup.js';
 import { buildSnapshot, parseSnapshot, chooseNewer } from './librarySnapshot.js';
 import { defaultInputValue, validateDraft, newBlankDraft, newDraftUnit } from './projectDraft.js';
-import { itemApplicableUnits } from './checklistView.js';
+import { itemApplicableUnits, itemCheckState, unifiedItems } from './checklistView.js';
 
 const state = {
   model: null,
@@ -566,22 +566,29 @@ function ensureUnitInputs(unit) {
 // Circular info button shown on items that carry an example file (image/PDF).
 const INFO_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8"/></svg>`;
 
-function renderItems(unit) {
+function renderItems() {
   const container = document.getElementById('items-list');
   container.innerHTML = '';
-  let items = applicableItems(state.model, unit.inputs);
+  const project = getCurrentProject();
+  let items = unifiedItems(state.model, project);
   if (state.sectionFilter) items = items.filter(i => i.sectionPrefix === state.sectionFilter);
 
-  // Per-section totals computed from the full applicable list so the counts
-  // stay stable regardless of the "hide checked" view filter.
+  // Precompute applicable units + tri-state per item.
+  const meta = new Map();
+  for (const i of items) {
+    const units = itemApplicableUnits(state.model, project, i);
+    meta.set(i.id, { units, state: itemCheckState(i, units) });
+  }
+
+  // Section totals from the full (pre hide-checked) list. Done = fully checked.
   const total = new Map();
   const done = new Map();
   for (const i of items) {
     total.set(i.section, (total.get(i.section) || 0) + 1);
-    if (unit.checks[i.id] === true) done.set(i.section, (done.get(i.section) || 0) + 1);
+    if (meta.get(i.id).state === 'all') done.set(i.section, (done.get(i.section) || 0) + 1);
   }
 
-  const visible = state.hideChecked ? items.filter(i => unit.checks[i.id] !== true) : items;
+  const visible = state.hideChecked ? items.filter(i => meta.get(i.id).state !== 'all') : items;
   let currentSection = null;
   for (const item of visible) {
     if (item.section !== currentSection) {
@@ -592,33 +599,30 @@ function renderItems(unit) {
         `<span class="section-count">${done.get(currentSection) || 0} / ${total.get(currentSection) || 0}</span>`;
       container.appendChild(h);
     }
-    const checked = unit.checks[item.id] === true;
+    const { units, state: cs } = meta.get(item.id);
     const div = document.createElement('div');
-    div.className = 'item' + (checked ? ' checked' : '');
+    div.className = 'item' + (cs === 'all' ? ' checked' : '');
+    const tags = units.map(u =>
+      `<button type="button" class="unit-tag${u.checks[item.id] === true ? ' done' : ''}" data-tag-item="${escapeHtml(item.id)}" data-tag-unit="${escapeHtml(u.id)}">${escapeHtml(u.name)}</button>`
+    ).join('');
     div.innerHTML = `
       <div class="item-head">
-        <input type="checkbox" data-check="${escapeHtml(item.id)}" ${checked ? 'checked' : ''} />
+        <input type="checkbox" data-check="${escapeHtml(item.id)}" />
         <div>
           <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}
           ${item.code ? `<span class="code-tag">${escapeHtml(item.code)}</span>` : ''}
           ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
+          <div class="unit-tags">${tags}</div>
         </div>
         ${item.exampleFile ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleFile)}" title="View example" aria-label="View example for ${escapeHtml(item.id)}">${INFO_ICON}</button>` : ''}
       </div>`;
-    const ta = document.createElement('textarea');
-    ta.placeholder = 'Your comment for this item…';
-    ta.rows = 2;
-    ta.value = unit.comments[item.id] || '';
-    ta.addEventListener('input', () => {
-      const { project, unit: u } = getCurrentProjectAndUnit();
-      u.comments[item.id] = ta.value;
-      saveCurrent(project);
-    });
-    div.appendChild(ta);
+    const cb = div.querySelector('[data-check]');
+    cb.checked = cs === 'all';
+    cb.indeterminate = cs === 'some';
     container.appendChild(div);
     div.addEventListener('click', e => {
       if (e.target.closest('input, textarea, button')) return;
-      openItemEditor(item.id, state.currentUnitId);
+      openItemEditor(item.id, state.viewerUnitId);
     });
   }
 
@@ -633,15 +637,27 @@ function renderItems(unit) {
 
   container.querySelectorAll('[data-check]').forEach(cb =>
     cb.addEventListener('change', () => {
-      const { project, unit: u } = getCurrentProjectAndUnit();
-      u.checks[cb.getAttribute('data-check')] = cb.checked;
-      saveCurrent(project);
-      renderItems(u);
+      const itemId = cb.getAttribute('data-check');
+      const item = state.model.items.find(i => i.id === itemId);
+      const p = getCurrentProject();
+      const applicable = itemApplicableUnits(state.model, p, item);
+      const target = itemCheckState(item, applicable) !== 'all';
+      for (const u of applicable) {
+        const live = p.units.find(x => x.id === u.id);
+        live.checks[itemId] = target;
+      }
+      saveCurrent(p);
+      renderItems();
       renderProgress();
       renderItemEditor();
     }));
+  container.querySelectorAll('[data-tag-item]').forEach(tag =>
+    tag.addEventListener('click', e => {
+      e.stopPropagation();
+      openItemEditor(tag.getAttribute('data-tag-item'), tag.getAttribute('data-tag-unit'));
+    }));
   container.querySelectorAll('[data-example]').forEach(btn =>
-    btn.addEventListener('click', () => openExample(btn.getAttribute('data-example'))));
+    btn.addEventListener('click', e => { e.stopPropagation(); openExample(btn.getAttribute('data-example')); }));
 }
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
@@ -792,25 +808,10 @@ function renderItemEditor() {
 
 function renderProgress() {
   const project = getCurrentProject();
-  const unit = getCurrentUnit();
-  const u = computeProgress(state.model, unit);
   const all = computeProjectProgress(state.model, project);
-  document.getElementById('project-progress-bar').style.width = Math.round(u.ratio * 100) + '%';
+  document.getElementById('project-progress-bar').style.width = Math.round(all.ratio * 100) + '%';
   document.getElementById('project-progress-label').textContent =
-    `${u.checked} / ${u.applicable} checked in this unit · ${all.checked} / ${all.applicable} across project`;
-}
-
-function renderUnitBar() {
-  const project = getCurrentProject();
-  const sel = document.getElementById('unit-select');
-  sel.innerHTML = '';
-  for (const u of project.units) {
-    const opt = document.createElement('option');
-    opt.value = u.id;
-    opt.textContent = u.name;
-    if (u.id === state.currentUnitId) opt.selected = true;
-    sel.appendChild(opt);
-  }
+    `${all.checked} / ${all.applicable} checked across project`;
 }
 
 function renderSectionFilter() {
@@ -834,13 +835,12 @@ function renderProject() {
   if (!project) { showScreen('dashboard'); return; }
   if (!getCurrentUnit()) state.currentUnitId = project.units[0].id;
   document.getElementById('project-title').textContent = project.name;
-  renderUnitBar();
   renderSectionFilter();
   for (const u of project.units) ensureUnitInputs(u);
   saveCurrent(project); // persist any defaults just applied
   renderInputsViewer();
   renderItemEditor();
-  renderItems(unitOf(project));
+  renderItems();
   renderProgress();
 }
 
@@ -1005,13 +1005,9 @@ async function init() {
   document.getElementById('nav-setup').addEventListener('click', () => showScreen('setup'));
   document.getElementById('btn-back').addEventListener('click', () => showScreen('dashboard'));
 
-  document.getElementById('unit-select').addEventListener('change', e => {
-    state.currentUnitId = e.target.value;
-    renderProject();
-  });
   document.getElementById('section-select').addEventListener('change', e => {
     state.sectionFilter = e.target.value;
-    renderItems(getCurrentUnit());
+    renderItems();
   });
   document.getElementById('viewer-unit-select').addEventListener('change', e => {
     state.viewerUnitId = e.target.value;
@@ -1024,7 +1020,7 @@ async function init() {
   });
   document.getElementById('toggle-hide-checked').addEventListener('change', e => {
     state.hideChecked = e.target.checked;
-    renderItems(getCurrentUnit());
+    renderItems();
   });
   document.getElementById('btn-new-project').addEventListener('click', () => openEditor(null));
   document.getElementById('btn-edit-project').addEventListener('click', () => openEditor(state.currentProjectId));
