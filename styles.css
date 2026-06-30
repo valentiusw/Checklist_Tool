@@ -885,3 +885,25 @@ input[type="checkbox"] {
   border-bottom: 1px solid var(--border);
 }
 [data-screen="project"] .detail-panel .panel-section:last-child { border-bottom: none; }
+/* ===== Two-bubble project screen — app-like independent scroll (desktop) ===== */
+@media (min-width: 901px) {
+  /* The project screen fills the viewport; the page itself doesn't scroll here. */
+  [data-screen="project"] main { height: 100vh; overflow: hidden; }
+  [data-screen="project"] #screen-project {
+    max-width: none; padding: 0; height: 100%;
+    background: none; border: none; box-shadow: none;
+    display: flex; flex-direction: column;
+  }
+  [data-screen="project"] .project-body {
+    flex: 1 1 auto; min-height: 0; align-items: stretch; margin: 0;
+  }
+  /* Left bubble: header pinned, only the list scrolls */
+  [data-screen="project"] .checklist-main { min-height: 0; }
+  [data-screen="project"] .checklist-head { flex: none; }
+  [data-screen="project"] #items-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  /* Right bubble: static (not sticky); scrolls its own content */
+  [data-screen="project"] .detail-panel {
+    position: static; top: auto; flex: 0 0 350px; width: 350px;
+    min-height: 0; overflow-y: auto;
+  }
+}
