@@ -27,6 +27,7 @@ const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
 // Which sidebar link is highlighted for each screen (project lives under Projects).
 const NAV_FOR_SCREEN = { setup: 'nav-setup', dashboard: 'nav-dashboard', project: 'nav-dashboard', about: 'nav-about', editor: 'nav-dashboard' };
 function showScreen(name) {
+  document.documentElement.dataset.screen = name;
   for (const s of screens) {
     document.getElementById('screen-' + s).hidden = s !== name;
   }

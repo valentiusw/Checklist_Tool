@@ -853,3 +853,35 @@ input[type="checkbox"] {
   font-weight: 600; font-size: 0.95rem;
 }
 #unit-selection select { width: 100%; }
+
+/* ===== Two-bubble project screen — bubble visuals (all widths) ===== */
+/* Each pane becomes a rounded, theme-aware bubble card. */
+[data-screen="project"] .checklist-main,
+[data-screen="project"] .detail-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+/* Left bubble: flat pinned header over flat rows (no nested cards) */
+[data-screen="project"] .checklist-main { gap: 0; overflow: hidden; }
+[data-screen="project"] .checklist-head {
+  border: none; border-radius: 0; background: none;
+  border-bottom: 1px solid var(--border);
+}
+[data-screen="project"] .items-list { padding: 4px 18px 8px; }
+[data-screen="project"] .items-list .item {
+  border: none; border-radius: 0; background: none;
+  margin: 0; padding: 14px 2px;
+  border-bottom: 1px solid var(--border);
+}
+[data-screen="project"] .items-list .item:last-child { border-bottom: none; }
+[data-screen="project"] .items-list .item:hover { background: var(--surface-muted); }
+[data-screen="project"] .items-list .item.checked { background: none; }
+/* Right bubble: flatten the three sections into one card with dividers */
+[data-screen="project"] .detail-panel { gap: 0; }
+[data-screen="project"] .detail-panel .panel-section {
+  border: none; border-radius: 0; background: none; overflow: visible;
+  border-bottom: 1px solid var(--border);
+}
+[data-screen="project"] .detail-panel .panel-section:last-child { border-bottom: none; }
