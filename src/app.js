@@ -571,11 +571,11 @@ function renderItems() {
   let items = unifiedItems(state.model, project);
   if (state.sectionFilter) items = items.filter(i => i.sectionPrefix === state.sectionFilter);
 
-  // Precompute applicable units + tri-state per item.
-  const meta = new Map();
+  // Tri-state per item (drives the checkbox and the section counts).
+  const stateById = new Map();
   for (const i of items) {
     const units = itemApplicableUnits(state.model, project, i);
-    meta.set(i.id, { units, state: itemCheckState(i, units) });
+    stateById.set(i.id, itemCheckState(i, units));
   }
 
   // Section totals from the full (pre hide-checked) list. Done = fully checked.
@@ -583,10 +583,10 @@ function renderItems() {
   const done = new Map();
   for (const i of items) {
     total.set(i.section, (total.get(i.section) || 0) + 1);
-    if (meta.get(i.id).state === 'all') done.set(i.section, (done.get(i.section) || 0) + 1);
+    if (stateById.get(i.id) === 'all') done.set(i.section, (done.get(i.section) || 0) + 1);
   }
 
-  const visible = state.hideChecked ? items.filter(i => meta.get(i.id).state !== 'all') : items;
+  const visible = state.hideChecked ? items.filter(i => stateById.get(i.id) !== 'all') : items;
   let currentSection = null;
   for (const item of visible) {
     if (item.section !== currentSection) {
@@ -597,20 +597,14 @@ function renderItems() {
         `<span class="section-count">${done.get(currentSection) || 0} / ${total.get(currentSection) || 0}</span>`;
       container.appendChild(h);
     }
-    const { units, state: cs } = meta.get(item.id);
+    const cs = stateById.get(item.id);
     const div = document.createElement('div');
     div.className = 'item' + (cs === 'all' ? ' checked' : '');
-    const tags = units.map(u =>
-      `<button type="button" class="unit-tag${u.checks[item.id] === true ? ' done' : ''}" data-tag-item="${escapeHtml(item.id)}" data-tag-unit="${escapeHtml(u.id)}">${escapeHtml(u.name)}</button>`
-    ).join('');
     div.innerHTML = `
       <div class="item-head">
         <input type="checkbox" data-check="${escapeHtml(item.id)}" />
         <div>
           <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}
-          ${item.code ? `<span class="code-tag">${escapeHtml(item.code)}</span>` : ''}
-          ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
-          <div class="unit-tags">${tags}</div>
         </div>
         ${item.exampleFile ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleFile)}" title="View example" aria-label="View example for ${escapeHtml(item.id)}">${INFO_ICON}</button>` : ''}
       </div>`;
@@ -648,11 +642,6 @@ function renderItems() {
       renderItems();
       renderProgress();
       renderItemEditor();
-    }));
-  container.querySelectorAll('[data-tag-item]').forEach(tag =>
-    tag.addEventListener('click', e => {
-      e.stopPropagation();
-      openItemEditor(tag.getAttribute('data-tag-item'), tag.getAttribute('data-tag-unit'));
     }));
   container.querySelectorAll('[data-example]').forEach(btn =>
     btn.addEventListener('click', e => { e.stopPropagation(); openExample(btn.getAttribute('data-example')); }));
