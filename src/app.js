@@ -753,15 +753,13 @@ function renderItemEditor() {
 
   body.innerHTML = `
     <div class="ed-item-head">
-      <span class="id">${escapeHtml(item.id)}</span>
-      ${item.code ? `<span class="code-tag">${escapeHtml(item.code)}</span>` : ''}
-      ${item.exampleFile ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleFile)}" title="View example" aria-label="View example">${INFO_ICON}</button>` : ''}
+      <input type="checkbox" id="ed-check" ${unit.checks[item.id] === true ? 'checked' : ''}/>
+      <span class="ed-item-name"><span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}</span>
     </div>
-    <p class="ed-desc">${escapeHtml(item.description)}</p>
     ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
-    <label class="ed-unit-row"><span>Unit</span><select id="ed-unit-select"></select></label>
-    <label class="ed-check-row"><input type="checkbox" id="ed-check" ${unit.checks[item.id] === true ? 'checked' : ''}/> <span>Checked for this unit</span></label>
-    <textarea id="ed-comment" class="ed-comment" rows="4" placeholder="Comment for this unit…"></textarea>`;
+    <label class="ed-unit-row"><span>Unit Selection</span><select id="ed-unit-select"></select></label>
+    <div class="ed-comment-label">Comments</div>
+    <textarea id="ed-comment" class="ed-comment" rows="6" placeholder="Comment for this unit…"></textarea>`;
 
   const sel = body.querySelector('#ed-unit-select');
   for (const u of applicable) {
@@ -789,8 +787,6 @@ function renderItemEditor() {
     renderItems();
     renderProgress();
   });
-  const info = body.querySelector('[data-example]');
-  if (info) info.addEventListener('click', () => openExample(info.getAttribute('data-example')));
 }
 
 function renderProgress() {
