@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildModel } from '../src/workbookModel.js';
-import { itemApplicableUnits } from '../src/checklistView.js';
+import { itemApplicableUnits, itemCheckState, unifiedItems } from '../src/checklistView.js';
 
 const inputRows = [
   ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
@@ -36,8 +36,6 @@ test('itemApplicableUnits: no matching unit returns empty', () => {
   const p = { units: [{ id: 'x', name: 'X', inputs: { PitToEarth: true, MaxFFLInt: 0 }, checks: {}, comments: {} }] };
   assert.deepEqual(itemApplicableUnits(model, p, item('A11')), []);
 });
-
-import { itemCheckState, unifiedItems } from '../src/checklistView.js';
 
 test('itemCheckState: none / some / all', () => {
   const i = item('A08');
