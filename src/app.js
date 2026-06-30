@@ -542,13 +542,6 @@ function getCurrentUnit() {
   return unitOf(getCurrentProject());
 }
 
-// Read the project once so a mutation and the save that follows act on the SAME
-// object — getCurrentProject() returns a fresh copy from storage on every call.
-function getCurrentProjectAndUnit() {
-  const project = getCurrentProject();
-  return { project, unit: unitOf(project) };
-}
-
 function saveCurrent(project) {
   state.store.saveProject(project);
 }
@@ -799,7 +792,7 @@ function renderItemEditor() {
     if (!u) return;
     u.checks[item.id] = e.target.checked;
     saveCurrent(p);
-    renderItems(getCurrentUnit());
+    renderItems();
     renderProgress();
   });
   const info = body.querySelector('[data-example]');
