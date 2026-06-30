@@ -820,7 +820,22 @@ input[type="checkbox"] {
 .inputs-readout { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; }
 .inputs-readout dt { color: var(--muted, #6b7480); font-size: 0.85rem; }
 .inputs-readout dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-.editor-empty { padding: 14px; font-size: 0.9rem; }
+/* Empty-state placeholder: a dashed box filling the detail card until an item is picked */
+#item-editor { flex: 1 1 auto; display: flex; flex-direction: column; }
+.editor-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 14px;
+  padding: 24px;
+  min-height: 180px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+}
+.editor-empty[hidden] { display: none; }
 .item-editor-body { padding: 14px; }
 @media (max-width: 900px) {
   .project-body { flex-direction: column; }
