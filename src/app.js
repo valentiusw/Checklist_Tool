@@ -1094,11 +1094,6 @@ async function init() {
     state.viewerUnitId = e.target.value;
     renderInputsViewer();
   });
-  document.getElementById('inputs-toggle').addEventListener('click', () => {
-    const section = document.getElementById('inputs-viewer');
-    const collapsed = section.classList.toggle('collapsed');
-    document.getElementById('inputs-toggle').setAttribute('aria-expanded', String(!collapsed));
-  });
   document.getElementById('toggle-hide-checked').addEventListener('change', e => {
     state.hideChecked = e.target.checked;
     renderItems();

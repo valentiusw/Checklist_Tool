@@ -8,8 +8,8 @@
   <link rel="icon" href="logo.svg" type="image/svg+xml" />
   <!-- Apply saved theme and sidebar state before first paint to avoid a flash. -->
   <script>
-    try { if (localStorage.getItem('dpchecklist.theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
-    try { if (localStorage.getItem('dpchecklist.sidebar') === 'collapsed') document.documentElement.classList.add('sidebar-collapsed'); } catch (e) {}
+    try { if (localStorage.getItem('dpchecklist.theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) { }
+    try { if (localStorage.getItem('dpchecklist.sidebar') === 'collapsed') document.documentElement.classList.add('sidebar-collapsed'); } catch (e) { }
   </script>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -23,17 +23,31 @@
       </div>
       <nav class="side-nav">
         <button id="nav-dashboard" class="side-link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+          </svg>
           <span>Projects</span>
         </button>
         <button id="nav-about" class="side-link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <line x1="12" y1="11" x2="12" y2="16" />
+            <line x1="12" y1="8" x2="12" y2="8" />
+          </svg>
           <span>About</span>
         </button>
       </nav>
       <div class="side-foot">
         <label class="side-link side-theme" title="Dark theme">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
           <span>Dark theme</span>
           <span class="switch side-theme-switch">
             <input type="checkbox" id="toggle-dark-side" />
@@ -41,169 +55,180 @@
           </span>
         </label>
         <button id="nav-setup" class="side-link" title="Settings &amp; setup" aria-label="Settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
           <span>Settings</span>
         </button>
       </div>
-      <button id="sidebar-toggle" class="sidebar-handle" type="button" aria-label="Collapse sidebar" aria-expanded="true">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 6 9 12 15 18"/></svg>
+      <button id="sidebar-toggle" class="sidebar-handle" type="button" aria-label="Collapse sidebar"
+        aria-expanded="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="15 6 9 12 15 18" />
+        </svg>
       </button>
     </aside>
 
     <main>
-    <section id="screen-setup" class="screen">
-      <h2>Load checklist workbook</h2>
-      <p class="muted">Upload a setup <code>.zip</code> containing your checklist workbook
-        (<code>.xlsx</code>) at the root and an <code>Examples</code> subfolder of the PDFs and
-        images its Example column references. A bare <code>.xlsx</code> also works (no examples).
-        Nothing is uploaded &mdash; everything stays in your browser.</p>
-      <input type="file" id="workbook-file" accept=".zip,.xlsx,.xls" />
-      <p id="setup-status" class="status"></p>
+      <section id="screen-setup" class="screen">
+        <h2>Load checklist workbook</h2>
+        <p class="muted">Upload a setup <code>.zip</code> containing your checklist workbook
+          (<code>.xlsx</code>) at the root and an <code>Examples</code> subfolder of the PDFs and
+          images its Example column references. A bare <code>.xlsx</code> also works (no examples).
+          Nothing is uploaded &mdash; everything stays in your browser.</p>
+        <input type="file" id="workbook-file" accept=".zip,.xlsx,.xls" />
+        <p id="setup-status" class="status"></p>
 
-      <h3 class="setting-group">Appearance</h3>
-      <div class="setting-row">
-        <div>
-          <div class="setting-title">Dark mode</div>
-          <div class="muted setting-desc">Switch between light and dark appearance.</div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="toggle-dark" />
-          <span class="switch-slider"></span>
-        </label>
-      </div>
-
-      <h3 class="setting-group">Backup</h3>
-      <div class="setting-row">
-        <div>
-          <div class="setting-title">Save project library</div>
-          <div class="muted setting-desc">Download a single file with every project and all its
-            units. Keep it somewhere safe in case browser data is cleared.</div>
-        </div>
-        <div class="btn-row">
-          <label class="import-label">Restore library
-            <input type="file" id="restore-library-file" accept=".json" hidden />
-          </label>
-          <button id="btn-save-library" class="btn-primary">Save project library</button>
-        </div>
-      </div>
-
-      <div class="setting-row" id="autosave-row">
-        <div>
-          <div class="setting-title">Auto-save to a file</div>
-          <div class="muted setting-desc">Connect a backup file (e.g. in OneDrive) and your work
-            saves to it automatically, surviving a browser-data wipe. <span id="backup-status"></span></div>
-        </div>
-        <div class="btn-row" id="backup-controls"></div>
-      </div>
-    </section>
-
-    <section id="screen-dashboard" class="screen" hidden>
-      <div class="row-between">
-        <h2>Projects</h2>
-        <div class="btn-row">
-          <label class="import-label">Import project
-            <input type="file" id="import-project-file" accept=".json" hidden />
-          </label>
-          <button id="btn-new-project" class="btn-primary">New project</button>
-        </div>
-      </div>
-      <p id="dashboard-empty" class="muted" hidden>No checklist loaded yet &mdash; go to Setup first.</p>
-      <ul id="project-list" class="project-list"></ul>
-    </section>
-
-    <section id="screen-project" class="screen" hidden>
-      <div class="row-between">
-        <button id="btn-back" class="btn-ghost">&larr; Back</button>
-        <div class="btn-row">
-          <button id="btn-edit-project">Edit project</button>
-          <button id="btn-save-project">Save project file</button>
-          <button id="btn-download-zip" class="btn-primary">Download ZIP</button>
-        </div>
-      </div>
-      <div class="project-body">
-        <div class="checklist-main">
-          <div class="checklist-head">
-            <div class="checklist-head-top">
-              <h2 id="project-title"></h2>
-              <button id="btn-project-details" class="btn-ghost" type="button" aria-pressed="false">See project details</button>
-            </div>
-            <div class="progress">
-              <div id="project-progress-bar" class="progress-bar"></div>
-            </div>
-            <p id="project-progress-label" class="muted"></p>
-            <div class="section-filter">
-              <label for="section-select">Section</label>
-              <select id="section-select"></select>
-              <span class="toggle-inline">
-                <span class="toggle-text">Hide checked</span>
-                <label class="switch">
-                  <input type="checkbox" id="toggle-hide-checked" />
-                  <span class="switch-slider"></span>
-                </label>
-              </span>
-            </div>
+        <h3 class="setting-group">Appearance</h3>
+        <div class="setting-row">
+          <div>
+            <div class="setting-title">Dark mode</div>
+            <div class="muted setting-desc">Switch between light and dark appearance.</div>
           </div>
-          <div id="items-list" class="items-list"></div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-dark" />
+            <span class="switch-slider"></span>
+          </label>
         </div>
-        <div id="card-splitter" class="card-splitter" role="separator" aria-orientation="vertical" aria-label="Resize panels"></div>
-        <aside id="detail-panel" class="detail-panel">
-          <section class="panel-section" id="unit-selection" hidden>
-            <div class="panel-head-static" id="unit-selection-label"><span>Unit Selection</span></div>
-            <div class="panel-body">
-              <select id="viewer-unit-select" aria-labelledby="unit-selection-label"></select>
+
+        <h3 class="setting-group">Backup</h3>
+        <div class="setting-row">
+          <div>
+            <div class="setting-title">Save project library</div>
+            <div class="muted setting-desc">Download a single file with every project and all its
+              units. Keep it somewhere safe in case browser data is cleared.</div>
+          </div>
+          <div class="btn-row">
+            <label class="import-label">Restore library
+              <input type="file" id="restore-library-file" accept=".json" hidden />
+            </label>
+            <button id="btn-save-library" class="btn-primary">Save project library</button>
+          </div>
+        </div>
+
+        <div class="setting-row" id="autosave-row">
+          <div>
+            <div class="setting-title">Auto-save to a file</div>
+            <div class="muted setting-desc">Connect a backup file (e.g. in OneDrive) and your work
+              saves to it automatically, surviving a browser-data wipe. <span id="backup-status"></span></div>
+          </div>
+          <div class="btn-row" id="backup-controls"></div>
+        </div>
+      </section>
+
+      <section id="screen-dashboard" class="screen" hidden>
+        <div class="row-between">
+          <h2>Projects</h2>
+          <div class="btn-row">
+            <label class="import-label">Import project
+              <input type="file" id="import-project-file" accept=".json" hidden />
+            </label>
+            <button id="btn-new-project" class="btn-primary">New project</button>
+          </div>
+        </div>
+        <p id="dashboard-empty" class="muted" hidden>No checklist loaded yet &mdash; go to Setup first.</p>
+        <ul id="project-list" class="project-list"></ul>
+      </section>
+
+      <section id="screen-project" class="screen" hidden>
+        <div class="row-between">
+          <button id="btn-back" class="btn-ghost">&larr; Back</button>
+          <div class="btn-row">
+            <button id="btn-edit-project">Edit project</button>
+            <button id="btn-save-project">Save project file</button>
+            <button id="btn-download-zip" class="btn-primary">Download ZIP</button>
+          </div>
+        </div>
+        <div class="project-body">
+          <div class="checklist-main">
+            <div class="checklist-head">
+              <div class="checklist-head-top">
+                <h2 id="project-title"></h2>
+                <button id="btn-project-details" class="btn-ghost" type="button" aria-pressed="false">See project
+                  details</button>
+              </div>
+              <div class="progress">
+                <div id="project-progress-bar" class="progress-bar"></div>
+              </div>
+              <p id="project-progress-label" class="muted"></p>
+              <div class="section-filter">
+                <label for="section-select">Section</label>
+                <select id="section-select"></select>
+                <span class="toggle-inline">
+                  <span class="toggle-text">Hide checked</span>
+                  <label class="switch">
+                    <input type="checkbox" id="toggle-hide-checked" />
+                    <span class="switch-slider"></span>
+                  </label>
+                </span>
+              </div>
             </div>
-          </section>
-          <section class="panel-section" id="inputs-viewer" hidden>
-            <button id="inputs-toggle" class="panel-head" type="button" aria-expanded="true">
-              <span>Unit Details</span>
-              <svg class="panel-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div id="inputs-body" class="panel-body">
-              <dl id="inputs-readout" class="inputs-readout"></dl>
-            </div>
-          </section>
-          <section class="panel-section" id="item-editor">
-            <div id="editor-empty" class="editor-empty muted">Select an item for more detail and to add a comment</div>
-            <div id="item-editor-body" class="item-editor-body" hidden></div>
-          </section>
-        </aside>
-      </div>
-    </section>
+            <div id="items-list" class="items-list"></div>
+          </div>
+          <div id="card-splitter" class="card-splitter" role="separator" aria-orientation="vertical"
+            aria-label="Resize panels"></div>
+          <aside id="detail-panel" class="detail-panel">
+            <section class="panel-section" id="unit-selection" hidden>
+              <div class="panel-body">
+                <label class="unit-picker">
+                  <span>Unit</span>
+                  <select id="viewer-unit-select" aria-label="Unit"></select>
+                </label>
+              </div>
+            </section>
+            <section class="panel-section" id="inputs-viewer" hidden>
+              <div id="inputs-body" class="panel-body">
+                <dl id="inputs-readout" class="inputs-readout"></dl>
+              </div>
+            </section>
+            <section class="panel-section" id="item-editor">
+              <div id="editor-empty" class="editor-empty muted">Select an item for more detail</div>
+              <div id="item-editor-body" class="item-editor-body" hidden></div>
+            </section>
+          </aside>
+        </div>
+      </section>
 
-    <section id="screen-editor" class="screen" hidden>
-      <div class="row-between">
-        <button id="editor-cancel" class="btn-ghost">&larr; Cancel</button>
-        <button id="editor-save" class="btn-primary">Save project</button>
-      </div>
-      <h2 id="editor-heading">New project</h2>
-      <label class="editor-field">
-        <span class="setting-title">Project name</span>
-        <input type="text" id="editor-project-name" placeholder="e.g. Tower A" />
-      </label>
-      <p id="editor-name-error" class="status error" hidden>Project name is required</p>
+      <section id="screen-editor" class="screen" hidden>
+        <div class="row-between">
+          <button id="editor-cancel" class="btn-ghost">&larr; Cancel</button>
+          <button id="editor-save" class="btn-primary">Save project</button>
+        </div>
+        <h2 id="editor-heading">New project</h2>
+        <label class="editor-field">
+          <span class="setting-title">Project name</span>
+          <input type="text" id="editor-project-name" placeholder="e.g. Tower A" />
+        </label>
+        <p id="editor-name-error" class="status error" hidden>Project name is required</p>
 
-      <div class="editor-units-head">
-        <h3>Units</h3>
-        <p id="editor-unit-counter" class="editor-unit-counter"></p>
-      </div>
-      <div class="unit-carousel">
-        <button id="editor-prev-unit" class="carousel-nav" type="button" aria-label="Previous unit"></button>
-        <div id="editor-units" class="unit-carousel-stage"></div>
-        <button id="editor-next-unit" class="carousel-nav" type="button" aria-label="Next unit"></button>
-      </div>
-    </section>
+        <div class="editor-units-head">
+          <h3>Units</h3>
+          <p id="editor-unit-counter" class="editor-unit-counter"></p>
+        </div>
+        <div class="unit-carousel">
+          <button id="editor-prev-unit" class="carousel-nav" type="button" aria-label="Previous unit"></button>
+          <div id="editor-units" class="unit-carousel-stage"></div>
+          <button id="editor-next-unit" class="carousel-nav" type="button" aria-label="Next unit"></button>
+        </div>
+      </section>
 
-    <section id="screen-about" class="screen" hidden>
-      <h2>About &mdash; Sections &amp; Glossary</h2>
-      <p class="muted">Reference information from the loaded workbook's <code>Sections</code> and
-        <code>Glossary</code> sheets.</p>
-      <div id="about-empty" class="muted" hidden>This workbook has no reference info &mdash; add
-        <code>Sections</code> and <code>Glossary</code> sheets to populate this page.</div>
-      <h3>Sections</h3>
-      <table id="about-sections" class="info-table"></table>
-      <h3>Glossary</h3>
-      <table id="about-glossary" class="info-table"></table>
-    </section>
+      <section id="screen-about" class="screen" hidden>
+        <h2>About &mdash; Sections &amp; Glossary</h2>
+        <p class="muted">Reference information from the loaded workbook's <code>Sections</code> and
+          <code>Glossary</code> sheets.
+        </p>
+        <div id="about-empty" class="muted" hidden>This workbook has no reference info &mdash; add
+          <code>Sections</code> and <code>Glossary</code> sheets to populate this page.
+        </div>
+        <h3>Sections</h3>
+        <table id="about-sections" class="info-table"></table>
+        <h3>Glossary</h3>
+        <table id="about-glossary" class="info-table"></table>
+      </section>
     </main>
   </div>
 

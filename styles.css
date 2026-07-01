@@ -835,18 +835,19 @@ input[type="checkbox"] {
   display: flex; flex-direction: column; gap: 14px;
 }
 .panel-section { border: 1px solid var(--border, #d8dde3); border-radius: 10px; background: var(--card, #fff); overflow: hidden; }
-.panel-head {
-  width: 100%; display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px; background: none; border: none; cursor: pointer;
-  font-weight: 600; font-size: 0.95rem; color: inherit;
-}
-.panel-chevron { transition: transform 0.15s ease; }
-.panel-section.collapsed .panel-chevron { transform: rotate(-90deg); }
-.panel-section.collapsed .panel-body { display: none; }
-.panel-body { padding: 0 14px 14px; }
-.inputs-readout { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; }
-.inputs-readout dt { color: var(--muted, #6b7480); font-size: 0.85rem; }
-.inputs-readout dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.panel-body { padding: 20px; }
+
+/* Read-only unit details — unit picker over clean two-column spec rows. */
+.unit-picker { display: flex; align-items: center; gap: 10px; }
+.unit-picker > span { font-weight: 600; font-size: 0.95rem; }
+.unit-picker select { flex: 1; min-width: 0; }
+.inputs-readout { display: grid; grid-template-columns: 1fr auto; margin: 0; }
+.inputs-readout dt,
+.inputs-readout dd { padding: 9px 0; border-bottom: 1px solid var(--border); }
+.inputs-readout dt { color: var(--text-muted); font-size: 0.9rem; padding-right: 12px; }
+.inputs-readout dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.inputs-readout dt:last-of-type,
+.inputs-readout dd:last-of-type { border-bottom: none; }
 /* Empty-state placeholder: a dashed box filling the detail card until an item is picked */
 #item-editor { flex: 1 1 auto; display: flex; flex-direction: column; }
 #item-editor[hidden] { display: none; }
@@ -856,7 +857,7 @@ input[type="checkbox"] {
   align-items: center;
   justify-content: center;
   text-align: center;
-  margin: 14px;
+  margin: 20px;
   padding: 24px;
   min-height: 180px;
   border: 2px dashed var(--border);
@@ -864,7 +865,7 @@ input[type="checkbox"] {
   font-size: 0.95rem;
 }
 .editor-empty[hidden] { display: none; }
-.item-editor-body { padding: 14px; }
+.item-editor-body { padding: 20px; }
 @media (max-width: 900px) {
   .project-body { flex-direction: column; }
   .detail-panel { width: 100%; flex-basis: auto; position: static; }
@@ -894,12 +895,6 @@ input[type="checkbox"] {
 }
 .checklist-head #project-title { margin: 0; }
 .checklist-head .section-filter { margin: 12px 0 0; }
-/* Static (non-collapsing) panel header, e.g. Unit Selection */
-.panel-head-static {
-  display: flex; align-items: center; padding: 10px 14px;
-  font-weight: 600; font-size: 0.95rem;
-}
-#unit-selection select { width: 100%; }
 
 /* ===== Two-bubble project screen — bubble visuals (all widths) ===== */
 /* Each pane becomes a rounded, theme-aware bubble card. */
@@ -918,13 +913,17 @@ input[type="checkbox"] {
   border-bottom: 1px solid var(--border);
 }
 [data-screen="project"] .items-list { padding: 12px 18px; }
-/* Right bubble: flatten the three sections into one card with dividers */
+/* Right bubble: flatten the sections into one card. Dividers are inset (to match
+   the spec-row dividers) and only drawn between two visible, adjacent sections. */
 [data-screen="project"] .detail-panel { gap: 0; }
 [data-screen="project"] .detail-panel .panel-section {
   border: none; border-radius: 0; background: none; overflow: visible;
-  border-bottom: 1px solid var(--border);
+  position: relative;
 }
-[data-screen="project"] .detail-panel .panel-section:last-child { border-bottom: none; }
+[data-screen="project"] .detail-panel .panel-section:not([hidden]) + .panel-section:not([hidden])::before {
+  content: ""; position: absolute; top: 0; left: 20px; right: 20px;
+  height: 1px; background: var(--border);
+}
 /* Neutralize the outer screen card at all widths so the two bubbles stand alone
    (no card-within-a-card on the ≤900px stacked fallback). */
 [data-screen="project"] #screen-project {
