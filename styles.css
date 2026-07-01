@@ -486,11 +486,10 @@ input[type="checkbox"] {
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; padding: 0;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  background: var(--surface); color: var(--text-muted); cursor: pointer;
+  border: none; background: none; color: var(--text-muted); cursor: pointer;
 }
-.icon-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-muted); }
-.icon-btn.icon-danger:hover { color: var(--danger); border-color: var(--danger); background: none; }
+.icon-btn:hover { color: var(--text); background: none; }
+.icon-btn.icon-danger:hover { color: var(--danger); background: none; }
 .icon-btn svg { width: 17px; height: 17px; }
 
 /* ---- Dashboard per-unit breakdown ------------------------------------- */
@@ -1044,61 +1043,58 @@ html.no-item-tint .item.partial {
 [data-screen="project"] #items-list { scrollbar-width: none; }
 [data-screen="project"] #items-list::-webkit-scrollbar { display: none; }
 
-/* ===== Project details drawer (dashboard "Expand") ===================== */
-.drawer {
-  position: fixed; inset: 0; z-index: 50;
-  visibility: hidden;
-  transition: visibility 0s linear .2s; /* delay hide until the panel slides out */
+/* ===== Quick Look: an in-flow details card that slides in and pushes the
+   list card (width/margin transition, like the collapsible sidebar). ======= */
+.dash-wrap { display: flex; align-items: flex-start; }
+#screen-dashboard { flex: 1 1 auto; min-width: 0; }
+.quicklook {
+  flex: none;
+  width: 0; margin-left: 0; opacity: 0;
+  padding: 0; overflow: hidden;
+  max-height: calc(100vh - 120px);
+  scrollbar-width: none; /* hide scrollbar, keep scrollable */
+  transition: width .22s ease, margin-left .22s ease, opacity .18s ease;
 }
-.drawer.open { visibility: visible; transition: visibility 0s linear 0s; }
-.drawer-backdrop {
-  position: absolute; inset: 0;
-  background: rgba(15, 18, 22, .38);
-  opacity: 0; transition: opacity .2s ease;
+.quicklook.open { width: 340px; margin-left: 20px; opacity: 1; overflow-y: auto; }
+.quicklook::-webkit-scrollbar { display: none; }
+.ql-inner { width: 340px; } /* fixed so content doesn't reflow while sliding */
+.eye-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0;
+  border: none; background: none; color: var(--text-muted); cursor: pointer;
 }
-.drawer.open .drawer-backdrop { opacity: 1; }
-.drawer-panel {
-  position: absolute; top: 0; right: 0; height: 100%;
-  width: 380px; max-width: 92vw;
-  display: flex; flex-direction: column;
-  background: var(--surface); border-left: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  transform: translateX(100%); transition: transform .2s ease;
-  overflow-y: auto;
-  scrollbar-width: none; /* Firefox — hide scrollbar, keep scrollable */
-}
-.drawer-panel::-webkit-scrollbar { display: none; } /* Chromium/WebKit */
-.drawer.open .drawer-panel { transform: translateX(0); }
-.drawer-head {
+.eye-btn:hover { color: var(--accent); background: none; }
+.eye-btn svg { width: 18px; height: 18px; }
+.ql-head {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; padding: 18px 20px;
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; background: var(--surface); z-index: 1;
 }
-.drawer-head h2 { margin: 0; font-size: 1.15rem; }
-.drawer-close {
+.ql-head h2 { margin: 0; font-size: 1.15rem; }
+.ql-close {
   background: none; border: none; cursor: pointer;
   font-size: 1.5rem; line-height: 1; color: var(--text-muted);
   padding: 0 4px; width: auto;
 }
-.drawer-close:hover { color: var(--text); background: none; border-color: transparent; }
-.drawer-body { padding: 20px; }
-.drawer-overall-label { font-weight: 600; }
-.drawer-section { margin: 22px 0 8px; font-size: .95rem; }
-.drawer-unit { border-top: 1px solid var(--border); }
-.drawer-unit:first-child { border-top: none; }
-.drawer-unit-head {
+.ql-close:hover { color: var(--text); background: none; border-color: transparent; }
+.ql-body { padding: 20px; }
+.ql-overall-label { font-weight: 600; }
+.ql-section { margin: 22px 0 8px; font-size: .95rem; }
+.ql-unit { border-top: 1px solid var(--border); }
+.ql-unit:first-child { border-top: none; }
+.ql-unit-head {
   width: 100%; display: grid;
   grid-template-columns: minmax(0, 1fr) 70px auto auto;
   align-items: center; gap: 10px;
   padding: 12px 0; background: none; border: none; cursor: pointer;
   text-align: left; color: inherit; font: inherit;
 }
-.drawer-unit-head:hover { background: none; }
-.drawer-unit-head .unit-name {
+.ql-unit-head:hover { background: none; }
+.ql-unit-head .unit-name {
   font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.drawer-unit-head .unit-count { font-size: 13px; white-space: nowrap; }
-.drawer-chevron { transition: transform .15s ease; color: var(--text-muted); }
-.drawer-unit-head.open .drawer-chevron { transform: rotate(180deg); }
-.drawer-unit-specs { padding: 2px 0 14px; }
+.ql-unit-head .unit-count { font-size: 13px; white-space: nowrap; }
+.ql-chevron { transition: transform .15s ease; color: var(--text-muted); }
+.ql-unit-head.open .ql-chevron { transform: rotate(180deg); }
+.ql-unit-specs { padding: 2px 0 14px; }

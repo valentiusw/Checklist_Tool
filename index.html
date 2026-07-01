@@ -147,6 +147,7 @@
         </div>
       </section>
 
+      <div class="dash-wrap">
       <section id="screen-dashboard" class="screen" hidden>
         <div class="row-between">
           <h2>Projects</h2>
@@ -165,6 +166,16 @@
         <p id="dashboard-empty" class="muted" hidden>No checklist loaded yet &mdash; go to Setup first.</p>
         <ul id="project-list" class="project-list"></ul>
       </section>
+      <aside id="quicklook" class="screen quicklook" aria-label="Project quick look">
+        <div class="ql-inner">
+          <div class="ql-head">
+            <h2 id="ql-title"></h2>
+            <button class="ql-close" data-quicklook-close type="button" aria-label="Close">&times;</button>
+          </div>
+          <div id="ql-body" class="ql-body"></div>
+        </div>
+      </aside>
+      </div>
 
       <section id="screen-project" class="screen" hidden>
         <div class="row-between">
@@ -262,18 +273,6 @@
         <table id="about-glossary" class="info-table"></table>
       </section>
     </main>
-  </div>
-
-  <!-- Project details drawer (opened from the dashboard "Expand" button) -->
-  <div id="project-drawer" class="drawer">
-    <div class="drawer-backdrop" data-drawer-close></div>
-    <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
-      <div class="drawer-head">
-        <h2 id="drawer-title"></h2>
-        <button class="drawer-close" data-drawer-close type="button" aria-label="Close">&times;</button>
-      </div>
-      <div id="drawer-body" class="drawer-body"></div>
-    </aside>
   </div>
 
   <script src="vendor/xlsx.bundle.js"></script>

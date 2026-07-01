@@ -30,6 +30,7 @@ const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
 const NAV_FOR_SCREEN = { setup: 'nav-setup', dashboard: 'nav-dashboard', project: 'nav-dashboard', about: 'nav-about', editor: 'nav-dashboard' };
 function showScreen(name) {
   document.documentElement.dataset.screen = name;
+  closeQuickLook(); // the quick-look card only belongs on the dashboard
   for (const s of screens) {
     document.getElementById('screen-' + s).hidden = s !== name;
   }
@@ -266,6 +267,7 @@ function renderDashboard() {
   list.innerHTML = '';
   empty.hidden = !!state.model;
   deselectProject(); // fresh list starts unselected
+  closeQuickLook();
   if (!state.model) return;
 
   const projects = state.store.listProjects();
@@ -279,7 +281,9 @@ function renderDashboard() {
       <div class="row-between">
         <strong>${escapeHtml(project.name)}</strong>
         <span class="btn-row">
-          <button class="btn-ghost btn-sm" data-toggle="${project.id}">Expand</button>
+          <button class="eye-btn" data-quicklook="${project.id}" type="button" title="Quick Look" aria-label="Quick Look">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
         </span>
       </div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
@@ -290,8 +294,8 @@ function renderDashboard() {
     list.appendChild(li);
   }
 
-  list.querySelectorAll('[data-toggle]').forEach(btn =>
-    btn.addEventListener('click', e => { e.stopPropagation(); openProjectDrawer(btn.getAttribute('data-toggle')); }));
+  list.querySelectorAll('[data-quicklook]').forEach(btn =>
+    btn.addEventListener('click', e => { e.stopPropagation(); openQuickLook(btn.getAttribute('data-quicklook')); }));
 }
 
 function selectProject(id) {
@@ -330,15 +334,16 @@ function wireDashboardActions() {
   });
 }
 
-const DRAWER_CHEVRON = `<svg class="drawer-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
+const QL_CHEVRON = `<svg class="ql-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
 
-// Right-side drawer showing a project's overall + per-unit progression; each
-// unit row expands to reveal that unit's read-only input specs.
-function openProjectDrawer(projectId) {
+// Quick Look: an in-flow card beside the project list showing a project's
+// overall + per-unit progression; each unit row expands to reveal that unit's
+// read-only input specs. Opening it narrows the list card to make room.
+function openQuickLook(projectId) {
   const project = state.store.getProject(projectId);
   if (!project) return;
   const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
-  document.getElementById('drawer-title').textContent = project.name;
+  document.getElementById('ql-title').textContent = project.name;
   const units = project.units.map(u => {
     const p = computeProgress(state.model, u);
     const specs = state.model.inputs.map(def =>
@@ -346,24 +351,24 @@ function openProjectDrawer(projectId) {
       `<dd>${escapeHtml(formatInputValue(def, u.inputs[def.name]))}</dd>`
     ).join('');
     return `
-      <div class="drawer-unit">
-        <button class="drawer-unit-head" type="button" data-unit-toggle aria-expanded="false">
+      <div class="ql-unit">
+        <button class="ql-unit-head" type="button" data-unit-toggle aria-expanded="false">
           <span class="unit-name">${escapeHtml(u.name)}</span>
           <div class="progress progress-sm"><div class="progress-bar" style="width:${Math.round(p.ratio * 100)}%"></div></div>
           <span class="unit-count muted">${p.checked} / ${p.applicable}</span>
-          ${DRAWER_CHEVRON}
+          ${QL_CHEVRON}
         </button>
-        <div class="drawer-unit-specs" hidden><dl class="inputs-readout">${specs}</dl></div>
+        <div class="ql-unit-specs" hidden><dl class="inputs-readout">${specs}</dl></div>
       </div>`;
   }).join('');
-  document.getElementById('drawer-body').innerHTML = `
-    <div class="drawer-overall">
-      <div class="row-between"><span class="drawer-overall-label">Overall</span><span class="muted">${checked} / ${applicable} checked</span></div>
+  document.getElementById('ql-body').innerHTML = `
+    <div class="ql-overall">
+      <div class="row-between"><span class="ql-overall-label">Overall</span><span class="muted">${checked} / ${applicable} checked</span></div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
     </div>
-    <h3 class="drawer-section">Units</h3>
-    <div class="drawer-units">${units}</div>`;
-  document.querySelectorAll('#drawer-body [data-unit-toggle]').forEach(btn =>
+    <h3 class="ql-section">Units</h3>
+    <div class="ql-units">${units}</div>`;
+  document.querySelectorAll('#ql-body [data-unit-toggle]').forEach(btn =>
     btn.addEventListener('click', () => {
       const specs = btn.nextElementSibling;
       const show = specs.hidden;
@@ -371,18 +376,24 @@ function openProjectDrawer(projectId) {
       btn.setAttribute('aria-expanded', String(show));
       btn.classList.toggle('open', show);
     }));
-  document.getElementById('project-drawer').classList.add('open');
+  document.getElementById('quicklook').classList.add('open');
 }
 
-function closeProjectDrawer() {
-  document.getElementById('project-drawer').classList.remove('open');
+function closeQuickLook() {
+  const q = document.getElementById('quicklook');
+  if (q) q.classList.remove('open');
 }
 
-function wireProjectDrawer() {
-  const drawer = document.getElementById('project-drawer');
-  drawer.querySelectorAll('[data-drawer-close]').forEach(el => el.addEventListener('click', closeProjectDrawer));
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && drawer.classList.contains('open')) closeProjectDrawer();
+function wireQuickLook() {
+  document.querySelectorAll('[data-quicklook-close]').forEach(el => el.addEventListener('click', closeQuickLook));
+  // Close only on the × button or a click in genuine free space — never when a
+  // control (button, link, input, or a project card) is clicked, so e.g.
+  // collapsing the sidebar leaves the card open.
+  document.addEventListener('click', e => {
+    const q = document.getElementById('quicklook');
+    if (!q || !q.classList.contains('open')) return;
+    if (e.target.closest('#quicklook, [data-quicklook], button, a, input, select, label, .project-card')) return;
+    closeQuickLook();
   });
 }
 
@@ -1224,7 +1235,7 @@ async function init() {
   wireThemeToggle();
   wireItemTintToggle();
   wireSidebarToggle();
-  wireProjectDrawer();
+  wireQuickLook();
   wireNewMenu();
   wireDashboardActions();
   wireCardSplitter();
