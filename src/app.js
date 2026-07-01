@@ -1076,6 +1076,20 @@ function wireCardSplitter() {
   });
 }
 
+const ITEM_TINT_KEY = 'dpchecklist.itemTint';
+function wireItemTintToggle() {
+  // When off, item bubbles lose their green/amber tint; the checkbox and unit
+  // pills keep their colour (only .item.checked/.item.partial backgrounds go).
+  const toggle = document.getElementById('toggle-item-tint');
+  if (!toggle) return;
+  toggle.checked = !document.documentElement.classList.contains('no-item-tint');
+  toggle.addEventListener('change', () => {
+    const on = toggle.checked;
+    document.documentElement.classList.toggle('no-item-tint', !on);
+    try { window.localStorage.setItem(ITEM_TINT_KEY, on ? 'on' : 'off'); } catch { /* ignore */ }
+  });
+}
+
 const SIDEBAR_KEY = 'dpchecklist.sidebar';
 function wireSidebarToggle() {
   const btn = document.getElementById('sidebar-toggle');
@@ -1115,6 +1129,7 @@ async function init() {
   state.store.load(snap.projects);
   wireSetup();
   wireThemeToggle();
+  wireItemTintToggle();
   wireSidebarToggle();
   wireCardSplitter();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));

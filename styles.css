@@ -526,6 +526,14 @@ input[type="checkbox"] {
   border-color: var(--warning-fill);
 }
 
+/* Settings: "Colour completed items" off — drop the bubble tint only. The
+   checkbox accent and unit-pill colours are intentionally left untouched. */
+html.no-item-tint .item.checked,
+html.no-item-tint .item.partial {
+  background: none;
+  border-color: var(--border);
+}
+
 .items-list input[type="checkbox"] { accent-color: var(--success); }
 .item.partial input[type="checkbox"] { accent-color: var(--warning); }
 

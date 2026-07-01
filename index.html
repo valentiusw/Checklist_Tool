@@ -10,6 +10,7 @@
   <script>
     try { if (localStorage.getItem('dpchecklist.theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) { }
     try { if (localStorage.getItem('dpchecklist.sidebar') === 'collapsed') document.documentElement.classList.add('sidebar-collapsed'); } catch (e) { }
+    try { if (localStorage.getItem('dpchecklist.itemTint') === 'off') document.documentElement.classList.add('no-item-tint'); } catch (e) { }
   </script>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -91,6 +92,17 @@
           </div>
           <label class="switch">
             <input type="checkbox" id="toggle-dark" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-title">Colour completed items</div>
+            <div class="muted setting-desc">Tint checklist items green when done and amber when
+              partly done. The checkbox and unit tags stay coloured either way.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-item-tint" />
             <span class="switch-slider"></span>
           </label>
         </div>
