@@ -22,6 +22,7 @@ const state = {
   editorItemId: null,
   editorUnitId: null,
   detailMode: 'editor', // 'editor' (item detail+comment) | 'project' (read-only unit details)
+  selectedProjectId: null, // highlighted project on the dashboard
 };
 
 const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
@@ -264,6 +265,7 @@ function renderDashboard() {
   const empty = document.getElementById('dashboard-empty');
   list.innerHTML = '';
   empty.hidden = !!state.model;
+  deselectProject(); // fresh list starts unselected
   if (!state.model) return;
 
   const projects = state.store.listProjects();
@@ -272,31 +274,60 @@ function renderDashboard() {
     const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
     const li = document.createElement('li');
     li.className = 'project-card';
+    li.dataset.projectId = project.id;
     li.innerHTML = `
       <div class="row-between">
         <strong>${escapeHtml(project.name)}</strong>
         <span class="btn-row">
           <button class="btn-ghost btn-sm" data-toggle="${project.id}">Expand</button>
-          <button class="btn-primary btn-sm" data-open="${project.id}">Open</button>
-          <button class="btn-danger btn-sm" data-delete="${project.id}">Delete</button>
         </span>
       </div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
       <p class="muted">${project.units.length} unit${project.units.length === 1 ? '' : 's'} · ${checked} / ${applicable} checked</p>`;
+    // Single click selects (reveals the header actions); double click opens.
+    li.addEventListener('click', e => { if (!e.target.closest('button')) selectProject(project.id); });
+    li.addEventListener('dblclick', e => { if (!e.target.closest('button')) openProject(project.id); });
     list.appendChild(li);
   }
 
   list.querySelectorAll('[data-toggle]').forEach(btn =>
-    btn.addEventListener('click', () => openProjectDrawer(btn.getAttribute('data-toggle'))));
-  list.querySelectorAll('[data-open]').forEach(btn =>
-    btn.addEventListener('click', () => openProject(btn.getAttribute('data-open'))));
-  list.querySelectorAll('[data-delete]').forEach(btn =>
-    btn.addEventListener('click', () => {
-      if (confirm('Delete this project?')) {
-        state.store.deleteProject(btn.getAttribute('data-delete'));
-        renderDashboard();
-      }
-    }));
+    btn.addEventListener('click', e => { e.stopPropagation(); openProjectDrawer(btn.getAttribute('data-toggle')); }));
+}
+
+function selectProject(id) {
+  state.selectedProjectId = id;
+  document.querySelectorAll('#project-list .project-card').forEach(li =>
+    li.classList.toggle('selected', li.dataset.projectId === id));
+  document.getElementById('dash-actions').hidden = false;
+}
+
+function deselectProject() {
+  state.selectedProjectId = null;
+  document.querySelectorAll('#project-list .project-card.selected').forEach(li => li.classList.remove('selected'));
+  const actions = document.getElementById('dash-actions');
+  if (actions) actions.hidden = true;
+}
+
+function wireDashboardActions() {
+  document.getElementById('dash-download').addEventListener('click', () => {
+    const p = state.store.getProject(state.selectedProjectId);
+    if (p) saveProjectFile(p);
+  });
+  document.getElementById('dash-export').addEventListener('click', () => {
+    const p = state.store.getProject(state.selectedProjectId);
+    if (p) downloadProjectZip(p);
+  });
+  document.getElementById('dash-delete').addEventListener('click', () => {
+    const id = state.selectedProjectId;
+    if (id && confirm('Delete this project?')) {
+      state.store.deleteProject(id);
+      renderDashboard();
+    }
+  });
+  // Click anywhere outside a card / the action bar clears the selection.
+  document.addEventListener('click', e => {
+    if (state.selectedProjectId && !e.target.closest('.project-card, #dash-actions')) deselectProject();
+  });
 }
 
 const DRAWER_CHEVRON = `<svg class="drawer-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
@@ -353,6 +384,28 @@ function wireProjectDrawer() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && drawer.classList.contains('open')) closeProjectDrawer();
   });
+}
+
+// Sidebar "+ New" menu: choose to create a new project or upload/import one.
+function closeNewMenu() {
+  const menu = document.getElementById('new-menu');
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  document.getElementById('btn-new-menu').setAttribute('aria-expanded', 'false');
+}
+function wireNewMenu() {
+  const btn = document.getElementById('btn-new-menu');
+  const menu = document.getElementById('new-menu');
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = menu.hidden;
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', e => {
+    if (!menu.hidden && !e.target.closest('#new-menu, #btn-new-menu')) closeNewMenu();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNewMenu(); });
 }
 
 function escapeHtml(s) {
@@ -954,9 +1007,9 @@ function sanitizeSheetName(name, used) {
   return candidate;
 }
 
-async function downloadProjectZip() {
+async function downloadProjectZip(project = getCurrentProject()) {
+  if (!project) return;
   try {
-    const project = getCurrentProject();
     const plan = buildExportPlan(state.model, project);
     const wb = XLSX.utils.book_new();
     const used = new Set();
@@ -1007,8 +1060,8 @@ async function downloadProjectZip() {
   }
 }
 
-function saveProjectFile() {
-  const project = getCurrentProject();
+function saveProjectFile(project = getCurrentProject()) {
+  if (!project) return;
   const json = state.store.serializeProject(project);
   const safeName = project.name.replace(/[^\w\-]+/g, '_');
   downloadBlob(new Blob([json], { type: 'application/json' }), `${safeName}.json`);
@@ -1172,6 +1225,8 @@ async function init() {
   wireItemTintToggle();
   wireSidebarToggle();
   wireProjectDrawer();
+  wireNewMenu();
+  wireDashboardActions();
   wireCardSplitter();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
   document.getElementById('nav-about').addEventListener('click', () => showScreen('about'));
@@ -1195,14 +1250,16 @@ async function init() {
     state.hideChecked = e.target.checked;
     renderItems();
   });
-  document.getElementById('btn-new-project').addEventListener('click', () => openEditor(null));
+  document.getElementById('menu-new-project').addEventListener('click', () => { closeNewMenu(); openEditor(null); });
   document.getElementById('btn-edit-project').addEventListener('click', () => openEditor(state.currentProjectId));
   document.getElementById('editor-save').addEventListener('click', saveEditor);
   document.getElementById('editor-cancel').addEventListener('click', cancelEditor);
   document.getElementById('editor-prev-unit').addEventListener('click', prevEditorUnit);
   document.getElementById('editor-next-unit').addEventListener('click', nextEditorUnit);
 
-  document.getElementById('import-project-file').addEventListener('change', async e => {
+  const importFile = document.getElementById('import-project-file');
+  importFile.addEventListener('click', closeNewMenu); // menu closes as the picker opens
+  importFile.addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
     try {
@@ -1215,8 +1272,8 @@ async function init() {
     e.target.value = '';
   });
 
-  document.getElementById('btn-save-project').addEventListener('click', saveProjectFile);
-  document.getElementById('btn-download-zip').addEventListener('click', downloadProjectZip);
+  document.getElementById('btn-save-project').addEventListener('click', () => saveProjectFile());
+  document.getElementById('btn-download-zip').addEventListener('click', () => downloadProjectZip());
   document.getElementById('btn-save-library').addEventListener('click', saveLibraryFile);
 
   document.getElementById('restore-library-file').addEventListener('change', async e => {
