@@ -780,6 +780,7 @@ function renderItemEditor() {
   empty.hidden = true; body.hidden = false;
   const unit = applicable.find(u => u.id === state.editorUnitId) || applicable[0];
   state.editorUnitId = unit.id;
+  const showUnitSelect = project.units.length > 1; // single-unit projects need no unit picker
 
   body.innerHTML = `
     <div class="ed-item-head">
@@ -787,18 +788,20 @@ function renderItemEditor() {
       <span class="ed-item-name"><span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}</span>
     </div>
     ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
-    <label class="ed-unit-row"><span>Unit Selection</span><select id="ed-unit-select"></select></label>
+    ${showUnitSelect ? `<label class="ed-unit-row"><span>Unit Selection</span><select id="ed-unit-select"></select></label>` : ''}
     <div class="ed-comment-label">Comments</div>
     <textarea id="ed-comment" class="ed-comment" rows="6" placeholder="Comment for this unit…"></textarea>`;
 
   const sel = body.querySelector('#ed-unit-select');
-  for (const u of applicable) {
-    const opt = document.createElement('option');
-    opt.value = u.id; opt.textContent = u.name;
-    if (u.id === unit.id) opt.selected = true;
-    sel.appendChild(opt);
+  if (sel) {
+    for (const u of applicable) {
+      const opt = document.createElement('option');
+      opt.value = u.id; opt.textContent = u.name;
+      if (u.id === unit.id) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', () => { state.editorUnitId = sel.value; renderItemEditor(); });
   }
-  sel.addEventListener('change', () => { state.editorUnitId = sel.value; renderItemEditor(); });
 
   body.querySelector('#ed-comment').value = unit.comments[item.id] || '';
   body.querySelector('#ed-comment').addEventListener('input', e => {
