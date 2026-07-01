@@ -16,6 +16,10 @@
   --accent-soft: #eef2e6;
   --success: #5f7d35;
   --success-soft: #eef2e6;
+  --success-fill: rgba(95, 125, 53, 0.08);
+  --warning: #d98a2b;
+  --warning-soft: #fbf0e0;
+  --warning-fill: rgba(217, 138, 43, 0.08);
   --danger: #b3261e;
   --shadow: 0 1px 2px rgba(20, 23, 28, .04), 0 4px 16px rgba(20, 23, 28, .05);
   --radius: 12px;
@@ -37,12 +41,15 @@ html[data-theme="dark"] {
   --accent-soft: #29311d;
   --success: #7d9e4a;
   --success-soft: #29311d;
+  --success-fill: rgba(125, 158, 74, 0.08);
+  --warning: #e0a458;
+  --warning-soft: #33291a;
+  --warning-fill: rgba(224, 164, 88, 0.08);
   --danger: #e06b62;
   --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .4);
 }
 
 /* A few component colours are hard-coded; restate them for dark. */
-html[data-theme="dark"] .item.checked { border-color: #3c4a26; }
 html[data-theme="dark"] .btn-danger:hover { background: #3a2422; border-color: #5a302c; color: #e87b72; }
 html[data-theme="dark"] select {
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%239aa1ab' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1.5 6 6.5 11 1.5'/></svg>");
@@ -509,11 +516,18 @@ input[type="checkbox"] {
 .item:hover { border-color: var(--border-strong); }
 
 .item.checked {
-  background: var(--success-soft);
-  border-color: #d2e0bd;
+  background: var(--success-fill);
+  border-color: var(--success-fill);
+}
+
+/* Partially complete (some units ticked) — amber bubble + amber indeterminate dash. */
+.item.partial {
+  background: var(--warning-fill);
+  border-color: var(--warning-fill);
 }
 
 .items-list input[type="checkbox"] { accent-color: var(--success); }
+.item.partial input[type="checkbox"] { accent-color: var(--warning); }
 
 .item-head { display: flex; gap: 12px; align-items: flex-start; }
 
@@ -545,6 +559,19 @@ input[type="checkbox"] {
 .item-head .id {
   font-weight: 650;
   letter-spacing: 0.01em;
+}
+
+.item-head .code-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 7px;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 .item-note {
@@ -822,6 +849,7 @@ input[type="checkbox"] {
 .inputs-readout dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 /* Empty-state placeholder: a dashed box filling the detail card until an item is picked */
 #item-editor { flex: 1 1 auto; display: flex; flex-direction: column; }
+#item-editor[hidden] { display: none; }
 .editor-empty {
   flex: 1;
   display: flex;
@@ -860,7 +888,11 @@ input[type="checkbox"] {
   border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--surface); padding: 16px 18px;
 }
-.checklist-head #project-title { margin: 0 0 8px; }
+.checklist-head-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 8px;
+}
+.checklist-head #project-title { margin: 0; }
 .checklist-head .section-filter { margin: 12px 0 0; }
 /* Static (non-collapsing) panel header, e.g. Unit Selection */
 .panel-head-static {
@@ -878,21 +910,14 @@ input[type="checkbox"] {
   background: var(--surface);
   box-shadow: var(--shadow);
 }
-/* Left bubble: flat pinned header over flat rows (no nested cards) */
+/* Left bubble: flat pinned header; checklist items keep their own bubble cards
+   (border + rounded, turning green when checked via base .item / .item.checked). */
 [data-screen="project"] .checklist-main { gap: 0; overflow: hidden; }
 [data-screen="project"] .checklist-head {
   border: none; border-radius: 0; background: none;
   border-bottom: 1px solid var(--border);
 }
-[data-screen="project"] .items-list { padding: 4px 18px 8px; }
-[data-screen="project"] .items-list .item {
-  border: none; border-radius: 0; background: none;
-  margin: 0; padding: 14px 2px;
-  border-bottom: 1px solid var(--border);
-}
-[data-screen="project"] .items-list .item:last-child { border-bottom: none; }
-[data-screen="project"] .items-list .item:hover { background: var(--surface-muted); }
-[data-screen="project"] .items-list .item.checked { background: none; }
+[data-screen="project"] .items-list { padding: 12px 18px; }
 /* Right bubble: flatten the three sections into one card with dividers */
 [data-screen="project"] .detail-panel { gap: 0; }
 [data-screen="project"] .detail-panel .panel-section {

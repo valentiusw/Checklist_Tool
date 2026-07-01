@@ -21,6 +21,7 @@ const state = {
   viewerUnitId: null,
   editorItemId: null,
   editorUnitId: null,
+  detailMode: 'editor', // 'editor' (item detail+comment) | 'project' (read-only unit details)
 };
 
 const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
@@ -600,12 +601,12 @@ function renderItems() {
     }
     const cs = stateById.get(item.id);
     const div = document.createElement('div');
-    div.className = 'item' + (cs === 'all' ? ' checked' : '');
+    div.className = 'item' + (cs === 'all' ? ' checked' : cs === 'some' ? ' partial' : '');
     div.innerHTML = `
       <div class="item-head">
         <input type="checkbox" data-check="${escapeHtml(item.id)}" />
         <div>
-          <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}
+          <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}${item.code ? `<span class="code-tag">${escapeHtml(item.code)}</span>` : ''}
         </div>
         ${item.exampleFile ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleFile)}" title="View example" aria-label="View example for ${escapeHtml(item.id)}">${INFO_ICON}</button>` : ''}
       </div>`;
@@ -725,9 +726,25 @@ function renderInputsViewer() {
   }
 }
 
+// Toggle the shared RHS workspace between the item editor and the read-only
+// project/unit details view, updating section visibility and the button label.
+function applyDetailMode() {
+  const proj = state.detailMode === 'project';
+  document.getElementById('unit-selection').hidden = !proj;
+  document.getElementById('inputs-viewer').hidden = !proj;
+  document.getElementById('item-editor').hidden = proj;
+  const btn = document.getElementById('btn-project-details');
+  if (btn) {
+    btn.textContent = proj ? 'Back to checklist' : 'See project details';
+    btn.setAttribute('aria-pressed', String(proj));
+  }
+}
+
 function openItemEditor(itemId, unitId) {
   const item = state.model.items.find(i => i.id === itemId);
   if (!item) return;
+  state.detailMode = 'editor';
+  applyDetailMode();
   const applicable = itemApplicableUnits(state.model, getCurrentProject(), item);
   state.editorItemId = itemId;
   if (unitId && applicable.some(u => u.id === unitId)) state.editorUnitId = unitId;
@@ -823,6 +840,8 @@ function renderProject() {
   renderSectionFilter();
   for (const u of project.units) ensureUnitInputs(u);
   saveCurrent(project); // persist any defaults just applied
+  state.detailMode = 'editor';
+  applyDetailMode();
   renderInputsViewer();
   renderItemEditor();
   renderItems();
@@ -1065,6 +1084,11 @@ async function init() {
   document.getElementById('section-select').addEventListener('change', e => {
     state.sectionFilter = e.target.value;
     renderItems();
+  });
+  document.getElementById('btn-project-details').addEventListener('click', () => {
+    state.detailMode = state.detailMode === 'project' ? 'editor' : 'project';
+    if (state.detailMode === 'project') renderInputsViewer();
+    applyDetailMode();
   });
   document.getElementById('viewer-unit-select').addEventListener('change', e => {
     state.viewerUnitId = e.target.value;
