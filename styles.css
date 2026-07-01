@@ -574,6 +574,17 @@ input[type="checkbox"] {
   vertical-align: middle;
 }
 
+/* Per-unit tags under a checklist item; green (0.08) when that unit is done. */
+.unit-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.unit-tag {
+  font-size: 12px; font-weight: 600; line-height: 1.4;
+  padding: 3px 10px; border-radius: 6px;
+  color: var(--text); background: var(--surface-muted);
+  border: 1px solid var(--border); cursor: pointer;
+}
+.unit-tag:hover { border-color: var(--border-strong); }
+.unit-tag.done { background: var(--success-fill); border-color: var(--success-fill); }
+
 .item-note {
   font-size: 13px;
   color: var(--text-muted);

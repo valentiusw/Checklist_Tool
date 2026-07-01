@@ -575,10 +575,13 @@ function renderItems() {
 
   // Tri-state per item (drives the checkbox and the section counts).
   const stateById = new Map();
+  const unitsById = new Map();
   for (const i of items) {
     const units = itemApplicableUnits(state.model, project, i);
+    unitsById.set(i.id, units);
     stateById.set(i.id, itemCheckState(i, units));
   }
+  const showUnitTags = project.units.length > 1;
 
   // Section totals from the full (pre hide-checked) list. Done = fully checked.
   const total = new Map();
@@ -600,6 +603,9 @@ function renderItems() {
       container.appendChild(h);
     }
     const cs = stateById.get(item.id);
+    const tags = showUnitTags ? unitsById.get(item.id).map(u =>
+      `<button type="button" class="unit-tag${(u.checks || {})[item.id] === true ? ' done' : ''}" data-tag-item="${escapeHtml(item.id)}" data-tag-unit="${escapeHtml(u.id)}">${escapeHtml(u.name)}</button>`
+    ).join('') : '';
     const div = document.createElement('div');
     div.className = 'item' + (cs === 'all' ? ' checked' : cs === 'some' ? ' partial' : '');
     div.innerHTML = `
@@ -607,6 +613,7 @@ function renderItems() {
         <input type="checkbox" data-check="${escapeHtml(item.id)}" />
         <div>
           <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}${item.code ? `<span class="code-tag">${escapeHtml(item.code)}</span>` : ''}
+          ${tags ? `<div class="unit-tags">${tags}</div>` : ''}
         </div>
         ${item.exampleFile ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleFile)}" title="View example" aria-label="View example for ${escapeHtml(item.id)}">${INFO_ICON}</button>` : ''}
       </div>`;
@@ -647,6 +654,11 @@ function renderItems() {
     }));
   container.querySelectorAll('[data-example]').forEach(btn =>
     btn.addEventListener('click', e => { e.stopPropagation(); openExample(btn.getAttribute('data-example')); }));
+  container.querySelectorAll('[data-tag-unit]').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openItemEditor(btn.getAttribute('data-tag-item'), btn.getAttribute('data-tag-unit'));
+    }));
 }
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
