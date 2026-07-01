@@ -42,6 +42,7 @@ export function buildExportPlan(model, project) {
     const checks = unit.checks || {};
     const rows = applicableItems(model, unit.inputs || {})
       .filter(item => checks[item.id] !== true)
+      .filter(item => !/^s/i.test(item.id)) // exclude Schindler (S-prefixed) items from export
       .map(item => ({
         id: item.id,
         description: item.description,

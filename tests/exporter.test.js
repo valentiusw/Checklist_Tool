@@ -92,6 +92,20 @@ test('buildExportPlan returns per-unit outstanding rows', () => {
   assert.equal(plan.units[1].rows[0].exampleFile, 'a08.png');
 });
 
+test('buildExportPlan excludes items whose ID starts with S (Schindler)', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A08', '', 'Keep me', 'AS3000', '', 'a08.png'],
+    ['S01', '', 'Schindler item', 'SL', '', 's01.png'],
+    ['S12', '', 'Another Schindler', 'SL', '', 'Prose'],
+  ];
+  const m = buildModel({ checklistRows: rows, inputRows });
+  const project = { units: [{ name: 'U', inputs: {}, checks: {}, comments: {} }] };
+  const plan = buildExportPlan(m, project);
+  assert.deepEqual(plan.units[0].rows.map(r => r.id), ['A08']);
+  assert.deepEqual(plan.referencedFiles, ['a08.png']);
+});
+
 test('buildExportPlan collects referenced files once, in order', () => {
   const rows = [
     ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
