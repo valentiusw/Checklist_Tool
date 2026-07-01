@@ -766,6 +766,8 @@ function openItemEditor(itemId, unitId) {
   renderItemEditor();
 }
 
+const ALL_UNITS = '__all__'; // sentinel for the "All Lifts" unit-editor selection
+
 function renderItemEditor() {
   const empty = document.getElementById('editor-empty');
   const body = document.getElementById('item-editor-body');
@@ -778,44 +780,68 @@ function renderItemEditor() {
     return;
   }
   empty.hidden = true; body.hidden = false;
-  const unit = applicable.find(u => u.id === state.editorUnitId) || applicable[0];
-  state.editorUnitId = unit.id;
   const showUnitSelect = project.units.length > 1; // single-unit projects need no unit picker
+  const showAll = showUnitSelect && applicable.length > 1; // "All Lifts" only when >1 to act on
+  const isAll = showAll && state.editorUnitId === ALL_UNITS;
+  const unit = isAll ? null : (applicable.find(u => u.id === state.editorUnitId) || applicable[0]);
+  if (!isAll) state.editorUnitId = unit.id;
+
+  // Aggregate view when "All Lifts" is selected: tri-state check + shared comment.
+  const allChecked = applicable.every(u => (u.checks || {})[item.id] === true);
+  const noneChecked = applicable.every(u => (u.checks || {})[item.id] !== true);
+  const comments = applicable.map(u => (u.comments || {})[item.id] || '');
+  const sharedComment = comments.every(c => c === comments[0]) ? comments[0] : '';
+
+  const isChecked = isAll ? allChecked : unit.checks[item.id] === true;
+  const commentValue = isAll ? sharedComment : (unit.comments[item.id] || '');
 
   body.innerHTML = `
     <div class="ed-item-head">
-      <input type="checkbox" id="ed-check" ${unit.checks[item.id] === true ? 'checked' : ''}/>
+      <input type="checkbox" id="ed-check" ${isChecked ? 'checked' : ''}/>
       <span class="ed-item-name"><span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}</span>
     </div>
     ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
     ${showUnitSelect ? `<label class="ed-unit-row"><span>Unit Selection</span><select id="ed-unit-select"></select></label>` : ''}
     <div class="ed-comment-label">Comments</div>
-    <textarea id="ed-comment" class="ed-comment" rows="6" placeholder="Comment for this unit…"></textarea>`;
+    <textarea id="ed-comment" class="ed-comment" rows="6" placeholder="${isAll ? 'Comment applied to all lifts…' : 'Comment for this unit…'}"></textarea>`;
 
   const sel = body.querySelector('#ed-unit-select');
   if (sel) {
+    if (showAll) {
+      const allOpt = document.createElement('option');
+      allOpt.value = ALL_UNITS; allOpt.textContent = 'All Lifts';
+      if (isAll) allOpt.selected = true;
+      sel.appendChild(allOpt);
+    }
     for (const u of applicable) {
       const opt = document.createElement('option');
       opt.value = u.id; opt.textContent = u.name;
-      if (u.id === unit.id) opt.selected = true;
+      if (!isAll && u.id === unit.id) opt.selected = true;
       sel.appendChild(opt);
     }
     sel.addEventListener('change', () => { state.editorUnitId = sel.value; renderItemEditor(); });
   }
 
-  body.querySelector('#ed-comment').value = unit.comments[item.id] || '';
-  body.querySelector('#ed-comment').addEventListener('input', e => {
+  const check = body.querySelector('#ed-check');
+  if (isAll) check.indeterminate = !allChecked && !noneChecked;
+
+  // Units the edit applies to: all applicable units in "All Lifts" mode, else the one unit.
+  const targetUnits = () => {
     const p = getCurrentProject();
-    const u = p.units.find(x => x.id === state.editorUnitId);
-    if (!u) return;
-    u.comments[item.id] = e.target.value;
+    const ids = isAll ? applicable.map(u => u.id) : [state.editorUnitId];
+    return { p, units: ids.map(id => p.units.find(x => x.id === id)).filter(Boolean) };
+  };
+
+  const commentBox = body.querySelector('#ed-comment');
+  commentBox.value = commentValue;
+  commentBox.addEventListener('input', e => {
+    const { p, units } = targetUnits();
+    for (const u of units) u.comments[item.id] = e.target.value;
     saveCurrent(p);
   });
-  body.querySelector('#ed-check').addEventListener('change', e => {
-    const p = getCurrentProject();
-    const u = p.units.find(x => x.id === state.editorUnitId);
-    if (!u) return;
-    u.checks[item.id] = e.target.checked;
+  check.addEventListener('change', e => {
+    const { p, units } = targetUnits();
+    for (const u of units) u.checks[item.id] = e.target.checked;
     saveCurrent(p);
     renderItems();
     renderProgress();
