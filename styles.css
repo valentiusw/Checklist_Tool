@@ -1046,6 +1046,9 @@ html.no-item-tint .item.partial {
 /* ===== Quick Look: an in-flow details card that slides in and pushes the
    list card (width/margin transition, like the collapsible sidebar). ======= */
 .dash-wrap { display: flex; align-items: flex-start; }
+/* The wrap only belongs on the dashboard; hide it elsewhere so the closed
+   quick-look card's residual height doesn't push other screens down. */
+html:not([data-screen="dashboard"]) .dash-wrap { display: none; }
 #screen-dashboard { flex: 1 1 auto; min-width: 0; }
 .quicklook {
   flex: none;
