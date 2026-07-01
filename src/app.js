@@ -270,40 +270,24 @@ function renderDashboard() {
   for (const summary of projects) {
     const project = state.store.getProject(summary.id);
     const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
-    const unitRows = project.units.map(u => {
-      const p = computeProgress(state.model, u);
-      return `
-        <div class="unit-row">
-          <span class="unit-name">${escapeHtml(u.name)}</span>
-          <div class="progress progress-sm"><div class="progress-bar" style="width:${Math.round(p.ratio * 100)}%"></div></div>
-          <span class="unit-count muted">${p.checked} / ${p.applicable}</span>
-        </div>`;
-    }).join('');
     const li = document.createElement('li');
     li.className = 'project-card';
     li.innerHTML = `
       <div class="row-between">
         <strong>${escapeHtml(project.name)}</strong>
         <span class="btn-row">
-          <button class="btn-ghost btn-sm" data-toggle="${project.id}" aria-expanded="false">Expand</button>
+          <button class="btn-ghost btn-sm" data-toggle="${project.id}">Expand</button>
           <button class="btn-primary btn-sm" data-open="${project.id}">Open</button>
           <button class="btn-danger btn-sm" data-delete="${project.id}">Delete</button>
         </span>
       </div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
-      <p class="muted">${project.units.length} unit${project.units.length === 1 ? '' : 's'} · ${checked} / ${applicable} checked</p>
-      <div class="unit-breakdown" hidden>${unitRows}</div>`;
+      <p class="muted">${project.units.length} unit${project.units.length === 1 ? '' : 's'} · ${checked} / ${applicable} checked</p>`;
     list.appendChild(li);
   }
 
   list.querySelectorAll('[data-toggle]').forEach(btn =>
-    btn.addEventListener('click', () => {
-      const breakdown = btn.closest('.project-card').querySelector('.unit-breakdown');
-      const show = breakdown.hidden;
-      breakdown.hidden = !show;
-      btn.textContent = show ? 'Collapse' : 'Expand';
-      btn.setAttribute('aria-expanded', String(show));
-    }));
+    btn.addEventListener('click', () => openProjectDrawer(btn.getAttribute('data-toggle'))));
   list.querySelectorAll('[data-open]').forEach(btn =>
     btn.addEventListener('click', () => openProject(btn.getAttribute('data-open'))));
   list.querySelectorAll('[data-delete]').forEach(btn =>
@@ -313,6 +297,62 @@ function renderDashboard() {
         renderDashboard();
       }
     }));
+}
+
+const DRAWER_CHEVRON = `<svg class="drawer-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
+
+// Right-side drawer showing a project's overall + per-unit progression; each
+// unit row expands to reveal that unit's read-only input specs.
+function openProjectDrawer(projectId) {
+  const project = state.store.getProject(projectId);
+  if (!project) return;
+  const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
+  document.getElementById('drawer-title').textContent = project.name;
+  const units = project.units.map(u => {
+    const p = computeProgress(state.model, u);
+    const specs = state.model.inputs.map(def =>
+      `<dt>${escapeHtml(def.label + (def.unit ? ` (${def.unit})` : ''))}</dt>` +
+      `<dd>${escapeHtml(formatInputValue(def, u.inputs[def.name]))}</dd>`
+    ).join('');
+    return `
+      <div class="drawer-unit">
+        <button class="drawer-unit-head" type="button" data-unit-toggle aria-expanded="false">
+          <span class="unit-name">${escapeHtml(u.name)}</span>
+          <div class="progress progress-sm"><div class="progress-bar" style="width:${Math.round(p.ratio * 100)}%"></div></div>
+          <span class="unit-count muted">${p.checked} / ${p.applicable}</span>
+          ${DRAWER_CHEVRON}
+        </button>
+        <div class="drawer-unit-specs" hidden><dl class="inputs-readout">${specs}</dl></div>
+      </div>`;
+  }).join('');
+  document.getElementById('drawer-body').innerHTML = `
+    <div class="drawer-overall">
+      <div class="row-between"><span class="drawer-overall-label">Overall</span><span class="muted">${checked} / ${applicable} checked</span></div>
+      <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
+    </div>
+    <h3 class="drawer-section">Units</h3>
+    <div class="drawer-units">${units}</div>`;
+  document.querySelectorAll('#drawer-body [data-unit-toggle]').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const specs = btn.nextElementSibling;
+      const show = specs.hidden;
+      specs.hidden = !show;
+      btn.setAttribute('aria-expanded', String(show));
+      btn.classList.toggle('open', show);
+    }));
+  document.getElementById('project-drawer').classList.add('open');
+}
+
+function closeProjectDrawer() {
+  document.getElementById('project-drawer').classList.remove('open');
+}
+
+function wireProjectDrawer() {
+  const drawer = document.getElementById('project-drawer');
+  drawer.querySelectorAll('[data-drawer-close]').forEach(el => el.addEventListener('click', closeProjectDrawer));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && drawer.classList.contains('open')) closeProjectDrawer();
+  });
 }
 
 function escapeHtml(s) {
@@ -1131,6 +1171,7 @@ async function init() {
   wireThemeToggle();
   wireItemTintToggle();
   wireSidebarToggle();
+  wireProjectDrawer();
   wireCardSplitter();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
   document.getElementById('nav-about').addEventListener('click', () => showScreen('about'));
