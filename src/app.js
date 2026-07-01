@@ -205,8 +205,8 @@ function renderBackupControls() {
   }
   controls.innerHTML = backup.handle
     ? `<button id="btn-disconnect-backup" class="btn-sm">Disconnect</button>`
-    : `<button id="btn-open-backup" class="btn-sm">Open existing backup…</button>` +
-      `<button id="btn-connect-backup" class="btn-primary">Back up to a file…</button>`;
+    : `<button id="btn-open-backup" class="btn-sm">Open Existing Backup…</button>` +
+      `<button id="btn-connect-backup" class="btn-primary">Back Up To A File…</button>`;
   if (backup.handle) {
     document.getElementById('btn-disconnect-backup').addEventListener('click', async () => {
       backup.handle = null; await db.setMeta('backupHandle', null); setBackupStatus('disconnected', ''); renderBackupControls();
@@ -360,7 +360,7 @@ const ICON_ADD = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" st
 
 function renderEditor() {
   const { draft, isNew } = state.editor;
-  document.getElementById('editor-heading').textContent = isNew ? 'New project' : 'Edit project';
+  document.getElementById('editor-heading').textContent = isNew ? 'New Project' : 'Edit Project';
   document.getElementById('editor-name-error').hidden = true;
 
   const nameInput = document.getElementById('editor-project-name');
@@ -747,7 +747,7 @@ function applyDetailMode() {
   document.getElementById('item-editor').hidden = proj;
   const btn = document.getElementById('btn-project-details');
   if (btn) {
-    btn.textContent = proj ? 'Back to checklist' : 'See project details';
+    btn.textContent = proj ? 'Back To Checklist' : 'See Project Details';
     btn.setAttribute('aria-pressed', String(proj));
   }
 }
@@ -1189,7 +1189,7 @@ async function init() {
   if (backup.handle) {
     // Permission must be re-granted with a user gesture; expose a one-click reconnect.
     const controls = document.getElementById('backup-controls');
-    controls.insertAdjacentHTML('afterbegin', `<button id="btn-reconnect-backup" class="btn-primary">Reconnect backup</button>`);
+    controls.insertAdjacentHTML('afterbegin', `<button id="btn-reconnect-backup" class="btn-primary">Reconnect Backup</button>`);
     document.getElementById('btn-reconnect-backup').addEventListener('click', async () => {
       if (!(await fileBackup.ensurePermission(backup.handle, 'readwrite'))) { setBackupStatus('permission denied', 'warn'); return; }
       try { await reconcileWithFile(); setBackupStatus('saved ✓', 'ok'); renderBackupControls(); }
