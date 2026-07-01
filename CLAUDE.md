@@ -61,7 +61,9 @@ dependency-free modules only (DOM glue in `app.js` is not unit-tested — see sm
 - **CSS is token-driven and theme-aware.** Use existing CSS custom properties; don't hardcode `#fff`-style colors (breaks dark mode). New layout CSS is typically scoped with a `[data-screen="project"]` prefix to avoid leaking across screens.
 - **localStorage / pointer-capture / File System Access calls go in `try/catch`** (private mode / unsupported browsers).
 - **db.js owns the IndexedDB schema** — bump its version there, nowhere else.
-- **Export rules (per the user's spec):** unchecked-items Excel uses column order **ID, Description, Code, Comments, Example**; header row bold; Example cells that reference a file become blue underlined relative hyperlinks; the **Note** column is excluded from export; **Schindler / `S` items are excluded from export.**
+- **Export rules (per the user's spec):** unchecked-items Excel uses column order **ID, Description, Code, Comments, Example**; header row bold; Example cells that reference a file become blue underlined relative hyperlinks; the **Note** column is excluded from export; **Schindler / `S`-prefixed items are excluded from export** (filtered in `buildExportPlan`; case-insensitive `/^s/i` on the item ID).
+- **Button labels are Title Case** — capitalize *every* word, including short words (e.g. "See Project Details", "Back Up To A File…"). Applies to visible `<button>` text and button-styled labels, static and dynamically generated; not to headings, field labels, or toggle labels (those stay sentence case).
+- **Done/partial tint tokens:** `--success-fill` / `--warning-fill` are translucent (0.08 alpha) and used for **both** background and border so the edge blends (no hard outline). Item bubbles go green (all units checked), amber (some), or plain; per-unit pills reuse the same green fill.
 - The user's notes in `Context.txt` are requirements/feedback, often dated — treat as intent, confirm current state against code before acting.
 
 ## Development workflow (this repo uses Superpowers SDD)
@@ -77,8 +79,18 @@ scratchpad). Claims of "done" are backed by `npm test` + a smoke run, not assert
 
 ## Current state (update when it drifts)
 
-Functional MVP in active UI refinement. Recently completed on `main`: two-bubble project layout
-(independent-scroll checklist/detail cards) and drag-to-resize cards with a persisted splitter
-width. Larger in-flight direction (from `Context.txt`, 30/6): move per-item commenting + inputs
-into the RHS detail panel, and replace per-unit checklists with a **unit-tag** system (items show
-"Unit 2" / "Unit 3" tags; comments pick which unit they apply to).
+Functional MVP, actively refined. The RHS detail panel is now a **dynamic workspace** with two
+modes, toggled by the "See Project Details" button on the checklist card:
+- **Item editor** (default) — clicking a checklist item (or a unit pill) opens its detail +
+  per-unit comment/check here. A dashed empty-state box shows until an item is picked.
+- **Project details** — a read-only unit view: a unit picker over clean two-column spec rows
+  (no collapse). `applyDetailMode()` in `app.js` flips section visibility + the button label.
+
+Also landed on `main`: two-bubble layout with independent scroll + drag-resize splitter;
+restored item **bubbles** (green done / amber partial, translucent tints) with the code shown
+after the description; **per-unit pill tags** on items (multi-unit projects only — click a pill to
+open that unit in the editor); an **"All Lifts"** editor option that writes a comment / check to
+every applicable unit; single-unit projects omit pills and the unit picker; S-items excluded from
+export; Title-Case buttons.
+
+No specific in-flight task at last update — driven by ad-hoc requests in `Context.txt` / chat.
