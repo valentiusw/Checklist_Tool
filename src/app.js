@@ -272,6 +272,7 @@ function renderDashboard() {
   empty.hidden = !!state.model;
   deselectProject(); // fresh list starts unselected
   closeQuickLook();
+  renderPinnedNav(); // always refresh the sidebar, even with no model loaded
   if (!state.model) return;
 
   const projects = state.store.listProjects();
@@ -306,8 +307,6 @@ function renderDashboard() {
 
   list.querySelectorAll('[data-pin]').forEach(btn =>
     btn.addEventListener('click', e => { e.stopPropagation(); togglePin(btn.getAttribute('data-pin')); }));
-
-  renderPinnedNav();
 }
 
 function togglePin(id) {
@@ -332,7 +331,6 @@ function renderPinnedNav() {
   list.innerHTML = '';
   for (const p of pinned) {
     const li = document.createElement('li');
-    li.className = 'pinned-item';
     li.innerHTML = `<button type="button" class="pinned-link" data-open="${p.id}" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`;
     list.appendChild(li);
   }
@@ -1358,7 +1356,6 @@ async function init() {
         const n = state.store.importLibrary(await file.text());
         alert(`Restored ${n} project${n === 1 ? '' : 's'} into your library.`);
         renderDashboard();
-        renderPinnedNav();
       } catch (err) {
         alert('Could not restore library: ' + err.message);
       }
