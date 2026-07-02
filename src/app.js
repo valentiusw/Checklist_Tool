@@ -1358,6 +1358,7 @@ async function init() {
         const n = state.store.importLibrary(await file.text());
         alert(`Restored ${n} project${n === 1 ? '' : 's'} into your library.`);
         renderDashboard();
+        renderPinnedNav();
       } catch (err) {
         alert('Could not restore library: ' + err.message);
       }
