@@ -168,6 +168,24 @@ html.sidebar-collapsed .new-btn > span { display: none; }
 
 .side-link svg { width: 18px; height: 18px; flex: none; }
 
+/* ---- Pinned nav section ------------------------------------------------ */
+.nav-pinned[hidden] { display: none; }
+.nav-pinned-chevron { margin-left: auto; transition: transform .15s ease; }
+.nav-pinned.open .nav-pinned-chevron { transform: rotate(180deg); }
+.pinned-sublist { list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; }
+.nav-pinned.open .pinned-sublist { max-height: none; }
+.pinned-link {
+  display: block; width: 100%; text-align: left;
+  padding: 6px 10px 6px 40px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: inherit;
+}
+.pinned-link:hover { background: var(--surface-muted); color: var(--text); }
+/* When the sidebar is collapsed, show only the pin icon — no label, no sublist. */
+html.sidebar-collapsed .nav-pinned-chevron,
+html.sidebar-collapsed .pinned-sublist { display: none; }
+
 /* The dark-theme row pushes its toggle to the right edge. */
 .side-theme { cursor: pointer; }
 .side-theme .side-theme-switch { margin-left: auto; flex: none; }

@@ -306,6 +306,8 @@ function renderDashboard() {
 
   list.querySelectorAll('[data-pin]').forEach(btn =>
     btn.addEventListener('click', e => { e.stopPropagation(); togglePin(btn.getAttribute('data-pin')); }));
+
+  renderPinnedNav();
 }
 
 function togglePin(id) {
@@ -319,6 +321,23 @@ function togglePin(id) {
   }
   state.store.setPinned(id, next);
   renderDashboard();
+}
+
+function renderPinnedNav() {
+  const wrap = document.getElementById('nav-pinned-wrap');
+  const list = document.getElementById('pinned-sublist');
+  if (!wrap || !list) return;
+  const pinned = state.store.listProjects().filter(p => p.pinned).slice(0, 5);
+  wrap.hidden = pinned.length === 0;
+  list.innerHTML = '';
+  for (const p of pinned) {
+    const li = document.createElement('li');
+    li.className = 'pinned-item';
+    li.innerHTML = `<button type="button" class="pinned-link" data-open="${p.id}" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`;
+    list.appendChild(li);
+  }
+  list.querySelectorAll('[data-open]').forEach(btn =>
+    btn.addEventListener('click', () => openProject(btn.getAttribute('data-open'))));
 }
 
 function selectProject(id) {
@@ -1235,6 +1254,25 @@ function wireSidebarToggle() {
   });
 }
 
+const PINNED_NAV_KEY = 'dpchecklist.pinnedNav';
+function wirePinnedNav() {
+  const btn = document.getElementById('nav-pinned');
+  const wrap = document.getElementById('nav-pinned-wrap');
+  if (!btn || !wrap) return;
+  const apply = (open) => {
+    wrap.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', String(open));
+  };
+  let open = true;
+  try { open = window.localStorage.getItem(PINNED_NAV_KEY) !== 'collapsed'; } catch { /* ignore */ }
+  apply(open);
+  btn.addEventListener('click', () => {
+    open = !wrap.classList.contains('open');
+    apply(open);
+    try { window.localStorage.setItem(PINNED_NAV_KEY, open ? 'expanded' : 'collapsed'); } catch { /* ignore */ }
+  });
+}
+
 async function init() {
   let snap = { model: null, projects: [], savedAt: null };
   try {
@@ -1254,10 +1292,12 @@ async function init() {
   }
   state.model = snap.model ? rebuildModel(snap.model) : null;
   state.store.load(snap.projects);
+  renderPinnedNav();
   wireSetup();
   wireThemeToggle();
   wireItemTintToggle();
   wireSidebarToggle();
+  wirePinnedNav();
   wireQuickLook();
   wireNewMenu();
   wireDashboardActions();
