@@ -82,3 +82,35 @@ test('mutating a seed object after load does not corrupt the store', () => {
   seed.name = 'Mutated';
   assert.equal(store.getProject('p1').name, 'Original');
 });
+
+test('setPinned sets and clears the flag without bumping updatedAt', () => {
+  const store = createProjectStore();
+  store.load([{ id: 'p1', name: 'A', updatedAt: '2026-01-01T00:00:00Z',
+    units: [{ id: 'u', name: 'U', inputs: {}, checks: {}, comments: {} }] }]);
+  store.setPinned('p1', true);
+  let p = store.getProject('p1');
+  assert.equal(p.pinned, true);
+  assert.equal(p.updatedAt, '2026-01-01T00:00:00Z'); // unchanged
+  store.setPinned('p1', false);
+  p = store.getProject('p1');
+  assert.ok(!p.pinned);
+  assert.equal(p.updatedAt, '2026-01-01T00:00:00Z');
+});
+
+test('setPinned is a no-op for unknown ids and fires no event', () => {
+  const events = [];
+  const store = createProjectStore({ onChange: e => events.push(e) });
+  store.setPinned('nope', true);
+  assert.deepEqual(events, []);
+});
+
+test('listProjects surfaces pinned as a boolean', () => {
+  const store = createProjectStore();
+  store.load([
+    { id: 'a', name: 'A', updatedAt: '2026-02-01T00:00:00Z', pinned: true, units: [] },
+    { id: 'b', name: 'B', updatedAt: '2026-01-01T00:00:00Z', units: [] },
+  ]);
+  const byId = Object.fromEntries(store.listProjects().map(p => [p.id, p.pinned]));
+  assert.equal(byId.a, true);
+  assert.equal(byId.b, false);
+});

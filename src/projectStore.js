@@ -42,7 +42,7 @@ export function createProjectStore({ onChange } = {}) {
 
   function listProjects() {
     return [...projects.values()]
-      .map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt }))
+      .map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt, pinned: !!p.pinned }))
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   }
 
@@ -56,6 +56,14 @@ export function createProjectStore({ onChange } = {}) {
     stored.updatedAt = new Date().toISOString();
     projects.set(stored.id, stored);
     notify('upsert', stored.id);
+  }
+
+  function setPinned(id, pinned) {
+    const p = projects.get(id);
+    if (!p) return;
+    if (pinned) p.pinned = true;
+    else delete p.pinned;
+    notify('upsert', id);
   }
 
   function createProject(name) {
@@ -120,5 +128,6 @@ export function createProjectStore({ onChange } = {}) {
   return {
     load, listProjects, getProject, saveProject, deleteProject, createProject,
     newUnit, serializeProject, importProject, serializeLibrary, importLibrary,
+    setPinned,
   };
 }
