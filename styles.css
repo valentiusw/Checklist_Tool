@@ -1068,6 +1068,14 @@ html:not([data-screen="dashboard"]) .dash-wrap { display: none; }
 }
 .eye-btn:hover { color: var(--accent); background: none; }
 .eye-btn svg { width: 18px; height: 18px; }
+.pin-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  border: 1px solid transparent; border-radius: 8px;
+  background: transparent; color: var(--text-muted); cursor: pointer;
+}
+.pin-btn:hover { background: var(--surface-muted); color: var(--text); }
+.pin-btn.pinned { color: var(--accent); }
 .ql-head {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; padding: 18px 20px;

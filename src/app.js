@@ -261,6 +261,10 @@ function wireSetup() {
   });
 }
 
+// Pin glyph — outline when not pinned, filled (via fill=currentColor) when pinned.
+const pinSvg = (filled) =>
+  `<svg viewBox="0 0 24 24" width="16" height="16" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5"/><path d="M9 10.76V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6.76a2 2 0 0 0 .59 1.42l1.7 1.7A1 1 0 0 1 18.59 15H5.41a1 1 0 0 1-.7-1.71l1.7-1.7A2 2 0 0 0 7 10.76z"/></svg>`;
+
 function renderDashboard() {
   const list = document.getElementById('project-list');
   const empty = document.getElementById('dashboard-empty');
@@ -281,6 +285,9 @@ function renderDashboard() {
       <div class="row-between">
         <strong>${escapeHtml(project.name)}</strong>
         <span class="btn-row">
+          <button class="pin-btn${summary.pinned ? ' pinned' : ''}" data-pin="${project.id}" type="button"
+            title="${summary.pinned ? 'Unpin' : 'Pin'}" aria-label="${summary.pinned ? 'Unpin project' : 'Pin project'}"
+            aria-pressed="${summary.pinned ? 'true' : 'false'}">${pinSvg(summary.pinned)}</button>
           <button class="eye-btn" data-quicklook="${project.id}" type="button" title="Quick Look" aria-label="Quick Look">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
@@ -296,6 +303,22 @@ function renderDashboard() {
 
   list.querySelectorAll('[data-quicklook]').forEach(btn =>
     btn.addEventListener('click', e => { e.stopPropagation(); openQuickLook(btn.getAttribute('data-quicklook')); }));
+
+  list.querySelectorAll('[data-pin]').forEach(btn =>
+    btn.addEventListener('click', e => { e.stopPropagation(); togglePin(btn.getAttribute('data-pin')); }));
+}
+
+function togglePin(id) {
+  const summaries = state.store.listProjects();
+  const current = summaries.find(p => p.id === id);
+  if (!current) return;
+  const next = !current.pinned;
+  if (next && summaries.filter(p => p.pinned).length >= 5) {
+    alert('You can pin up to 5 projects. Unpin one first.');
+    return;
+  }
+  state.store.setPinned(id, next);
+  renderDashboard();
 }
 
 function selectProject(id) {
