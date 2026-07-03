@@ -23,6 +23,7 @@ const state = {
   editorUnitId: null,
   detailMode: 'editor', // 'editor' (item detail+comment) | 'project' (read-only unit details)
   selectedProjectId: null, // highlighted project on the dashboard
+  projectSearch: '', // dashboard keyword filter over project names
 };
 
 const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
@@ -30,7 +31,6 @@ const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
 const NAV_FOR_SCREEN = { setup: 'nav-setup', dashboard: 'nav-dashboard', project: 'nav-dashboard', about: 'nav-about', editor: 'nav-dashboard' };
 function showScreen(name) {
   document.documentElement.dataset.screen = name;
-  closeQuickLook(); // the quick-look card only belongs on the dashboard
   for (const s of screens) {
     document.getElementById('screen-' + s).hidden = s !== name;
   }
@@ -270,18 +270,25 @@ function renderDashboard() {
   const empty = document.getElementById('dashboard-empty');
   list.innerHTML = '';
   empty.hidden = !!state.model;
-  deselectProject(); // fresh list starts unselected
-  closeQuickLook();
+  deselectProject(); // fresh list starts unselected → RHS shows the empty state
   renderPinnedNav(); // always refresh the sidebar, even with no model loaded
-  if (!state.model) return;
+  // The persistent details card (and its resize splitter) only make sense once
+  // a checklist is loaded.
+  document.getElementById('quicklook').hidden = !state.model;
+  document.getElementById('dash-splitter').hidden = !state.model;
+  const searchRow = document.getElementById('project-search-row');
+  if (!state.model) { searchRow.hidden = true; return; }
+  dashSplitter.apply(dashSplitter.stored()); // honor the saved split width (clamped)
 
   const projects = state.store.listProjects();
+  searchRow.hidden = projects.length === 0; // no search box until there's something to search
   for (const summary of projects) {
     const project = state.store.getProject(summary.id);
     const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
     const li = document.createElement('li');
     li.className = 'project-card';
     li.dataset.projectId = project.id;
+    li.dataset.name = project.name;
     li.innerHTML = `
       <div class="row-between">
         <strong>${escapeHtml(project.name)}</strong>
@@ -289,9 +296,6 @@ function renderDashboard() {
           <button class="pin-btn${summary.pinned ? ' pinned' : ''}" data-pin="${project.id}" type="button"
             title="${summary.pinned ? 'Unpin' : 'Pin'}" aria-label="${summary.pinned ? 'Unpin project' : 'Pin project'}"
             aria-pressed="${summary.pinned ? 'true' : 'false'}">${pinSvg(summary.pinned)}</button>
-          <button class="eye-btn" data-quicklook="${project.id}" type="button" title="Quick Look" aria-label="Quick Look">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
         </span>
       </div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
@@ -302,11 +306,28 @@ function renderDashboard() {
     list.appendChild(li);
   }
 
-  list.querySelectorAll('[data-quicklook]').forEach(btn =>
-    btn.addEventListener('click', e => { e.stopPropagation(); openQuickLook(btn.getAttribute('data-quicklook')); }));
-
   list.querySelectorAll('[data-pin]').forEach(btn =>
     btn.addEventListener('click', e => { e.stopPropagation(); togglePin(btn.getAttribute('data-pin')); }));
+
+  applyProjectFilter(); // respect any active search query across re-renders
+}
+
+// Windows-Explorer-style filter: show only cards whose name contains every
+// space-separated keyword (case-insensitive). Shows a message when nothing matches.
+function applyProjectFilter() {
+  const terms = (state.projectSearch || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const cards = document.querySelectorAll('#project-list .project-card');
+  let visible = 0;
+  cards.forEach(card => {
+    const name = (card.dataset.name || '').toLowerCase();
+    const match = terms.every(t => name.includes(t));
+    card.hidden = !match;
+    if (match) visible++;
+  });
+  const msg = document.getElementById('project-search-empty');
+  const noMatches = terms.length > 0 && visible === 0 && cards.length > 0;
+  msg.hidden = !noMatches;
+  if (noMatches) msg.textContent = `No projects match "${state.projectSearch.trim()}".`;
 }
 
 function togglePin(id) {
@@ -385,6 +406,7 @@ function selectProject(id) {
   document.querySelectorAll('#project-list .project-card').forEach(li =>
     li.classList.toggle('selected', li.dataset.projectId === id));
   document.getElementById('dash-actions').hidden = false;
+  renderProjectDetails(id); // preview the project in the persistent RHS card
 }
 
 function deselectProject() {
@@ -392,6 +414,11 @@ function deselectProject() {
   document.querySelectorAll('#project-list .project-card.selected').forEach(li => li.classList.remove('selected'));
   const actions = document.getElementById('dash-actions');
   if (actions) actions.hidden = true;
+  // Reset the RHS card to its dashed empty state.
+  const empty = document.getElementById('ql-empty');
+  const detail = document.getElementById('ql-detail');
+  if (empty) empty.hidden = false;
+  if (detail) detail.hidden = true;
 }
 
 function wireDashboardActions() {
@@ -410,18 +437,28 @@ function wireDashboardActions() {
       renderDashboard();
     }
   });
-  // Click anywhere outside a card / the action bar clears the selection.
+  const search = document.getElementById('project-search');
+  const searchClear = document.getElementById('project-search-clear');
+  const syncSearch = () => {
+    state.projectSearch = search.value;
+    if (searchClear) searchClear.hidden = search.value === '';
+    applyProjectFilter();
+  };
+  if (search) search.addEventListener('input', syncSearch);
+  if (searchClear) searchClear.addEventListener('click', () => { search.value = ''; syncSearch(); search.focus(); });
+  // Click anywhere outside a card / the action bar / the details panel clears
+  // the selection (and resets the RHS card to its empty state).
   document.addEventListener('click', e => {
-    if (state.selectedProjectId && !e.target.closest('.project-card, #dash-actions')) deselectProject();
+    if (state.selectedProjectId && !e.target.closest('.project-card, #dash-actions, #quicklook')) deselectProject();
   });
 }
 
 const QL_CHEVRON = `<svg class="ql-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
 
-// Quick Look: an in-flow card beside the project list showing a project's
-// overall + per-unit progression; each unit row expands to reveal that unit's
-// read-only input specs. Opening it narrows the list card to make room.
-function openQuickLook(projectId) {
+// Project details: renders the selected project's overall + per-unit
+// progression into the persistent RHS card; each unit row expands to reveal
+// that unit's read-only input specs.
+function renderProjectDetails(projectId) {
   const project = state.store.getProject(projectId);
   if (!project) return;
   const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
@@ -458,25 +495,9 @@ function openQuickLook(projectId) {
       btn.setAttribute('aria-expanded', String(show));
       btn.classList.toggle('open', show);
     }));
-  document.getElementById('quicklook').classList.add('open');
-}
-
-function closeQuickLook() {
-  const q = document.getElementById('quicklook');
-  if (q) q.classList.remove('open');
-}
-
-function wireQuickLook() {
-  document.querySelectorAll('[data-quicklook-close]').forEach(el => el.addEventListener('click', closeQuickLook));
-  // Close only on the × button or a click in genuine free space — never when a
-  // control (button, link, input, or a project card) is clicked, so e.g.
-  // collapsing the sidebar leaves the card open.
-  document.addEventListener('click', e => {
-    const q = document.getElementById('quicklook');
-    if (!q || !q.classList.contains('open')) return;
-    if (e.target.closest('#quicklook, [data-quicklook], button, a, input, select, label, .project-card')) return;
-    closeQuickLook();
-  });
+  // Reveal the details, hide the empty state.
+  document.getElementById('ql-empty').hidden = true;
+  document.getElementById('ql-detail').hidden = false;
 }
 
 // Sidebar "+ New" menu: choose to create a new project or upload/import one.
@@ -1061,7 +1082,7 @@ function renderSectionFilter() {
 function renderProject() {
   const project = getCurrentProject();
   if (!project) { showScreen('dashboard'); return; }
-  applyDetailWidth(storedDetailWidth());
+  checklistSplitter.apply(checklistSplitter.stored());
   if (!getCurrentUnit()) state.currentUnitId = project.units[0].id;
   document.getElementById('project-title').textContent = project.name;
   renderSectionFilter();
@@ -1192,75 +1213,83 @@ function wireThemeToggle() {
 }
 
 // --- Resizable cards: drag the splitter to trade width between the two cards.
-const SPLIT_KEY = 'dpchecklist.detailWidth';
 const MIN_CARD_WIDTH = 280;
 
-function projectBodyEl() {
-  return document.querySelector('#screen-project .project-body');
+// A draggable vertical splitter that trades width between a flex row's two
+// cards. The right-hand card's width lives in `cssVar` on `body` (+ localStorage
+// under `storeKey`); the left card takes the rest. Used by both the checklist
+// detail panel and the dashboard details card.
+function createSplitter({ splitterId, getBody, cssVar, storeKey, defaultWidth }) {
+  // Clamp a desired right-card width so neither card drops below MIN_CARD_WIDTH.
+  function clamp(px, body) {
+    const splitter = document.getElementById(splitterId);
+    const sw = splitter ? splitter.offsetWidth : 16;
+    const max = body.clientWidth - MIN_CARD_WIDTH - sw;
+    if (max < MIN_CARD_WIDTH) return Math.max(0, max); // window too narrow for both mins
+    return Math.max(MIN_CARD_WIDTH, Math.min(px, max));
+  }
+  function stored() {
+    let v = NaN;
+    try { v = Number(window.localStorage.getItem(storeKey)); } catch { /* ignore */ }
+    return Number.isFinite(v) && v > 0 ? v : defaultWidth;
+  }
+  function current(body) {
+    return parseFloat(getComputedStyle(body).getPropertyValue(cssVar)) || stored();
+  }
+  function apply(px) {
+    const body = getBody();
+    if (!body || body.clientWidth <= 0) return;
+    body.style.setProperty(cssVar, clamp(px, body) + 'px');
+  }
+  function wire() {
+    const splitter = document.getElementById(splitterId);
+    if (!splitter) return;
+    let dragging = false;
+    splitter.addEventListener('pointerdown', (e) => {
+      if (!getBody()) return;
+      dragging = true;
+      splitter.classList.add('dragging');
+      try { splitter.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      e.preventDefault();
+    });
+    splitter.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const body = getBody();
+      if (!body) return;
+      apply(body.getBoundingClientRect().right - e.clientX);
+    });
+    const end = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      splitter.classList.remove('dragging');
+      try { splitter.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+      const body = getBody();
+      if (body) {
+        try { window.localStorage.setItem(storeKey, String(Math.round(current(body)))); } catch { /* ignore */ }
+      }
+    };
+    splitter.addEventListener('pointerup', end);
+    splitter.addEventListener('pointercancel', end);
+    // Keep the stored width valid (clamped) when the window resizes — only while
+    // this splitter's row is actually on screen.
+    window.addEventListener('resize', () => {
+      const body = getBody();
+      if (body && body.offsetParent !== null) apply(current(body));
+    });
+  }
+  return { apply, wire, stored };
 }
 
-// Clamp a desired detail-card width so neither card drops below MIN_CARD_WIDTH.
-function clampDetailWidth(px, body) {
-  const splitter = document.getElementById('card-splitter');
-  const sw = splitter ? splitter.offsetWidth : 16;
-  const max = body.clientWidth - MIN_CARD_WIDTH - sw;
-  if (max < MIN_CARD_WIDTH) return Math.max(0, max); // window too narrow to honor both mins
-  return Math.max(MIN_CARD_WIDTH, Math.min(px, max));
-}
-
-// Apply (clamped) detail width to the project body's --detail-w variable.
-function applyDetailWidth(px) {
-  const body = projectBodyEl();
-  if (!body || body.clientWidth <= 0) return;
-  body.style.setProperty('--detail-w', clampDetailWidth(px, body) + 'px');
-}
-
-function storedDetailWidth() {
-  let v = NaN;
-  try { v = Number(window.localStorage.getItem(SPLIT_KEY)); } catch { /* ignore */ }
-  return Number.isFinite(v) && v > 0 ? v : 350;
-}
-
-function currentDetailWidth(body) {
-  return parseFloat(getComputedStyle(body).getPropertyValue('--detail-w')) || storedDetailWidth();
-}
-
-function wireCardSplitter() {
-  const splitter = document.getElementById('card-splitter');
-  if (!splitter) return;
-  let dragging = false;
-  splitter.addEventListener('pointerdown', (e) => {
-    if (!projectBodyEl()) return;
-    dragging = true;
-    splitter.classList.add('dragging');
-    try { splitter.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-    e.preventDefault();
-  });
-  splitter.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    const body = projectBodyEl();
-    if (!body) return;
-    applyDetailWidth(body.getBoundingClientRect().right - e.clientX);
-  });
-  const end = (e) => {
-    if (!dragging) return;
-    dragging = false;
-    splitter.classList.remove('dragging');
-    try { splitter.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
-    const body = projectBodyEl();
-    if (body) {
-      try { window.localStorage.setItem(SPLIT_KEY, String(Math.round(currentDetailWidth(body)))); } catch { /* ignore */ }
-    }
-  };
-  splitter.addEventListener('pointerup', end);
-  splitter.addEventListener('pointercancel', end);
-  // Keep the stored width valid when the window resizes.
-  window.addEventListener('resize', () => {
-    const screen = document.getElementById('screen-project');
-    const body = projectBodyEl();
-    if (body && screen && !screen.hidden) applyDetailWidth(currentDetailWidth(body));
-  });
-}
+const checklistSplitter = createSplitter({
+  splitterId: 'card-splitter',
+  getBody: () => document.querySelector('#screen-project .project-body'),
+  cssVar: '--detail-w', storeKey: 'dpchecklist.detailWidth', defaultWidth: 350,
+});
+const dashSplitter = createSplitter({
+  splitterId: 'dash-splitter',
+  getBody: () => document.querySelector('.dash-wrap'),
+  cssVar: '--dash-detail-w', storeKey: 'dpchecklist.dashDetailWidth', defaultWidth: 420,
+});
 
 const ITEM_TINT_KEY = 'dpchecklist.itemTint';
 function wireItemTintToggle() {
@@ -1338,10 +1367,10 @@ async function init() {
   wireItemTintToggle();
   wireSidebarToggle();
   wirePinnedNav();
-  wireQuickLook();
   wireNewMenu();
   wireDashboardActions();
-  wireCardSplitter();
+  checklistSplitter.wire();
+  dashSplitter.wire();
   document.getElementById('nav-dashboard').addEventListener('click', () => showScreen('dashboard'));
   document.getElementById('nav-about').addEventListener('click', () => showScreen('about'));
   document.getElementById('nav-setup').addEventListener('click', () => showScreen('setup'));

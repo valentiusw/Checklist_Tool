@@ -174,8 +174,20 @@ html.sidebar-collapsed .new-btn > span { display: none; }
 .nav-pinned.open .nav-pinned-chevron { transform: rotate(180deg); }
 .pinned-sublist { list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; }
 .nav-pinned.open .pinned-sublist { max-height: none; }
-.pinned-item { cursor: grab; }
+.pinned-item { cursor: grab; position: relative; }
 .pinned-item.dragging { opacity: 0.5; cursor: grabbing; }
+/* Tree connectors: a vertical trunk descending from the Pinned tab with a short
+   elbow branching to each project. The trunk runs under the header icon centre
+   (padding 10px + half of the 18px icon ≈ 19px) and stops at the last elbow. */
+.pinned-item::before {
+  content: ""; position: absolute; left: 19px; top: 0;
+  width: 1px; height: 100%; background: var(--border);
+}
+.pinned-item:last-child::before { height: 50%; }
+.pinned-item::after {
+  content: ""; position: absolute; left: 19px; top: 50%;
+  width: 13px; height: 1px; background: var(--border);
+}
 .pinned-link {
   display: block; width: 100%; text-align: left;
   padding: 6px 10px 6px 40px; border: 0; border-radius: 8px;
@@ -1064,31 +1076,83 @@ html.no-item-tint .item.partial {
 [data-screen="project"] #items-list { scrollbar-width: none; }
 [data-screen="project"] #items-list::-webkit-scrollbar { display: none; }
 
-/* ===== Quick Look: an in-flow details card that slides in and pushes the
-   list card (width/margin transition, like the collapsible sidebar). ======= */
-.dash-wrap { display: flex; align-items: flex-start; }
-/* The wrap only belongs on the dashboard; hide it elsewhere so the closed
-   quick-look card's residual height doesn't push other screens down. */
+/* ===== Dashboard project search (Windows-Explorer-style keyword filter) ===== */
+.project-search-row { margin: 4px 0 16px; }
+.project-search-row[hidden] { display: none; }
+.project-search {
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: transparent; padding: 10px 18px;
+  transition: border-color .12s ease;
+}
+.project-search:focus-within { border-color: var(--accent); }
+.project-search-icon { width: 18px; height: 18px; color: var(--text-muted); flex: none; }
+.project-search input {
+  flex: 1; min-width: 0; padding: 0;
+  border: none; border-radius: 0; background: none; outline: none; box-shadow: none;
+  color: var(--text); font: inherit;
+}
+/* Beat the global input:focus glow (equal specificity → this wins by order). */
+.project-search input:focus { box-shadow: none; border: none; }
+.project-search input::placeholder { color: var(--text-muted); }
+.project-search-clear {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none; padding: 0; border: none; background: none; cursor: pointer;
+  color: var(--text-muted); transition: color .12s ease;
+}
+.project-search-clear:hover { color: var(--text); }
+.project-search-clear svg { width: 20px; height: 20px; }
+.project-search-clear[hidden] { display: none; }
+#project-search-empty { margin: 4px 2px; }
+#project-search-empty[hidden] { display: none; }
+
+/* ===== Dashboard: project-list card + persistent details card, separated by a
+   draggable splitter and (on desktop) stretched to full window height. ======= */
+.dash-wrap { display: flex; align-items: flex-start; gap: 20px; }
+/* The wrap only belongs on the dashboard; hide it elsewhere. */
 html:not([data-screen="dashboard"]) .dash-wrap { display: none; }
 #screen-dashboard { flex: 1 1 auto; min-width: 0; }
 .quicklook {
-  flex: none;
-  width: 0; margin-left: 0; opacity: 0;
-  padding: 0; overflow: hidden;
-  max-height: calc(100vh - 120px);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0; overflow-y: auto;
+  display: flex; flex-direction: column; /* so ql-inner can fill the card height */
   scrollbar-width: none; /* hide scrollbar, keep scrollable */
-  transition: width .22s ease, margin-left .22s ease, opacity .18s ease;
 }
-.quicklook.open { width: 340px; margin-left: 20px; opacity: 1; overflow-y: auto; }
+.quicklook[hidden] { display: none; }
 .quicklook::-webkit-scrollbar { display: none; }
-.ql-inner { width: 340px; } /* fixed so content doesn't reflow while sliding */
-.eye-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; padding: 0;
-  border: none; background: none; color: var(--text-muted); cursor: pointer;
+/* Stacked fallback: cards go full width, the splitter is hidden (see .card-splitter). */
+@media (max-width: 900px) {
+  .dash-wrap { flex-direction: column; }
+  .quicklook { width: 100%; }
 }
-.eye-btn:hover { color: var(--accent); background: none; }
-.eye-btn svg { width: 18px; height: 18px; }
+/* Desktop: the splitter provides the gap; the details card takes a resizable
+   width and both cards fill the viewport height, scrolling their own content. */
+@media (min-width: 901px) {
+  [data-screen="dashboard"] main { height: 100vh; overflow: hidden; }
+  [data-screen="dashboard"] .dash-wrap { height: 100%; min-height: 0; align-items: stretch; gap: 0; }
+  [data-screen="dashboard"] #screen-dashboard {
+    max-width: none; flex: 1 1 auto; min-width: 0; min-height: 0; overflow-y: auto;
+  }
+  [data-screen="dashboard"] .quicklook {
+    flex: 0 0 var(--dash-detail-w, 420px); width: var(--dash-detail-w, 420px);
+    max-width: none; min-height: 0;
+  }
+}
+.ql-inner { width: 100%; box-sizing: border-box; min-width: 300px; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 320px; }
+/* Dashed empty state, mirroring the checklist page's #editor-empty. */
+.ql-empty {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  margin: 20px; padding: 24px;
+  min-height: 220px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+}
+.ql-empty[hidden] { display: none; }
+#ql-detail[hidden] { display: none; }
 .pin-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; padding: 0;
@@ -1104,12 +1168,6 @@ html:not([data-screen="dashboard"]) .dash-wrap { display: none; }
   position: sticky; top: 0; background: var(--surface); z-index: 1;
 }
 .ql-head h2 { margin: 0; font-size: 1.15rem; }
-.ql-close {
-  background: none; border: none; cursor: pointer;
-  font-size: 1.5rem; line-height: 1; color: var(--text-muted);
-  padding: 0 4px; width: auto;
-}
-.ql-close:hover { color: var(--text); background: none; border-color: transparent; }
 .ql-body { padding: 20px; }
 .ql-overall-label { font-weight: 600; }
 .ql-section { margin: 22px 0 8px; font-size: .95rem; }
