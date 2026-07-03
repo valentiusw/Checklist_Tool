@@ -815,6 +815,7 @@ function renderItems() {
     ).join('') : '';
     const div = document.createElement('div');
     div.className = 'item' + (cs === 'all' ? ' checked' : cs === 'some' ? ' partial' : '');
+    div.dataset.itemId = item.id;
     div.innerHTML = `
       <div class="item-head">
         <input type="checkbox" data-check="${escapeHtml(item.id)}" />
@@ -866,6 +867,18 @@ function renderItems() {
       e.stopPropagation();
       openItemEditor(btn.getAttribute('data-tag-item'), btn.getAttribute('data-tag-unit'));
     }));
+
+  highlightSelectedItem(); // keep the open item's highlight across re-renders
+}
+
+// Ring the checklist item whose comment is currently open in the RHS editor
+// (only in editor mode — the highlight tracks what's shown on the right).
+function highlightSelectedItem() {
+  const container = document.getElementById('items-list');
+  if (!container) return;
+  const activeId = state.detailMode === 'editor' ? state.editorItemId : null;
+  container.querySelectorAll('.item').forEach(el =>
+    el.classList.toggle('selected', !!activeId && el.dataset.itemId === activeId));
 }
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
@@ -957,6 +970,7 @@ function applyDetailMode() {
     btn.textContent = proj ? 'Back To Checklist' : 'See Project Details';
     btn.setAttribute('aria-pressed', String(proj));
   }
+  highlightSelectedItem(); // clears the highlight in project-details mode, restores it in editor mode
 }
 
 function openItemEditor(itemId, unitId) {
@@ -971,6 +985,7 @@ function openItemEditor(itemId, unitId) {
     state.editorUnitId = applicable[0] ? applicable[0].id : null;
   }
   renderItemEditor();
+  highlightSelectedItem();
 }
 
 const ALL_UNITS = '__all__'; // sentinel for the "All Lifts" unit-editor selection
