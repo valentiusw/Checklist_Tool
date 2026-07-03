@@ -986,6 +986,9 @@ html.no-item-tint .item.partial {
 
 .ed-item-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
 .ed-item-head input[type="checkbox"] { margin-top: 3px; flex: none; }
+/* Match the checklist list: green when checked, amber for the mixed (partial) dash. */
+#ed-check { accent-color: var(--success); }
+#ed-check.partial { accent-color: var(--warning); }
 .ed-item-name { flex: 1; line-height: 1.4; }
 .ed-comment-label { font-weight: 600; font-size: 0.9rem; margin: 12px 0 6px; }
 .ed-unit-row { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; }

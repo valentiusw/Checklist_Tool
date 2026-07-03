@@ -1045,7 +1045,9 @@ function renderItemEditor() {
   }
 
   const check = body.querySelector('#ed-check');
-  if (isAll) check.indeterminate = !allChecked && !noneChecked;
+  const partial = isAll && !allChecked && !noneChecked;
+  if (isAll) check.indeterminate = partial;
+  check.classList.toggle('partial', partial); // amber (not green) indeterminate dash, matching the list
 
   // Units the edit applies to: all applicable units in "All Lifts" mode, else the one unit.
   const targetUnits = () => {
