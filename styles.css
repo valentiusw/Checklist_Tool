@@ -174,6 +174,8 @@ html.sidebar-collapsed .new-btn > span { display: none; }
 .nav-pinned.open .nav-pinned-chevron { transform: rotate(180deg); }
 .pinned-sublist { list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; }
 .nav-pinned.open .pinned-sublist { max-height: none; }
+.pinned-item { cursor: grab; }
+.pinned-item.dragging { opacity: 0.5; cursor: grabbing; }
 .pinned-link {
   display: block; width: 100%; text-align: left;
   padding: 6px 10px 6px 40px; border: 0; border-radius: 8px;
@@ -181,6 +183,7 @@ html.sidebar-collapsed .new-btn > span { display: none; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   font: inherit;
 }
+.pinned-item.dragging .pinned-link { cursor: grabbing; }
 .pinned-link:hover { background: var(--surface-muted); color: var(--text); }
 /* When the sidebar is collapsed, show only the pin icon — no label, no sublist. */
 html.sidebar-collapsed .nav-pinned-chevron,
@@ -1088,11 +1091,11 @@ html:not([data-screen="dashboard"]) .dash-wrap { display: none; }
 .eye-btn svg { width: 18px; height: 18px; }
 .pin-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; padding: 0;
-  border: 1px solid transparent; border-radius: 8px;
-  background: transparent; color: var(--text-muted); cursor: pointer;
+  width: 32px; height: 32px; padding: 0;
+  border: none; background: none; color: var(--text-muted); cursor: pointer;
 }
-.pin-btn:hover { background: var(--surface-muted); color: var(--text); }
+.pin-btn:hover { color: var(--accent); background: none; }
+.pin-btn svg { width: 16px; height: 16px; }
 .pin-btn.pinned { color: var(--accent); }
 .ql-head {
   display: flex; align-items: center; justify-content: space-between;

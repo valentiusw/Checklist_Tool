@@ -114,3 +114,52 @@ test('listProjects surfaces pinned as a boolean', () => {
   assert.equal(byId.a, true);
   assert.equal(byId.b, false);
 });
+
+test('setPinned appends a pinnedOrder to the bottom, surfaced by listProjects', () => {
+  const store = createProjectStore();
+  store.load([
+    { id: 'a', name: 'A', updatedAt: '2026-01-01T00:00:00Z', units: [] },
+    { id: 'b', name: 'B', updatedAt: '2026-01-02T00:00:00Z', units: [] },
+  ]);
+  store.setPinned('a', true);
+  store.setPinned('b', true);
+  const byId = Object.fromEntries(store.listProjects().map(p => [p.id, p.pinnedOrder]));
+  assert.equal(byId.a, 0); // first pinned lands at the bottom of an empty list → 0
+  assert.equal(byId.b, 1); // next pinned appends below
+});
+
+test('setPinned(false) clears both pinned and pinnedOrder', () => {
+  const store = createProjectStore();
+  store.load([{ id: 'a', name: 'A', updatedAt: '2026-01-01T00:00:00Z', units: [] }]);
+  store.setPinned('a', true);
+  store.setPinned('a', false);
+  const p = store.getProject('a');
+  assert.ok(!p.pinned);
+  assert.equal(p.pinnedOrder, undefined);
+});
+
+test('reorderPinned reassigns pinnedOrder by index without bumping updatedAt', () => {
+  const store = createProjectStore();
+  store.load([
+    { id: 'a', name: 'A', updatedAt: '2026-01-01T00:00:00Z', pinned: true, pinnedOrder: 0, units: [] },
+    { id: 'b', name: 'B', updatedAt: '2026-01-02T00:00:00Z', pinned: true, pinnedOrder: 1, units: [] },
+    { id: 'c', name: 'C', updatedAt: '2026-01-03T00:00:00Z', pinned: true, pinnedOrder: 2, units: [] },
+  ]);
+  store.reorderPinned(['c', 'a', 'b']);
+  const byId = Object.fromEntries(store.listProjects().map(p => [p.id, p.pinnedOrder]));
+  assert.equal(byId.c, 0);
+  assert.equal(byId.a, 1);
+  assert.equal(byId.b, 2);
+  assert.equal(store.getProject('a').updatedAt, '2026-01-01T00:00:00Z'); // unchanged
+});
+
+test('reorderPinned ignores unknown or unpinned ids', () => {
+  const store = createProjectStore();
+  store.load([
+    { id: 'a', name: 'A', updatedAt: '2026-01-01T00:00:00Z', pinned: true, pinnedOrder: 0, units: [] },
+    { id: 'b', name: 'B', updatedAt: '2026-01-02T00:00:00Z', units: [] }, // not pinned
+  ]);
+  store.reorderPinned(['nope', 'b', 'a']); // unknown + unpinned skipped; 'a' takes the next slot
+  assert.equal(store.getProject('a').pinnedOrder, 0);
+  assert.ok(!store.getProject('b').pinned);
+});

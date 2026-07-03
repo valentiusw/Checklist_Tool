@@ -42,7 +42,7 @@ export function createProjectStore({ onChange } = {}) {
 
   function listProjects() {
     return [...projects.values()]
-      .map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt, pinned: !!p.pinned }))
+      .map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt, pinned: !!p.pinned, pinnedOrder: p.pinnedOrder }))
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   }
 
@@ -61,9 +61,30 @@ export function createProjectStore({ onChange } = {}) {
   function setPinned(id, pinned) {
     const p = projects.get(id);
     if (!p) return;
-    if (pinned) p.pinned = true;
-    else delete p.pinned;
+    if (pinned) {
+      p.pinned = true;
+      // Append to the bottom of the custom pinned order.
+      const orders = [...projects.values()]
+        .filter(o => o.pinned && o.id !== id && Number.isFinite(o.pinnedOrder))
+        .map(o => o.pinnedOrder);
+      p.pinnedOrder = orders.length ? Math.max(...orders) + 1 : 0;
+    } else {
+      delete p.pinned;
+      delete p.pinnedOrder;
+    }
     notify('upsert', id);
+  }
+
+  // Reassign the custom pinned order from an explicit id sequence (top→bottom).
+  // Unknown or unpinned ids are skipped; updatedAt is left untouched.
+  function reorderPinned(orderedIds) {
+    let i = 0;
+    for (const id of orderedIds || []) {
+      const p = projects.get(id);
+      if (!p || !p.pinned) continue;
+      p.pinnedOrder = i++;
+      notify('upsert', id);
+    }
   }
 
   function createProject(name) {
@@ -128,6 +149,6 @@ export function createProjectStore({ onChange } = {}) {
   return {
     load, listProjects, getProject, saveProject, deleteProject, createProject,
     newUnit, serializeProject, importProject, serializeLibrary, importLibrary,
-    setPinned,
+    setPinned, reorderPinned,
   };
 }

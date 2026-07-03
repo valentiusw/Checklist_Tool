@@ -322,20 +322,62 @@ function togglePin(id) {
   renderDashboard();
 }
 
+let pinnedDragEl = null; // the <li> currently being dragged in the pinned sidebar list
+
 function renderPinnedNav() {
   const wrap = document.getElementById('nav-pinned-wrap');
   const list = document.getElementById('pinned-sublist');
   if (!wrap || !list) return;
-  const pinned = state.store.listProjects().filter(p => p.pinned).slice(0, 5);
+  const pinned = state.store.listProjects()
+    .filter(p => p.pinned)
+    .sort((a, b) => {
+      const ao = Number.isFinite(a.pinnedOrder) ? a.pinnedOrder : Infinity;
+      const bo = Number.isFinite(b.pinnedOrder) ? b.pinnedOrder : Infinity;
+      return ao === bo ? 0 : ao - bo; // ties keep listProjects order; guards NaN
+    })
+    .slice(0, 5);
   wrap.hidden = pinned.length === 0;
   list.innerHTML = '';
   for (const p of pinned) {
     const li = document.createElement('li');
+    li.className = 'pinned-item';
+    li.draggable = true;
+    li.dataset.id = p.id;
     li.innerHTML = `<button type="button" class="pinned-link" data-open="${p.id}" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`;
+    li.addEventListener('dragstart', () => { pinnedDragEl = li; li.classList.add('dragging'); });
+    li.addEventListener('dragend', () => {
+      li.classList.remove('dragging');
+      pinnedDragEl = null;
+      const ids = [...list.querySelectorAll('.pinned-item')].map(el => el.dataset.id);
+      state.store.reorderPinned(ids);
+    });
     list.appendChild(li);
   }
   list.querySelectorAll('[data-open]').forEach(btn =>
     btn.addEventListener('click', () => openProject(btn.getAttribute('data-open'))));
+  // Container-level dragover — attach once; live-reorders the DOM as the cursor moves.
+  if (!list.dataset.dragWired) {
+    list.dataset.dragWired = '1';
+    list.addEventListener('dragover', e => {
+      if (!pinnedDragEl) return;
+      e.preventDefault();
+      const after = pinnedDragAfterElement(list, e.clientY);
+      if (after == null) list.appendChild(pinnedDragEl);
+      else if (after !== pinnedDragEl) list.insertBefore(pinnedDragEl, after);
+    });
+  }
+}
+
+// The pinned <li> that should follow the cursor at vertical position `y` (or null → append to end).
+function pinnedDragAfterElement(list, y) {
+  const items = [...list.querySelectorAll('.pinned-item:not(.dragging)')];
+  let closest = null, closestOffset = -Infinity;
+  for (const el of items) {
+    const box = el.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closestOffset) { closestOffset = offset; closest = el; }
+  }
+  return closest;
 }
 
 function selectProject(id) {
@@ -1261,8 +1303,8 @@ function wirePinnedNav() {
     wrap.classList.toggle('open', open);
     btn.setAttribute('aria-expanded', String(open));
   };
-  let open = true;
-  try { open = window.localStorage.getItem(PINNED_NAV_KEY) !== 'collapsed'; } catch { /* ignore */ }
+  let open = false; // default collapsed; only open if the user previously expanded it
+  try { open = window.localStorage.getItem(PINNED_NAV_KEY) === 'expanded'; } catch { /* ignore */ }
   apply(open);
   btn.addEventListener('click', () => {
     open = !wrap.classList.contains('open');
