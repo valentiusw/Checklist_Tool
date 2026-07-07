@@ -662,7 +662,8 @@ html.no-item-tint .item.partial {
   letter-spacing: 0.01em;
 }
 
-.item-head .code-tag {
+.item-head .code-tag,
+.ed-item-name .code-tag {
   display: inline-block;
   font-size: 12px;
   font-weight: 550;
@@ -994,6 +995,7 @@ html.no-item-tint .item.partial {
 .ed-unit-row { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; }
 .ed-unit-row select { flex: 1; }
 .ed-comment { width: 100%; box-sizing: border-box; resize: vertical; }
+.ed-see-example { margin-top: 14px; width: 100%; justify-content: center; }
 .items-list .item { cursor: pointer; }
 
 .items-list .item input[type=checkbox]:indeterminate { opacity: 0.85; }

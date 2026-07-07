@@ -820,7 +820,7 @@ function renderItems() {
       <div class="item-head">
         <input type="checkbox" data-check="${escapeHtml(item.id)}" />
         <div>
-          <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}${item.code ? `<span class="code-tag">${escapeHtml(item.code)}</span>` : ''}
+          <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}${displayCode(item.code) ? `<span class="code-tag">${escapeHtml(displayCode(item.code))}</span>` : ''}
           ${tags ? `<div class="unit-tags">${tags}</div>` : ''}
         </div>
         ${item.exampleFile ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleFile)}" title="View example" aria-label="View example for ${escapeHtml(item.id)}">${INFO_ICON}</button>` : ''}
@@ -883,6 +883,30 @@ function highlightSelectedItem() {
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
 
+// Blobs come out of the setup ZIP (JSZip) and IndexedDB with an empty MIME
+// type. Opening an untyped blob in a new tab makes the browser render the raw
+// bytes as text (a PDF shows up as garbage), so we re-stamp the type from the
+// filename before building the object URL.
+const CONTENT_TYPE_BY_EXT = {
+  pdf: 'application/pdf',
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+  webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml',
+};
+
+function contentTypeFor(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  return CONTENT_TYPE_BY_EXT[ext] || 'application/octet-stream';
+}
+
+// The "SL" code (State/local regulatory requirement) is intentionally not shown
+// as a boxed code tag in the UI. Every other code renders as-is; a code that is
+// exactly "SL" (trimmed, case-insensitive) is suppressed. Mixed codes like
+// "EN81-20, SL" are left untouched.
+function displayCode(code) {
+  if (!code) return '';
+  return code.trim().toUpperCase() === 'SL' ? '' : code;
+}
+
 // Open an item's example file from the in-browser library: images in a
 // lightbox, everything else (PDFs) in a new tab.
 async function openExample(name) {
@@ -897,6 +921,8 @@ async function openExample(name) {
     alert(`Example file "${name}" isn't in your library. Re-import your setup ZIP to include it.`);
     return;
   }
+  const wantType = contentTypeFor(name);
+  if (blob.type !== wantType) blob = blob.slice(0, blob.size, wantType);
   const url = URL.createObjectURL(blob);
   if (IMAGE_EXT.test(name)) {
     showLightbox(url, name);
@@ -1017,15 +1043,17 @@ function renderItemEditor() {
   const isChecked = isAll ? allChecked : unit.checks[item.id] === true;
   const commentValue = isAll ? sharedComment : (unit.comments[item.id] || '');
 
+  const edCode = displayCode(item.code);
   body.innerHTML = `
     <div class="ed-item-head">
       <input type="checkbox" id="ed-check" ${isChecked ? 'checked' : ''}/>
-      <span class="ed-item-name"><span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}</span>
+      <span class="ed-item-name"><span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}${edCode ? `<span class="code-tag">${escapeHtml(edCode)}</span>` : ''}</span>
     </div>
     ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
     ${showUnitSelect ? `<label class="ed-unit-row"><span>Unit Selection</span><select id="ed-unit-select"></select></label>` : ''}
     <div class="ed-comment-label">Comments</div>
-    <textarea id="ed-comment" class="ed-comment" rows="6" placeholder="${isAll ? 'Comment applied to all lifts…' : 'Comment for this unit…'}"></textarea>`;
+    <textarea id="ed-comment" class="ed-comment" rows="6" placeholder="${isAll ? 'Comment applied to all lifts…' : 'Comment for this unit…'}"></textarea>
+    ${item.exampleFile ? `<button type="button" id="ed-see-example" class="ed-see-example">See Example</button>` : ''}`;
 
   const sel = body.querySelector('#ed-unit-select');
   if (sel) {
@@ -1070,6 +1098,9 @@ function renderItemEditor() {
     renderItems();
     renderProgress();
   });
+
+  const exampleBtn = body.querySelector('#ed-see-example');
+  if (exampleBtn) exampleBtn.addEventListener('click', () => openExample(item.exampleFile));
 }
 
 function renderProgress() {
