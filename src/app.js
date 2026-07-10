@@ -1,6 +1,7 @@
 import { buildModel } from './workbookModel.js';
 import { createProjectStore } from './projectStore.js';
 import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
+import { buildExportWorkbook } from './exportWorkbook.js';
 import * as exampleStore from './exampleStore.js';
 import { readSetupZip, buildExportZip } from './zipBundle.js';
 import * as db from './db.js';
@@ -1156,46 +1157,13 @@ function downloadBlob(blob, filename) {
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
 }
 
-function sanitizeSheetName(name, used) {
-  let base = String(name || 'Unit').replace(/[\[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'Unit';
-  let candidate = base;
-  let n = 2;
-  while (used.has(candidate)) {
-    const suffix = ' (' + n + ')';
-    candidate = base.slice(0, 31 - suffix.length) + suffix;
-    n++;
-  }
-  used.add(candidate);
-  return candidate;
-}
-
 async function downloadProjectZip(project = getCurrentProject()) {
   if (!project) return;
   try {
     const plan = buildExportPlan(state.model, project);
-    const wb = XLSX.utils.book_new();
-    const used = new Set();
-    for (const unit of plan.units) {
-      const header = ['Item ID', 'Description', 'Code', 'Comments', 'Example'];
-      const aoa = [header, ...unit.rows.map(r => [r.id, r.description, r.code, r.comment, r.exampleFile || r.example])];
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 14 }, { wch: 28 }, { wch: 40 }];
-      // Bold the header row.
-      for (let c = 0; c < header.length; c++) {
-        const addr = XLSX.utils.encode_cell({ r: 0, c });
-        if (ws[addr]) ws[addr].s = { font: { bold: true } };
-      }
-      // Example column is index 4; file rows get a relative hyperlink to Examples/,
-      // styled like a clickable link (blue + underlined).
-      unit.rows.forEach((r, i) => {
-        if (!r.exampleFile) return;
-        const addr = XLSX.utils.encode_cell({ r: i + 1, c: 4 });
-        if (!ws[addr]) ws[addr] = { t: 's', v: r.exampleFile };
-        ws[addr].l = { Target: 'Examples/' + r.exampleFile, Tooltip: 'Open ' + r.exampleFile };
-        ws[addr].s = { font: { color: { rgb: 'FF0563C1' }, underline: true } };
-      });
-      XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(unit.name, used));
-    }
+    const now = new Date();
+    const reviewDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    const wb = buildExportWorkbook({ XLSX, model: state.model, project, plan, reviewDate });
     const workbookArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
 
     const files = new Map();
@@ -1206,14 +1174,18 @@ async function downloadProjectZip(project = getCurrentProject()) {
       else missing.push(name);
     }
 
-    const safeName = project.name.replace(/[^\w\-]+/g, '_');
-    const date = new Date().toISOString().slice(0, 10);
+    // One base name shared by the ZIP, the folder inside it, and the workbook.
+    // Keep the project title's spaces; strip only characters illegal in file
+    // names. e.g. "Smoke Tower_Compliance Review - Outstanding".
+    const safeTitle = (project.name || 'Project').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Project';
+    const base = `${safeTitle}_Compliance Review - Outstanding`;
     const zipBlob = await buildExportZip({
-      workbookName: `${safeName}_unchecked_${date}.xlsx`,
+      workbookName: `${base}.xlsx`,
       workbookArrayBuffer,
       files,
+      folderName: base,
     });
-    downloadBlob(zipBlob, `${safeName}_${date}.zip`);
+    downloadBlob(zipBlob, `${base}.zip`);
     if (missing.length) {
       alert(`Exported. These referenced files weren't in your library:\n${missing.join('\n')}`);
     }

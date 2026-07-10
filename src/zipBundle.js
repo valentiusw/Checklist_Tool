@@ -39,10 +39,14 @@ export async function readSetupZip(arrayBuffer) {
   return { workbookArrayBuffer, files };
 }
 
-export async function buildExportZip({ workbookName, workbookArrayBuffer, files }) {
+export async function buildExportZip({ workbookName, workbookArrayBuffer, files, folderName }) {
   const zip = new JSZip();
-  zip.file(workbookName, workbookArrayBuffer);
-  const examples = zip.folder('Examples');
+  // Optionally nest everything under a top-level folder so an extracted bundle
+  // keeps the workbook and its Examples/ subfolder together (the Example links
+  // are relative and only resolve when that structure is preserved).
+  const root = folderName ? zip.folder(folderName) : zip;
+  root.file(workbookName, workbookArrayBuffer);
+  const examples = root.folder('Examples');
   for (const [name, blob] of files) examples.file(name, blob);
   return zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
 }
