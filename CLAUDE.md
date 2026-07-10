@@ -39,7 +39,8 @@ dependency-free modules only (DOM glue in `app.js` is not unit-tested — see sm
 **Pure logic (DOM-free, unit-tested) — `src/`:**
 - `conditionEngine.js` — parse + evaluate item conditions (`AND`/`OR`/parens, comparison ops). `ConditionError`.
 - `workbookModel.js` — build the in-memory model from parsed sheets. `ModelError`.
-- `exporter.js` — `applicableItems`, `computeProgress`, `computeProjectProgress`, `buildExportPlan`.
+- `exporter.js` — `applicableItems`, `computeProgress`, `computeProjectProgress`, `buildExportPlan` (rows carry `section`).
+- `exportWorkbook.js` — builds the styled export workbook (branded Overview sheet + discipline-grouped unit sheets); `XLSX` is injected so it stays DOM-free/testable.
 - `projectStore.js` / `projectDraft.js` — project + unit data model, id/unit creation, draft validation, input defaulting.
 - `checklistView.js` — `itemApplicableUnits` (which units a given item's condition matches → drives unit tags).
 - `librarySnapshot.js` — connected-backup file format + reconcile rule (pure).
@@ -61,7 +62,7 @@ dependency-free modules only (DOM glue in `app.js` is not unit-tested — see sm
 - **CSS is token-driven and theme-aware.** Use existing CSS custom properties; don't hardcode `#fff`-style colors (breaks dark mode). New layout CSS is typically scoped with a `[data-screen="project"]` prefix to avoid leaking across screens.
 - **localStorage / pointer-capture / File System Access calls go in `try/catch`** (private mode / unsupported browsers).
 - **db.js owns the IndexedDB schema** — bump its version there, nowhere else.
-- **Export rules (per the user's spec):** unchecked-items Excel uses column order **ID, Description, Code, Comments, Example**; header row bold; Example cells that reference a file become blue underlined relative hyperlinks; the **Note** column is excluded from export; **Schindler / `S`-prefixed items are excluded from export** (filtered in `buildExportPlan`; case-insensitive `/^s/i` on the item ID).
+- **Export rules (per the user's spec):** the export ZIP nests everything under a top-level folder named `<Project Title>_Compliance Review - Outstanding` (project title keeps its spaces; only filename-illegal chars are stripped — **no** `_`-for-space) holding a workbook of the same name plus an `Examples/` subfolder. The workbook has a branded **Overview** sheet (project details with fillable Reviewed By/Contact, per-unit progress meters, the checklist's glossary, how-to notes; **Date Reviewed** formatted `DD/MM/YYYY`) then one sheet per unit whose **outstanding** items are grouped into named **discipline sections** (from the model's `Sections` map, `item.section`). Per-item column order **ID, Description, Code, Comments, Example**; Example file cells become blue underlined relative `Examples/…` hyperlinks; the **Note** column is excluded; **`S`-prefixed items are excluded** (filtered in `buildExportPlan`, `/^s/i`). Rendering lives in `exportWorkbook.js`; the vendored `xlsx-js-style` styles cells but **cannot embed images** (branding is styled cells, no logo).
 - **Button labels are Title Case** — capitalize *every* word, including short words (e.g. "See Project Details", "Back Up To A File…"). Applies to visible `<button>` text and button-styled labels, static and dynamically generated; not to headings, field labels, or toggle labels (those stay sentence case).
 - **Done/partial tint tokens:** `--success-fill` / `--warning-fill` are translucent (0.08 alpha) and used for **both** background and border so the edge blends (no hard outline). Item bubbles go green (all units checked), amber (some), or plain; per-unit pills reuse the same green fill.
 - The user's notes in `Context.txt` are requirements/feedback, often dated — treat as intent, confirm current state against code before acting.
@@ -92,5 +93,11 @@ after the description; **per-unit pill tags** on items (multi-unit projects only
 open that unit in the editor); an **"All Lifts"** editor option that writes a comment / check to
 every applicable unit; single-unit projects omit pills and the unit picker; S-items excluded from
 export; Title-Case buttons.
+
+The **Excel export was redesigned** (`src/exportWorkbook.js`): a branded, client-ready workbook —
+a Schindler-styled Overview sheet (details, per-unit progress meters, glossary, how-to notes) plus
+per-unit sheets that group outstanding items into discipline sections. The deliverable is named
+`<Project Title>_Compliance Review - Outstanding` (shared by the ZIP, its top-level folder, and the
+workbook) with dates as `DD/MM/YYYY`. See the Export rules convention above for the full contract.
 
 No specific in-flight task at last update — driven by ad-hoc requests in `Context.txt` / chat.
