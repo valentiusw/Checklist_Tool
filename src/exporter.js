@@ -50,6 +50,8 @@ export function buildExportPlan(model, project) {
         comment: comments[item.id] || '',
         example: item.example,
         exampleFile: item.exampleFile || '',
+        section: item.section,
+        sectionPrefix: item.sectionPrefix,
       }));
     return { name: unit.name, rows };
   });
