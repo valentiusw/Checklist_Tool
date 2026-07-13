@@ -1200,3 +1200,7 @@ html:not([data-screen="dashboard"]) .dash-wrap { display: none; }
 .ql-chevron { transition: transform .15s ease; color: var(--text-muted); }
 .ql-unit-head.open .ql-chevron { transform: rotate(180deg); }
 .ql-unit-specs { padding: 2px 0 14px; }
+
+/* Export dropdown (reuses .new-menu styling; right-aligned under its trigger). */
+.export-wrap { position: relative; display: inline-block; }
+.export-menu { left: auto; right: 0; }
