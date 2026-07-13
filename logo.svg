@@ -1,14 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="205 205 326 326" role="img" aria-label="Logo">
   <defs>
-    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#c8cdd2"/>
-      <stop offset="0.28" stop-color="#9aa1a8"/>
-      <stop offset="0.49" stop-color="#777e86"/>
-      <stop offset="0.51" stop-color="#5c636b"/>
-      <stop offset="0.54" stop-color="#8f969d"/>
-      <stop offset="0.74" stop-color="#bcc1c7"/>
-      <stop offset="1" stop-color="#8d949b"/>
-    </linearGradient>
     <mask id="logo">
       <rect x="205" y="205" width="326" height="326" fill="black"/>
       <g transform="translate(0,736) scale(0.1,-0.1)" fill="white" stroke="none">
@@ -27,5 +18,5 @@ l-48 -51 225 -329 c123 -181 229 -330 235 -332 6 -2 68 54 138 124 237 240
       </g>
     </mask>
   </defs>
-  <rect x="205" y="205" width="326" height="326" fill="url(#chrome)" mask="url(#logo)"/>
+  <rect x="205" y="205" width="326" height="326" fill="#e6e8eb" mask="url(#logo)"/>
 </svg>
