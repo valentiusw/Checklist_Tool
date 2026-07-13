@@ -1,40 +1,33 @@
-# Progress Ledger — sections, units, About page, red theme
+# SDD Progress Ledger — Pinned Projects
 
-Plan: docs/superpowers/plans/2026-06-24-sections-units-about-theme.md
-Branch: feature/sections-units-about-theme
+Plan: docs/superpowers/plans/2026-07-02-pinned-projects.md
+Spec: docs/superpowers/specs/2026-07-02-pinned-projects-design.md
+Branch: feature/pinned-projects (off main @ a48ad7e)
+Base (feature start / Task 1 base): a48ad7e (plan commit)
 
 ## Tasks
-Task 1: complete (commits 3fa0745..0d50f2a, review clean)
-  Minor: test for "prefix present but unlisted in Sections sheet" branch not explicit; SECTION_COLS naming nit.
-Task 2: complete (commits 0d50f2a..5d209a3, review clean)
-  Reviewer "Important" (meaning undefined) = FALSE POSITIVE: cell() returns '' for blank cells. No fix.
-  Minor: no test for blank-meaning row / header-only Glossary.
-Task 3: complete (commit fd949fe, integration-verified: workbook builds in buildModel, 9 items, sections A/B/C, 7 glossary terms, conditions parse)
-Task 4: complete (commits 5d209a3..ddd1315, store correct per spec)
-  CROSS-TASK INVARIANT: app.js + exporter.js still read flat project.inputs/checks (broken at runtime NOW by design).
-    MUST be fully migrated to project.units[*] by end of Task 7. Verify at final review: no flat project.inputs/checks/comments access remains.
-  Reviewer "Critical" = expected transitional state (consumers updated in Tasks 5-7). Important findings match planned design.
-  Minor: DRY migrateProject/normalizeUnit; empty-units import guard untested.
-Task 5: complete (commit ddd1315..8181059, review clean, Approved)
-  Minor: test local var still named 'project'; no explicit zero-units progress test.
-Task 6: complete (commit 8181059..16d49b0; npm test 36/36; node --check clean; review APPROVED)
-  Review verdict: all 4 functions (optionalSheetToRows, loadModelFromWorkbook, persistModel, restoreModel) match plan verbatim; round-trip field-consistent; no xlsx re-import; cross-task invariant respected.
-Task 7: complete (commit 58eb497; unit selector + per-unit render; node --check clean, 36/36).
-Task 8: complete (commit 1c9af98; section filter + grouped headings).
-Task 9: complete (commit 96f8fdb; About page with sections/glossary tables).
-Task 10: complete (commit 03d225b; one worksheet per unit; CROSS-TASK INVARIANT RESOLVED — no flat project.inputs/checks/comments access remains in app.js, verified by grep).
-Task 11: complete (commit f9e8306; red accent, green completion signals, new control styles).
-Task 12: complete (README updated for optional sheets + units/About/Section; npm test 36/36, node --check clean).
+## Final whole-branch review (opus, a48ad7e..3777714): READY TO MERGE = With fixes (all Minor, non-blocking). No Critical/Important.
+- Strengths: plan/spec-faithful; avoided plan's nonexistent --muted token (used --text-muted, verified in both themes); clean event isolation (pin+eye stopPropagation, card handlers guard closest('button')); cap correct (fresh count, unpin always allowed, blocks 6th); no schema change (flag rides saveProject/importLibrary clone, db.js untouched, setPinned deletes key when false); store tests verify real behavior.
+- Minor findings → ALL FIXED in 9fb5b34: (1) reconcileWithFile() had same stale-sidebar class as the restore bug (renderDashboard early-returns on !state.model before renderPinnedNav) → hoisted renderPinnedNav() ABOVE the guard so it runs unconditionally, covering reconcileWithFile + restore; dropped now-redundant explicit restore call + init keeps its direct call (setup screen, no renderDashboard). (2) removed dead .pinned-item class. (Left as-is, spec-verbatim: max-height:0→none non-animating sublist — intentional, chevron still rotates.)
+- Post-fix call sites: renderPinnedNav() at app.js:275 (unconditional in renderDashboard) + :1293 (init direct). No double-call. 68/68 unit, node --check clean.
 
-ALL 12 TASKS COMPLETE.
+## Follow-up refinements (commit 9fb5b34..2fb176a, TDD + real-app smoke): pin dropdown polish + drag-to-reorder.
+- (1) pin-btn now mirrors .eye-btn (border:none, background:none, hover→accent, 32px, svg 16px) — no outline/box. (2) wirePinnedNav defaults CLOSED (open only if localStorage PINNED_NAV_KEY==='expanded'); markup aria-expanded="false". (3) #nav-about moved from .side-nav into .side-foot, above .side-theme (footer order: About→Dark theme→Settings); nav-about click still binds by id. (4) DRAG-TO-REORDER: pinnedOrder int on project (travels w/ backup like pinned). projectStore: setPinned(true) appends pinnedOrder=max+1 (new pins→bottom) & setPinned(false) deletes both; new reorderPinned(orderedIds) reassigns pinnedOrder by index, skips unknown/unpinned, no updatedAt bump, notify per id. listProjects surfaces pinnedOrder. app.js renderPinnedNav sorts pinned by pinnedOrder (NaN-guarded), li.draggable + dragstart/dragend(→reorderPinned) per item, container dragover attached once (dataset.dragWired) live-reorders via pinnedDragAfterElement(clientY). styles: .pinned-item grab/grabbing + .dragging opacity. 4 new store tests (72/72 total). SMOKE (headless Edge/CDP, real app via SampleSetup.zip): 12/12 incl. definitive native-drag probe (real mouse drag from the BUTTON fires native dragstart=1 → Chromium button-in-draggable gotcha absent in Edge), reorder + persist-across-reload, dropdown default-closed, About placement, pin-btn 0px|none border. Harness: scratchpad/smoke_pin.mjs.
 
-Manual browser smoke test: AUTOMATED via CDP driver (Edge headless, zero deps) — 12/12 checks pass
-(load, sections/glossary persist, units add/independence/PERSISTENCE, section filter+headings, About,
-dashboard aggregate, multi-sheet export validated with openpyxl: cols Item ID/Description/Code/Comments/Example,
-no Note, one sheet per unit; reload persistence).
+## FEATURE COMPLETE (+refinements). HEAD=2fb176a.
+## Pre-refinement checkpoint was HEAD=9fb5b34. 3 tasks + final review done & verified (68/68 unit; headless-Edge smoke pin→row→open→collapse→reload-persist→unpin). NOT merged, nothing pushed. Next: finishing-a-development-branch (user decision).
 
-REGRESSION FOUND & FIXED during smoke test (commit pending): Task 7 handlers called getCurrentProject()
-twice (getCurrentUnit mutated one fresh copy, saveCurrent saved a different fresh copy), so ticks/comments/
-input changes/renames were silently lost. getCurrentProject() returns a fresh object per call. Fixed by
-reading the project once via new getCurrentProjectAndUnit()/unitOf(project) in updateInput, both renderItems
-handlers, renderProject defaults, and rename-unit. Smoke check 6 caught it (was "0/12", now "1/8").
+Task 3: complete (commits 982b294..3777714, spec ✅, quality Approved after 1 fix). index.html: #nav-pinned-wrap (pin icon + "Pinned" label + chevron + #pinned-sublist) inserted in .side-nav between #nav-dashboard and #nav-about. app.js: renderPinnedNav() rebuilds sublist from listProjects().filter(pinned).slice(0,5), hides wrap when empty, wires openProject on [data-open]; called as renderDashboard's final line + directly in init + (fix) in restore-library handler. wirePinnedNav() toggles .open class + persists PINNED_NAV_KEY in try/catch; called in init. styles.css: .nav-pinned/.pinned-sublist/.pinned-link rules, .pinned-link uses --text-muted (not brief's nonexistent --muted); collapsed-sidebar hides chevron+sublist. 68/68 unit, node --check clean, 8/8 headless-Edge smoke (pin→row→open→collapse→reload-persist→unpin). REVIEW: Important bug — renderDashboard early-returns (if !state.model) BEFORE its renderPinnedNav() call, so DRY-skipped restore path left sidebar stale in "data cleared→restore, no model" scenario. FIXED in 3777714: explicit renderPinnedNav() after restore alert, model-independent. Op note: implementer's earlier taskkill //F //IM msedge.exe killed all Edge system-wide (mishap, no code impact; instructed not to repeat).
+Task 2: complete (commits ed9d795..982b294, review clean, spec ✅, quality Approved). app.js: pinSvg(filled) helper; pin button prepended to each card's .btn-row (data-pin, aria-pressed/label, title Pin/Unpin) driven by summary.pinned; [data-pin] click wiring with e.stopPropagation()→togglePin(id); togglePin re-reads listProjects(), blocks 6th pin with exact alert('You can pin up to 5 projects. Unpin one first.'), unpin always allowed, setPinned then renderDashboard() ONLY (no renderPinnedNav — Task 3). styles.css: .pin-btn rules near .eye-btn. DEVIATION (correct): brief's var(--muted) doesn't exist → used var(--text-muted) matching .eye-btn. 68/68 unit unchanged, node --check clean. ⚠️ visual icon-swap + alert firing deferred to Task 3 smoke.
+Task 1: complete (commits a48ad7e..ed9d795, review clean, spec ✅, quality Approved). projectStore.js: setPinned(id,pinned) added after saveProject — sets p.pinned=true / delete key, no updatedAt bump, no-op+no-event on unknown id, notify('upsert',id); exported. listProjects() summaries now {id,name,updatedAt,pinned:!!p.pinned}. 68/68 unit (3 new). Minor (future note, non-issue): migrateProject rebuilds legacy flat projects without pinned — harmless since flag is brand-new.
+
+## Feature: Full "All Items" export (plan 2026-07-13-full-items-export.md, branch feat/full-items-export, BASE 73df2ce)
+Task 1: complete (commits 73df2ce..926314b, spec OK, quality Approved, no findings). exporter.js buildExportPlan gains {mode} option; full mode emits every item incl S-prefixed with per-unit status done/outstanding/na; outstanding path unchanged. 11/11 exporter tests, full suite 79/79.
+Task 2: complete (commits 926314b..57d7e22, spec OK, quality Approved). exportWorkbook.js: fullCell/STATUS_TEXT/UNIT_HEADER_FULL + tint consts; buildUnitSheetFull (6-col, Status column, status tints, hyperlinks); buildOverviewSheet mode-aware (STATUS KEY legend + NOTES_FULL, red last note via notes.length-1); buildExportWorkbook threads mode. node --check clean, 79/79.
+  MINOR (for final review): buildUnitSheetFull computes row-height array but never sets ws[!rows]=rows before finalize, so heights no-op. NOT a regression — buildUnitSheet (outstanding, pre-existing) has the identical latent pattern; brief omitted it too. Cross-cutting cleanup candidate (set/remove in BOTH builders).
+Task 3: complete (commits 57d7e22..72023c8, spec OK, quality Approved). index.html: both export triggers wrapped in .export-wrap with .new-menu.export-menu dropdowns (dashboard #export-menu/#menu-export-full/#menu-export-outstanding; project #dl-export-menu/#dl-export-full/#dl-export-outstanding), labels "All Items"/"Outstanding Items". styles.css: .export-wrap/.export-menu (right-aligned, reuse .new-menu). app.js: wireExportDropdown helper replaces both old handlers; downloadProjectZip(project,mode) threads {mode} to buildExportPlan + mode to buildExportWorkbook + base suffix Full/Outstanding. node --check clean, 79/79.
+  MINOR (matches existing new-menu pattern, prescribed by brief): each dropdown adds its own document click/keydown listener rather than one shared registry.
+Task 4: complete (verification + docs, commit CLAUDE.md). VERIFIED end-to-end: Node harness loaded vendored XLSX in a vm sandbox and built REAL demo-full.xlsx / demo-outstanding.xlsx via buildExportWorkbook, parsed with openpyxl -> full sheet header [Item ID,Description,Code,Status,Comments,Example]; A08 Done+green E7F3E9, A10 N/A+grey F0F1F3, A11 Outstanding no-fill, S01 present+Outstanding; Overview has STATUS KEY. Outstanding sheet unchanged: 5-col, no Status, no STATUS KEY, only A11. Full referencedFiles=[a08,a10,s01] (done+na+S all bundled). Dropdown SMOKE PASS (Edge headless/CDP): both menus+items exist, labels All Items/Outstanding Items, toggle open/close+aria, Escape+outside-click close. Harnesses: scratchpad/verify_export.mjs, scratchpad/smoke_dropdown.mjs.
+
+## Final whole-branch review (opus, 73df2ce..206ed69): READY TO MERGE. No Critical/Important. All binding constraints confirmed (outstanding path unchanged; full=every item incl S with status+tints; column order; naming suffix; Title-Case labels; no new deps; db.js untouched; theme-safe CSS). Two Minor (non-blocking, both mirror pre-existing patterns): (1) buildUnitSheetFull row-height array never assigned ws[!rows] (same as buildUnitSheet); fix BOTH together if ever. (2) per-dropdown document listeners (matches wireNewMenu); no accumulation since init runs once.
+## FEATURE COMPLETE. 4 tasks + final review done & verified. HEAD=206ed69, branch feat/full-items-export. NOT merged, nothing pushed. Next: finishing-a-development-branch (user decision).
