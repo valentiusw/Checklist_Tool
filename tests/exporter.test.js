@@ -118,3 +118,48 @@ test('buildExportPlan collects referenced files once, in order', () => {
   const plan = buildExportPlan(m, project);
   assert.deepEqual(plan.referencedFiles, ['a08.png', 'a09.pdf']);
 });
+
+test('buildExportPlan full mode marks per-unit status (done/outstanding/na)', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A08', '', 'Always', 'AS3000', '', 'a08.png'],
+    ['A10', 'PitToEarth: FALSE', 'Cond item', 'EN81', '', ''],
+  ];
+  const m = buildModel({ checklistRows: rows, inputRows });
+  const project = { units: [
+    { name: 'U1', inputs: { PitToEarth: false }, checks: { A08: true }, comments: {} },
+    { name: 'U2', inputs: { PitToEarth: true }, checks: {}, comments: {} },
+  ] };
+  const plan = buildExportPlan(m, project, { mode: 'full' });
+  const u1 = Object.fromEntries(plan.units[0].rows.map(r => [r.id, r.status]));
+  assert.deepEqual(u1, { A08: 'done', A10: 'outstanding' });
+  const u2 = Object.fromEntries(plan.units[1].rows.map(r => [r.id, r.status]));
+  assert.deepEqual(u2, { A08: 'outstanding', A10: 'na' });
+});
+
+test('buildExportPlan full mode includes S-items; outstanding excludes them', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A08', '', 'Keep', 'AS3000', '', 'a08.png'],
+    ['S01', '', 'Schindler', 'SL', '', 's01.png'],
+  ];
+  const m = buildModel({ checklistRows: rows, inputRows });
+  const project = { units: [{ name: 'U', inputs: {}, checks: {}, comments: {} }] };
+  const full = buildExportPlan(m, project, { mode: 'full' });
+  assert.deepEqual(full.units[0].rows.map(r => r.id), ['A08', 'S01']);
+  const out = buildExportPlan(m, project);
+  assert.deepEqual(out.units[0].rows.map(r => r.id), ['A08']);
+});
+
+test('buildExportPlan full mode collects example files for all statuses', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A08', '', 'x', 'AS3000', '', 'a08.png'],
+    ['A10', 'PitToEarth: FALSE', 'x', 'EN81', '', 'a10.png'],
+  ];
+  const m = buildModel({ checklistRows: rows, inputRows });
+  const project = { units: [{ name: 'U', inputs: { PitToEarth: true }, checks: { A08: true }, comments: {} }] };
+  const plan = buildExportPlan(m, project, { mode: 'full' });
+  // A08 done (has file), A10 na (has file) — both bundled.
+  assert.deepEqual(plan.referencedFiles, ['a08.png', 'a10.png']);
+});
