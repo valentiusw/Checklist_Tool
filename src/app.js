@@ -422,14 +422,43 @@ function deselectProject() {
   if (detail) detail.hidden = true;
 }
 
+// Export trigger dropdown: toggles a menu whose two items export in the chosen
+// mode. `getProject` resolves the project to export at click time.
+function wireExportDropdown({ btnId, menuId, fullId, outId, getProject }) {
+  const btn = document.getElementById(btnId);
+  const menu = document.getElementById(menuId);
+  const close = () => { if (!menu.hidden) { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); } };
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = menu.hidden;
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', e => {
+    if (!menu.hidden && !e.target.closest('#' + menuId + ', #' + btnId)) close();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  document.getElementById(fullId).addEventListener('click', () => {
+    close();
+    const p = getProject();
+    if (p) downloadProjectZip(p, 'full');
+  });
+  document.getElementById(outId).addEventListener('click', () => {
+    close();
+    const p = getProject();
+    if (p) downloadProjectZip(p, 'outstanding');
+  });
+}
+
 function wireDashboardActions() {
   document.getElementById('dash-download').addEventListener('click', () => {
     const p = state.store.getProject(state.selectedProjectId);
     if (p) saveProjectFile(p);
   });
-  document.getElementById('dash-export').addEventListener('click', () => {
-    const p = state.store.getProject(state.selectedProjectId);
-    if (p) downloadProjectZip(p);
+  wireExportDropdown({
+    btnId: 'dash-export', menuId: 'export-menu',
+    fullId: 'menu-export-full', outId: 'menu-export-outstanding',
+    getProject: () => state.store.getProject(state.selectedProjectId),
   });
   document.getElementById('dash-delete').addEventListener('click', () => {
     const id = state.selectedProjectId;
@@ -1157,13 +1186,13 @@ function downloadBlob(blob, filename) {
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
 }
 
-async function downloadProjectZip(project = getCurrentProject()) {
+async function downloadProjectZip(project = getCurrentProject(), mode = 'outstanding') {
   if (!project) return;
   try {
-    const plan = buildExportPlan(state.model, project);
+    const plan = buildExportPlan(state.model, project, { mode });
     const now = new Date();
     const reviewDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    const wb = buildExportWorkbook({ XLSX, model: state.model, project, plan, reviewDate });
+    const wb = buildExportWorkbook({ XLSX, model: state.model, project, plan, reviewDate, mode });
     const workbookArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
 
     const files = new Map();
@@ -1178,7 +1207,8 @@ async function downloadProjectZip(project = getCurrentProject()) {
     // Keep the project title's spaces; strip only characters illegal in file
     // names. e.g. "Smoke Tower_Compliance Review - Outstanding".
     const safeTitle = (project.name || 'Project').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Project';
-    const base = `${safeTitle}_Compliance Review - Outstanding`;
+    const suffix = mode === 'full' ? 'Full' : 'Outstanding';
+    const base = `${safeTitle}_Compliance Review - ${suffix}`;
     const zipBlob = await buildExportZip({
       workbookName: `${base}.xlsx`,
       workbookArrayBuffer,
@@ -1436,7 +1466,11 @@ async function init() {
   });
 
   document.getElementById('btn-save-project').addEventListener('click', () => saveProjectFile());
-  document.getElementById('btn-download-zip').addEventListener('click', () => downloadProjectZip());
+  wireExportDropdown({
+    btnId: 'btn-download-zip', menuId: 'dl-export-menu',
+    fullId: 'dl-export-full', outId: 'dl-export-outstanding',
+    getProject: () => getCurrentProject(),
+  });
   document.getElementById('btn-save-library').addEventListener('click', saveLibraryFile);
 
   document.getElementById('restore-library-file').addEventListener('change', async e => {

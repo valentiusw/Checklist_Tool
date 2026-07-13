@@ -36,23 +36,37 @@ export function buildExportRows(model, unit) {
   return rows;
 }
 
-export function buildExportPlan(model, project) {
+export function buildExportPlan(model, project, { mode = 'outstanding' } = {}) {
+  const full = mode === 'full';
   const units = (project.units || []).map(unit => {
+    const values = unit.inputs || {};
     const comments = unit.comments || {};
     const checks = unit.checks || {};
-    const rows = applicableItems(model, unit.inputs || {})
-      .filter(item => checks[item.id] !== true)
-      .filter(item => !/^s/i.test(item.id)) // exclude Schindler (S-prefixed) items from export
-      .map(item => ({
-        id: item.id,
-        description: item.description,
-        code: item.code,
-        comment: comments[item.id] || '',
-        example: item.example,
-        exampleFile: item.exampleFile || '',
-        section: item.section,
-        sectionPrefix: item.sectionPrefix,
-      }));
+    const base = (item) => ({
+      id: item.id,
+      description: item.description,
+      code: item.code,
+      comment: comments[item.id] || '',
+      example: item.example,
+      exampleFile: item.exampleFile || '',
+      section: item.section,
+      sectionPrefix: item.sectionPrefix,
+    });
+    let rows;
+    if (full) {
+      // Every item, including S-prefixed, tagged with its per-unit status.
+      rows = model.items.map(item => {
+        const applicable = isApplicable(item.condition, values, model.inputDefs);
+        const status = !applicable ? 'na' : (checks[item.id] === true ? 'done' : 'outstanding');
+        return { ...base(item), status };
+      });
+    } else {
+      // Applicable, unchecked, client-facing (non-S) items only.
+      rows = applicableItems(model, values)
+        .filter(item => checks[item.id] !== true)
+        .filter(item => !/^s/i.test(item.id))
+        .map(base);
+    }
     return { name: unit.name, rows };
   });
   const referencedFiles = [];

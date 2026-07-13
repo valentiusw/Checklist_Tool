@@ -19,13 +19,41 @@ const TRACK = 'C4C8CE';     // progress-meter outline
 const GREEN = '3FA34D';     // progress-meter fill
 const FILLABLE = 'FFF6CC';  // client-fill tint
 const LINK = '0563C1';      // Example hyperlink blue
+const DONE_FILL = 'E7F3E9';  // full-export "Done" row tint (light green)
+const NA_FILL = 'F0F1F3';    // full-export "Not Applicable" row tint (grey)
+const NA_TEXT = '9AA1AB';    // muted text on N/A rows
 
 const OVERVIEW_COLS = 16;
 const UNIT_HEADER = ['Item ID', 'Description', 'Code', 'Comments', 'Example'];
+const UNIT_HEADER_FULL = ['Item ID', 'Description', 'Code', 'Status', 'Comments', 'Example'];
+const STATUS_TEXT = { done: 'Done', outstanding: 'Outstanding', na: 'N/A' };
+
+// Per-cell style for a full-export row, tinted by status. `bd`/`fill` are module-scope.
+function fullCell(status, { bold = false, wrap = true, link = false } = {}) {
+  const rowFill = status === 'done' ? DONE_FILL : status === 'na' ? NA_FILL : null;
+  const rgb = link ? LINK : (status === 'na' ? NA_TEXT : INK);
+  const s = {
+    alignment: { vertical: 'top', wrapText: wrap },
+    border: { bottom: bd(GREY_LN) },
+    font: { color: { rgb }, bold, underline: link },
+  };
+  if (rowFill) s.fill = fill(rowFill);
+  return s;
+}
 
 const NOTES = [
   'This workbook lists only the OUTSTANDING (unchecked) compliance items — one tab per unit.',
   'Outstanding items are grouped by discipline (from the Sections defined in the checklist).',
+  'The Overview tab summarises progress for each unit as at the review date shown above.',
+  'Complete the highlighted Reviewed By and Contact fields before circulating.',
+  'Items with an entry in the Example column link to a supporting file in the Examples/ folder of this bundle.',
+  'After downloading, extract the ZIP file. Keep this workbook in the top-level (parent) folder and the Examples in the "Examples" sub-folder inside it — the Example links only work when this folder structure is preserved.',
+];
+
+const NOTES_FULL = [
+  'This workbook lists ALL compliance items — one tab per unit — with each item marked Done, Outstanding, or Not Applicable for that unit.',
+  'Items are grouped by discipline (from the Sections defined in the checklist).',
+  'Row colours: green = Done (checked); plain = Outstanding (applicable, not yet checked); grey = Not Applicable to that unit.',
   'The Overview tab summarises progress for each unit as at the review date shown above.',
   'Complete the highlighted Reviewed By and Contact fields before circulating.',
   'Items with an entry in the Example column link to a supporting file in the Examples/ folder of this bundle.',
@@ -52,7 +80,7 @@ const bd = (rgb = GREY_LN, style = 'thin') => ({ style, color: { rgb } });
 const fill = (rgb) => ({ patternType: 'solid', fgColor: { rgb }, bgColor: { rgb } });
 
 // ---- Overview sheet --------------------------------------------------------
-function buildOverviewSheet(XLSX, model, project, reviewDate) {
+function buildOverviewSheet(XLSX, model, project, reviewDate, mode = 'outstanding') {
   const N = OVERVIEW_COLS;
   const { newSheet, put, band, finalize } = makeApi(XLSX);
   const ws = newSheet(N);
@@ -106,6 +134,21 @@ function buildOverviewSheet(XLSX, model, project, reviewDate) {
   meter('Overall', Math.round(overall.ratio * 100), true);
   r++;
 
+  // Status key — only in the full ("all items") export.
+  if (mode === 'full') {
+    sectionBand('STATUS KEY');
+    const legendRow = (swatch, label) => {
+      put(ws, r, 0, '', { fill: fill(swatch), border: { top: bd(TRACK), bottom: bd(TRACK), left: bd(TRACK) } });
+      put(ws, r, 1, '', { fill: fill(swatch), border: { top: bd(TRACK), bottom: bd(TRACK), right: bd(TRACK) } });
+      band(ws, r, 2, N - 1, label, { font: { color: { rgb: INK } }, alignment: { vertical: 'center', indent: 1 } });
+      rh(r, 18); r++;
+    };
+    legendRow(DONE_FILL, 'Done — applicable to this unit and checked complete');
+    legendRow(WHITE, 'Outstanding — applicable but not yet checked');
+    legendRow(NA_FILL, "Not Applicable — item's condition does not apply to this unit");
+    r++;
+  }
+
   // Glossary — only when the checklist supplies one
   if (model.glossary && model.glossary.length) {
     sectionBand('GLOSSARY');
@@ -121,11 +164,12 @@ function buildOverviewSheet(XLSX, model, project, reviewDate) {
   // How to use
   sectionBand('HOW TO USE THIS WORKBOOK');
   const CHARS_PER_LINE = 96;
-  NOTES.forEach((note, i) => {
+  const notes = mode === 'full' ? NOTES_FULL : NOTES;
+  notes.forEach((note, i) => {
     const text = `${i + 1}.  ${note}`;
     const lines = Math.max(1, Math.ceil(text.length / CHARS_PER_LINE));
     // The final note (extract-the-ZIP / folder-structure warning) is shown in red.
-    const color = i === NOTES.length - 1 ? RED_SUB : INK;
+    const color = i === notes.length - 1 ? RED_SUB : INK;
     band(ws, r, 0, N - 1, text, { font: { color: { rgb: color } }, alignment: { vertical: 'top', wrapText: true, indent: 1 } });
     rh(r, 14 + lines * 14); r++;
   });
@@ -192,6 +236,47 @@ function buildUnitSheet(XLSX, unitPlan, model) {
   return finalize(ws);
 }
 
+// Full-export per-unit sheet: every item, grouped by discipline, with a Status
+// column and status-tinted rows (green Done / plain Outstanding / grey N/A).
+function buildUnitSheetFull(XLSX, unitPlan, model) {
+  const { newSheet, put, band, finalize } = makeApi(XLSX);
+  const ws = newSheet(UNIT_HEADER_FULL.length);
+  ws['!cols'] = [{ wch: 10 }, { wch: 44 }, { wch: 12 }, { wch: 13 }, { wch: 26 }, { wch: 38 }];
+  const rows = [];
+  const rh = (r, hpt) => { rows[r] = { hpt }; };
+  let r = 0;
+
+  UNIT_HEADER_FULL.forEach((h, c) => put(ws, r, c, h, { font: { bold: true, color: { rgb: WHITE } }, fill: fill(RED_DK), alignment: { vertical: 'center' } }));
+  rh(r, 18); r++;
+
+  if (!unitPlan.rows.length) {
+    band(ws, r, 0, UNIT_HEADER_FULL.length - 1, 'No checklist items.', { font: { italic: true, color: { rgb: INK } }, alignment: { vertical: 'center', indent: 1 } });
+    rh(r, 18); r++;
+    return finalize(ws);
+  }
+
+  for (const group of orderedSections(model, unitPlan.rows)) {
+    band(ws, r, 0, 5, String(group.name).toUpperCase(), { fill: fill(SECTION), font: { bold: true, color: { rgb: RED_DK } }, alignment: { vertical: 'center' }, border: { top: bd(), bottom: bd() } });
+    rh(r, 18); r++;
+    for (const it of group.rows) {
+      put(ws, r, 0, it.id, fullCell(it.status, { bold: true, wrap: false }));
+      put(ws, r, 1, it.description, fullCell(it.status));
+      put(ws, r, 2, it.code, fullCell(it.status, { wrap: false }));
+      put(ws, r, 3, STATUS_TEXT[it.status] || '', fullCell(it.status, { bold: it.status !== 'outstanding', wrap: false }));
+      put(ws, r, 4, it.comment || '', fullCell(it.status));
+      if (it.exampleFile) {
+        put(ws, r, 5, it.exampleFile, fullCell(it.status, { link: true, wrap: false }),
+          { link: { Target: 'Examples/' + it.exampleFile, Tooltip: 'Open ' + it.exampleFile } });
+      } else {
+        put(ws, r, 5, it.example || '', fullCell(it.status));
+      }
+      const lines = Math.max(1, Math.ceil((it.description || '').length / 44), Math.ceil((it.comment || '').length / 26));
+      rh(r, 4 + lines * 14); r++;
+    }
+  }
+  return finalize(ws);
+}
+
 // ---- sheet-name sanitiser (Excel: <=31 chars, no []:*?/\, unique) ----------
 function sanitizeSheetName(name, used) {
   let base = String(name || 'Unit').replace(/[\[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'Unit';
@@ -207,12 +292,15 @@ function sanitizeSheetName(name, used) {
 }
 
 // ---- assemble --------------------------------------------------------------
-export function buildExportWorkbook({ XLSX, model, project, plan, reviewDate }) {
+export function buildExportWorkbook({ XLSX, model, project, plan, reviewDate, mode = 'outstanding' }) {
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildOverviewSheet(XLSX, model, project, reviewDate), 'Overview');
+  XLSX.utils.book_append_sheet(wb, buildOverviewSheet(XLSX, model, project, reviewDate, mode), 'Overview');
   const used = new Set(['Overview']);
   for (const unitPlan of plan.units) {
-    XLSX.utils.book_append_sheet(wb, buildUnitSheet(XLSX, unitPlan, model), sanitizeSheetName(unitPlan.name, used));
+    const sheet = mode === 'full'
+      ? buildUnitSheetFull(XLSX, unitPlan, model)
+      : buildUnitSheet(XLSX, unitPlan, model);
+    XLSX.utils.book_append_sheet(wb, sheet, sanitizeSheetName(unitPlan.name, used));
   }
   return wb;
 }
