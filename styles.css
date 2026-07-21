@@ -840,7 +840,29 @@ html.no-item-tint .item.partial {
   border-radius: var(--radius-sm);
 }
 .editor-units-head { margin-top: 8px; text-align: center; }
-.editor-unit-counter { margin: 2px 0 12px; color: var(--text-muted); font-size: 13px; }
+.editor-unit-counter { margin: 2px 0 6px; color: var(--text-muted); font-size: 13px; }
+
+/* Position dots — one per unit, active dot accented. Hidden for single-unit
+   drafts (JS leaves the container empty). Clicking a dot jumps to that unit. */
+.unit-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  min-height: 7px;
+  margin: 0 0 12px;
+}
+.unit-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--border-strong);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.unit-dot:hover { background: var(--text-muted); }
+.unit-dot.is-active { background: var(--accent); transform: scale(1.35); cursor: default; }
 
 /* ---- Units carousel -------------------------------------------------- */
 .unit-carousel {
@@ -885,6 +907,22 @@ html.no-item-tint .item.partial {
   box-shadow: var(--shadow);
   padding: 14px 16px;
   margin-bottom: 14px;
+}
+
+/* Subtle directional entrance when navigating between units. Direction
+   encodes the move (right = next, left = prev, up = freshly added unit) so a
+   swap between similar-looking forms reads as movement. Applied per render by
+   app.js via a one-shot class; disabled under reduced-motion. */
+@keyframes unit-enter-next { from { opacity: 0; transform: translateX(14px); }  to { opacity: 1; transform: translateX(0); } }
+@keyframes unit-enter-prev { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes unit-enter-add  { from { opacity: 0; transform: translateY(10px); }  to { opacity: 1; transform: translateY(0); } }
+.unit-edit-card.unit-enter-next { animation: unit-enter-next 0.16s ease-out; }
+.unit-edit-card.unit-enter-prev { animation: unit-enter-prev 0.16s ease-out; }
+.unit-edit-card.unit-enter-add  { animation: unit-enter-add 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .unit-edit-card.unit-enter-next,
+  .unit-edit-card.unit-enter-prev,
+  .unit-edit-card.unit-enter-add { animation: none; }
 }
 .unit-edit-head { display: flex; align-items: center; gap: 10px; }
 .unit-edit-name {
@@ -1091,6 +1129,31 @@ html.no-item-tint .item.partial {
 /* ===== Dashboard project search (Windows-Explorer-style keyword filter) ===== */
 .project-search-row { margin: 4px 0 16px; }
 .project-search-row[hidden] { display: none; }
+
+/* Segmented view filter: Active / Pinned / Archived. Active tab lifts onto an
+   accent-tinted surface; token-driven so it tracks the theme. */
+.project-view-filter {
+  display: inline-flex;
+  gap: 2px;
+  margin-bottom: 12px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.view-tab {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 14px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.view-tab:hover:not(.is-active) { color: var(--text); background: var(--accent-soft); }
+.view-tab.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .project-search {
   display: flex; align-items: center; gap: 12px;
   border: 1px solid var(--border); border-radius: 16px;

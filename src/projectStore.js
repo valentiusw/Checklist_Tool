@@ -42,7 +42,7 @@ export function createProjectStore({ onChange } = {}) {
 
   function listProjects() {
     return [...projects.values()]
-      .map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt, pinned: !!p.pinned, pinnedOrder: p.pinnedOrder }))
+      .map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt, pinned: !!p.pinned, pinnedOrder: p.pinnedOrder, archived: !!p.archived }))
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   }
 
@@ -61,6 +61,8 @@ export function createProjectStore({ onChange } = {}) {
   function setPinned(id, pinned) {
     const p = projects.get(id);
     if (!p) return;
+    // Archived projects can't be pinned — they've left the active workspace.
+    if (pinned && p.archived) return;
     if (pinned) {
       p.pinned = true;
       // Append to the bottom of the custom pinned order.
@@ -71,6 +73,22 @@ export function createProjectStore({ onChange } = {}) {
     } else {
       delete p.pinned;
       delete p.pinnedOrder;
+    }
+    notify('upsert', id);
+  }
+
+  // Archive / unarchive a completed project. Archiving also unpins it (and drops
+  // its custom order) so it leaves the active list and the pinned sidebar.
+  // updatedAt is left untouched — archiving isn't an edit. No-op for unknown ids.
+  function setArchived(id, archived) {
+    const p = projects.get(id);
+    if (!p) return;
+    if (archived) {
+      p.archived = true;
+      delete p.pinned;
+      delete p.pinnedOrder;
+    } else {
+      delete p.archived;
     }
     notify('upsert', id);
   }
@@ -149,6 +167,6 @@ export function createProjectStore({ onChange } = {}) {
   return {
     load, listProjects, getProject, saveProject, deleteProject, createProject,
     newUnit, serializeProject, importProject, serializeLibrary, importLibrary,
-    setPinned, reorderPinned,
+    setPinned, reorderPinned, setArchived,
   };
 }

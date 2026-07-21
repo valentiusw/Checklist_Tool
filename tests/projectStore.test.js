@@ -163,3 +163,52 @@ test('reorderPinned ignores unknown or unpinned ids', () => {
   assert.equal(store.getProject('a').pinnedOrder, 0);
   assert.ok(!store.getProject('b').pinned);
 });
+
+test('setArchived sets and clears the flag without bumping updatedAt', () => {
+  const store = createProjectStore();
+  store.load([{ id: 'a', name: 'A', updatedAt: '2026-01-01T00:00:00Z', units: [] }]);
+  store.setArchived('a', true);
+  let p = store.getProject('a');
+  assert.equal(p.archived, true);
+  assert.equal(p.updatedAt, '2026-01-01T00:00:00Z'); // unchanged
+  store.setArchived('a', false);
+  p = store.getProject('a');
+  assert.ok(!p.archived);
+  assert.equal(p.updatedAt, '2026-01-01T00:00:00Z');
+});
+
+test('listProjects surfaces archived as a boolean', () => {
+  const store = createProjectStore();
+  store.load([
+    { id: 'a', name: 'A', updatedAt: '2026-02-01T00:00:00Z', archived: true, units: [] },
+    { id: 'b', name: 'B', updatedAt: '2026-01-01T00:00:00Z', units: [] },
+  ]);
+  const byId = Object.fromEntries(store.listProjects().map(p => [p.id, p.archived]));
+  assert.equal(byId.a, true);
+  assert.equal(byId.b, false);
+});
+
+test('archiving a pinned project unpins it and drops its order', () => {
+  const store = createProjectStore();
+  store.load([{ id: 'a', name: 'A', updatedAt: '2026-01-01T00:00:00Z', units: [] }]);
+  store.setPinned('a', true);
+  store.setArchived('a', true);
+  const p = store.getProject('a');
+  assert.equal(p.archived, true);
+  assert.ok(!p.pinned);
+  assert.equal(p.pinnedOrder, undefined);
+});
+
+test('setPinned refuses to pin an archived project', () => {
+  const store = createProjectStore();
+  store.load([{ id: 'a', name: 'A', updatedAt: '2026-01-01T00:00:00Z', archived: true, units: [] }]);
+  store.setPinned('a', true);
+  assert.ok(!store.getProject('a').pinned);
+});
+
+test('setArchived is a no-op for unknown ids and fires no event', () => {
+  const events = [];
+  const store = createProjectStore({ onChange: e => events.push(e) });
+  store.setArchived('nope', true);
+  assert.deepEqual(events, []);
+});

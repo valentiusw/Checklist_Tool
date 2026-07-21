@@ -25,6 +25,7 @@ const state = {
   detailMode: 'editor', // 'editor' (item detail+comment) | 'project' (read-only unit details)
   selectedProjectId: null, // highlighted project on the dashboard
   projectSearch: '', // dashboard keyword filter over project names
+  projectView: 'active', // 'active' | 'pinned' | 'archived' — dashboard segmented filter (session-only)
 };
 
 const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
@@ -38,7 +39,7 @@ function showScreen(name) {
   for (const id of ['nav-dashboard', 'nav-about', 'nav-setup']) {
     document.getElementById(id).classList.toggle('active', NAV_FOR_SCREEN[name] === id);
   }
-  if (name === 'dashboard') renderDashboard();
+  if (name === 'dashboard') { state.projectView = 'active'; renderDashboard(); }
   if (name === 'about') renderAbout();
 }
 
@@ -266,6 +267,22 @@ function wireSetup() {
 const pinSvg = (filled) =>
   `<svg viewBox="0 0 24 24" width="16" height="16" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5"/><path d="M9 10.76V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6.76a2 2 0 0 0 .59 1.42l1.7 1.7A1 1 0 0 1 18.59 15H5.41a1 1 0 0 1-.7-1.71l1.7-1.7A2 2 0 0 0 7 10.76z"/></svg>`;
 
+// Archive / unarchive glyphs (box with a down / up arrow). Injected into the
+// header action button; direction flips with the selected project's state.
+const ARCHIVE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>';
+const UNARCHIVE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5"/><line x1="12" y1="17" x2="12" y2="11"/><polyline points="9 14 12 11 15 14"/></svg>';
+
+// Point the header archive button at the selected project's current state.
+function updateArchiveButton(id) {
+  const btn = document.getElementById('dash-archive');
+  if (!btn) return;
+  const summary = state.store.listProjects().find(p => p.id === id);
+  const archived = !!(summary && summary.archived);
+  btn.innerHTML = archived ? UNARCHIVE_SVG : ARCHIVE_SVG;
+  btn.title = archived ? 'Unarchive Project' : 'Archive Project';
+  btn.setAttribute('aria-label', archived ? 'Unarchive project' : 'Archive project');
+}
+
 function renderDashboard() {
   const list = document.getElementById('project-list');
   const empty = document.getElementById('dashboard-empty');
@@ -283,6 +300,7 @@ function renderDashboard() {
 
   const projects = state.store.listProjects();
   searchRow.hidden = projects.length === 0; // no search box until there's something to search
+  syncViewTabs(); // reflect state.projectView on the segmented control
   for (const summary of projects) {
     const project = state.store.getProject(summary.id);
     const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
@@ -290,14 +308,17 @@ function renderDashboard() {
     li.className = 'project-card';
     li.dataset.projectId = project.id;
     li.dataset.name = project.name;
+    li.dataset.pinned = summary.pinned ? 'true' : 'false';
+    li.dataset.archived = summary.archived ? 'true' : 'false';
+    // Archived projects can't be pinned, so their card omits the pin button.
+    const pinBtn = summary.archived ? '' :
+      `<button class="pin-btn${summary.pinned ? ' pinned' : ''}" data-pin="${project.id}" type="button"
+            title="${summary.pinned ? 'Unpin' : 'Pin'}" aria-label="${summary.pinned ? 'Unpin project' : 'Pin project'}"
+            aria-pressed="${summary.pinned ? 'true' : 'false'}">${pinSvg(summary.pinned)}</button>`;
     li.innerHTML = `
       <div class="row-between">
         <strong>${escapeHtml(project.name)}</strong>
-        <span class="btn-row">
-          <button class="pin-btn${summary.pinned ? ' pinned' : ''}" data-pin="${project.id}" type="button"
-            title="${summary.pinned ? 'Unpin' : 'Pin'}" aria-label="${summary.pinned ? 'Unpin project' : 'Pin project'}"
-            aria-pressed="${summary.pinned ? 'true' : 'false'}">${pinSvg(summary.pinned)}</button>
-        </span>
+        <span class="btn-row">${pinBtn}</span>
       </div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
       <p class="muted">${project.units.length} unit${project.units.length === 1 ? '' : 's'} · ${checked} / ${applicable} checked</p>`;
@@ -313,22 +334,62 @@ function renderDashboard() {
   applyProjectFilter(); // respect any active search query across re-renders
 }
 
-// Windows-Explorer-style filter: show only cards whose name contains every
-// space-separated keyword (case-insensitive). Shows a message when nothing matches.
+// Does a card belong in the current segmented view?
+//   active   → not archived
+//   pinned   → pinned and not archived
+//   archived → archived
+function cardInView(card) {
+  const pinned = card.dataset.pinned === 'true';
+  const archived = card.dataset.archived === 'true';
+  if (state.projectView === 'archived') return archived;
+  if (state.projectView === 'pinned') return pinned && !archived;
+  return !archived; // 'active'
+}
+
+// Filter the project list by the active view AND the search terms (both must
+// pass). Windows-Explorer-style search: name contains every space-separated
+// keyword (case-insensitive). Shows a context-appropriate empty message.
 function applyProjectFilter() {
   const terms = (state.projectSearch || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
   const cards = document.querySelectorAll('#project-list .project-card');
-  let visible = 0;
+  let inView = 0, visible = 0;
   cards.forEach(card => {
+    if (!cardInView(card)) { card.hidden = true; return; }
+    inView++;
     const name = (card.dataset.name || '').toLowerCase();
     const match = terms.every(t => name.includes(t));
     card.hidden = !match;
     if (match) visible++;
   });
   const msg = document.getElementById('project-search-empty');
-  const noMatches = terms.length > 0 && visible === 0 && cards.length > 0;
-  msg.hidden = !noMatches;
-  if (noMatches) msg.textContent = `No projects match "${state.projectSearch.trim()}".`;
+  let text = '';
+  if (visible === 0 && cards.length > 0) {
+    if (terms.length > 0) text = `No projects match "${state.projectSearch.trim()}".`;
+    else if (state.projectView === 'pinned') text = 'No pinned projects yet.';
+    else if (state.projectView === 'archived') text = 'No archived projects.';
+    else if (inView === 0) text = 'No active projects.';
+  }
+  msg.hidden = !text;
+  msg.textContent = text;
+}
+
+// Reflect state.projectView on the segmented control (active tab + aria).
+function syncViewTabs() {
+  document.querySelectorAll('#project-view-filter .view-tab').forEach(tab => {
+    const on = tab.dataset.view === state.projectView;
+    tab.classList.toggle('is-active', on);
+    tab.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+}
+
+// Switch the dashboard view. Deselects any project (its header actions may not
+// apply to the new view) and re-filters without a full list rebuild.
+function setProjectView(view) {
+  if (view === state.projectView) return;
+  state.projectView = view;
+  deselectProject();
+  syncViewTabs();
+  applyProjectFilter();
 }
 
 function togglePin(id) {
@@ -407,6 +468,7 @@ function selectProject(id) {
   document.querySelectorAll('#project-list .project-card').forEach(li =>
     li.classList.toggle('selected', li.dataset.projectId === id));
   document.getElementById('dash-actions').hidden = false;
+  updateArchiveButton(id); // set the archive/unarchive glyph + label for this project
   renderProjectDetails(id); // preview the project in the persistent RHS card
 }
 
@@ -460,6 +522,14 @@ function wireDashboardActions() {
     fullId: 'menu-export-full', outId: 'menu-export-outstanding',
     getProject: () => state.store.getProject(state.selectedProjectId),
   });
+  document.getElementById('dash-archive').addEventListener('click', () => {
+    const id = state.selectedProjectId;
+    if (!id) return;
+    const summary = state.store.listProjects().find(p => p.id === id);
+    // Reversible + non-destructive → no confirm dialog (unlike delete).
+    state.store.setArchived(id, !(summary && summary.archived));
+    renderDashboard();
+  });
   document.getElementById('dash-delete').addEventListener('click', () => {
     const id = state.selectedProjectId;
     if (id && confirm('Delete this project?')) {
@@ -467,6 +537,9 @@ function wireDashboardActions() {
       renderDashboard();
     }
   });
+  // Segmented view filter (Active / Pinned / Archived).
+  document.querySelectorAll('#project-view-filter .view-tab').forEach(tab =>
+    tab.addEventListener('click', () => setProjectView(tab.dataset.view)));
   const search = document.getElementById('project-search');
   const searchClear = document.getElementById('project-search-clear');
   const syncSearch = () => {
@@ -613,6 +686,27 @@ function renderEditor() {
   document.getElementById('editor-unit-counter').textContent =
     `Unit ${index + 1} of ${draft.units.length}`;
 
+  // Position dots — one per unit, active dot accented, clickable to jump.
+  // Omitted for single-unit drafts (a lone dot reads as clutter).
+  const dotsWrap = document.getElementById('editor-unit-dots');
+  dotsWrap.innerHTML = '';
+  if (draft.units.length > 1) {
+    draft.units.forEach((_u, i) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'unit-dot' + (i === index ? ' is-active' : '');
+      dot.setAttribute('aria-label', `Go to unit ${i + 1}`);
+      if (i === index) dot.setAttribute('aria-current', 'true');
+      dot.addEventListener('click', () => {
+        if (i === index) return;
+        state.editor.navDir = i > index ? 'next' : 'prev';
+        state.editor.unitIndex = i;
+        renderEditor();
+      });
+      dotsWrap.appendChild(dot);
+    });
+  }
+
   // Previous arrow is disabled on the first unit.
   const prevBtn = document.getElementById('editor-prev-unit');
   prevBtn.disabled = index === 0;
@@ -629,6 +723,13 @@ function renderEditor() {
   container.innerHTML = '';
   const card = document.createElement('div');
   card.className = 'unit-edit-card';
+  // One-shot entrance animation, consumed here so it only plays on navigation
+  // (not on delete, initial open, or a re-render from an unrelated change).
+  const dir = state.editor.navDir;
+  state.editor.navDir = null;
+  if (dir === 'next') card.classList.add('unit-enter-next');
+  else if (dir === 'prev') card.classList.add('unit-enter-prev');
+  else if (dir === 'add') card.classList.add('unit-enter-add');
 
   const head = document.createElement('div');
   head.className = 'unit-edit-head';
@@ -674,12 +775,17 @@ function renderEditor() {
 }
 
 function prevEditorUnit() {
-  if (state.editor.unitIndex > 0) { state.editor.unitIndex--; renderEditor(); }
+  if (state.editor.unitIndex > 0) {
+    state.editor.navDir = 'prev';
+    state.editor.unitIndex--;
+    renderEditor();
+  }
 }
 
 function nextEditorUnit() {
   const draft = state.editor.draft;
   if (state.editor.unitIndex < draft.units.length - 1) {
+    state.editor.navDir = 'next';
     state.editor.unitIndex++;
     renderEditor();
   } else {
@@ -690,6 +796,7 @@ function nextEditorUnit() {
 function addEditorUnit() {
   const draft = state.editor.draft;
   draft.units.push(newDraftUnit(state.model, 'Unit ' + (draft.units.length + 1)));
+  state.editor.navDir = 'add';
   state.editor.unitIndex = draft.units.length - 1;
   markEditorDirty();
   renderEditor();
