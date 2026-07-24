@@ -841,6 +841,11 @@ html.no-item-tint .item.partial {
 }
 .editor-units-head { margin-top: 8px; }
 
+/* Let the create-project card fill the window width instead of the default
+   1080px cap, giving the wide unit grid room. main's right padding is the
+   cushion to the window edge. */
+[data-screen="editor"] #screen-editor { max-width: none; }
+
 /* ---- Unit grid (spreadsheet editor) ---------------------------------- */
 [data-screen="editor"] .editor-grid-wrap {
   overflow: auto;
