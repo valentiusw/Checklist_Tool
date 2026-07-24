@@ -1530,20 +1530,27 @@ function wireItemTintToggle() {
 }
 
 const SIDEBAR_KEY = 'dpchecklist.sidebar';
+// Single source of truth for the collapsed-sidebar state: toggles the class,
+// syncs the toggle button's aria, and (by default) persists the choice.
+// persist=false is used only to reflect the pre-paint bootstrap state.
+function setSidebarCollapsed(collapsed, persist = true) {
+  document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+  const btn = document.getElementById('sidebar-toggle');
+  if (btn) {
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    btn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+  }
+  if (persist) {
+    try { window.localStorage.setItem(SIDEBAR_KEY, collapsed ? 'collapsed' : 'expanded'); } catch { /* ignore */ }
+  }
+}
 function wireSidebarToggle() {
   const btn = document.getElementById('sidebar-toggle');
   if (!btn) return;
-  const apply = (collapsed) => {
-    document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
-    btn.setAttribute('aria-expanded', String(!collapsed));
-    btn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
-  };
   // Reflect the state already applied pre-paint by the <head> bootstrap.
-  apply(document.documentElement.classList.contains('sidebar-collapsed'));
+  setSidebarCollapsed(document.documentElement.classList.contains('sidebar-collapsed'), false);
   btn.addEventListener('click', () => {
-    const collapsed = !document.documentElement.classList.contains('sidebar-collapsed');
-    apply(collapsed);
-    try { window.localStorage.setItem(SIDEBAR_KEY, collapsed ? 'collapsed' : 'expanded'); } catch { /* ignore */ }
+    setSidebarCollapsed(!document.documentElement.classList.contains('sidebar-collapsed'));
   });
 }
 
@@ -1560,7 +1567,15 @@ function wirePinnedNav() {
   try { open = window.localStorage.getItem(PINNED_NAV_KEY) === 'expanded'; } catch { /* ignore */ }
   apply(open);
   btn.addEventListener('click', () => {
-    open = !wrap.classList.contains('open');
+    // When the sidebar is collapsed the pinned sublist is hidden, so a plain
+    // toggle would do nothing visible. Instead, expand the sidebar and open the
+    // list in one action; when already expanded, keep toggling as usual.
+    if (document.documentElement.classList.contains('sidebar-collapsed')) {
+      setSidebarCollapsed(false);
+      open = true;
+    } else {
+      open = !wrap.classList.contains('open');
+    }
     apply(open);
     try { window.localStorage.setItem(PINNED_NAV_KEY, open ? 'expanded' : 'collapsed'); } catch { /* ignore */ }
   });
