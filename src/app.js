@@ -10,6 +10,7 @@ import * as fileBackup from './fileBackup.js';
 import { buildSnapshot, parseSnapshot, chooseNewer } from './librarySnapshot.js';
 import { defaultInputValue, validateDraft, newBlankDraft, newDraftUnit } from './projectDraft.js';
 import { itemApplicableUnits, itemCheckState, unifiedItems } from './checklistView.js';
+import { parseClipboardMatrix, applyPasteMatrix } from './unitGrid.js';
 
 const state = {
   model: null,
@@ -804,6 +805,58 @@ function focusCell(row, col, caretEnd) {
   }
 }
 
+// Enter/Shift+Enter move vertically; Arrow keys move between non-text cells
+// (checkbox/select) — inside number/text inputs arrows stay native so the caret
+// and number steppers keep working. Tab/Shift+Tab are left to native DOM order
+// (delete buttons are tabIndex -1, so Tab walks name → inputs → next row).
+function onGridKeydown(e) {
+  const cell = e.target.closest('[data-col]');
+  if (!cell) return;
+  const tr = cell.closest('tr');
+  const row = Number(tr.dataset.row);
+  const col = Number(cell.dataset.col);
+  const isText = cell.tagName === 'INPUT' && (cell.type === 'text' || cell.type === 'number');
+
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    focusCell(row + (e.shiftKey ? -1 : 1), col, true);
+  } else if (!isText && e.key === 'ArrowDown') {
+    e.preventDefault(); focusCell(row + 1, col, true);
+  } else if (!isText && e.key === 'ArrowUp') {
+    e.preventDefault(); focusCell(row - 1, col, true);
+  } else if (!isText && e.key === 'ArrowRight') {
+    e.preventDefault(); focusCell(row, col + 1, true);
+  } else if (!isText && e.key === 'ArrowLeft') {
+    e.preventDefault(); focusCell(row, col - 1, true);
+  }
+}
+
+// Paste a block copied from Excel: fill cells from the focused cell, spilling
+// right and down, creating units past the last row. A 1x1 paste is left to the
+// native field so ordinary single-value pastes behave normally.
+function onGridPaste(e) {
+  const cell = e.target.closest('[data-col]');
+  if (!cell) return;
+  const text = e.clipboardData.getData('text');
+  if (!text) return;
+  const matrix = parseClipboardMatrix(text);
+  if (matrix.length === 1 && matrix[0].length === 1) return; // single value → native
+  e.preventDefault();
+  const tr = cell.closest('tr');
+  const startRow = Number(tr.dataset.row);
+  const startCol = Number(cell.dataset.col);
+  const draft = state.editor.draft;
+  draft.units = applyPasteMatrix({
+    units: draft.units,
+    model: state.model,
+    startRow, startCol, matrix,
+    makeUnit: (i) => newDraftUnit(state.model, 'Unit ' + (i + 1)),
+  });
+  markEditorDirty();
+  renderUnitGrid();
+  focusCell(startRow, startCol, false);
+}
+
 function openEditor(projectId) {
   if (!state.model) { alert('Load a checklist workbook in Setup first.'); return; }
   if (projectId) {
@@ -1555,6 +1608,9 @@ async function init() {
   document.getElementById('editor-save').addEventListener('click', saveEditor);
   document.getElementById('editor-cancel').addEventListener('click', cancelEditor);
   document.getElementById('editor-add-unit').addEventListener('click', addEditorUnit);
+  const grid = document.getElementById('editor-grid');
+  grid.addEventListener('keydown', onGridKeydown);
+  grid.addEventListener('paste', onGridPaste);
 
   const importFile = document.getElementById('import-project-file');
   importFile.addEventListener('click', closeNewMenu); // menu closes as the picker opens
