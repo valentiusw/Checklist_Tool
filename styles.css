@@ -839,92 +839,67 @@ html.no-item-tint .item.partial {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
 }
-.editor-units-head { margin-top: 8px; text-align: center; }
-.editor-unit-counter { margin: 2px 0 6px; color: var(--text-muted); font-size: 13px; }
+.editor-units-head { margin-top: 8px; }
 
-/* Position dots — one per unit, active dot accented. Hidden for single-unit
-   drafts (JS leaves the container empty). Clicking a dot jumps to that unit. */
-.unit-dots {
-  display: flex;
-  justify-content: center;
-  gap: 7px;
-  min-height: 7px;
-  margin: 0 0 12px;
+/* ---- Unit grid (spreadsheet editor) ---------------------------------- */
+[data-screen="editor"] .editor-grid-wrap {
+  overflow: auto;
+  max-height: 60vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
 }
-.unit-dot {
-  width: 7px;
-  height: 7px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: var(--border-strong);
-  cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
+[data-screen="editor"] .unit-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
 }
-.unit-dot:hover { background: var(--text-muted); }
-.unit-dot.is-active { background: var(--accent); transform: scale(1.35); cursor: default; }
-
-/* ---- Units carousel -------------------------------------------------- */
-.unit-carousel {
+[data-screen="editor"] .unit-grid th,
+[data-screen="editor"] .unit-grid td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 4px 8px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+[data-screen="editor"] .unit-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-muted);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text);
+}
+[data-screen="editor"] .unit-grid .rowhead,
+[data-screen="editor"] .unit-grid .corner {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+[data-screen="editor"] .unit-grid thead .corner {
+  background: var(--surface-muted);
+  z-index: 3; /* frozen corner sits above both sticky edges */
+}
+[data-screen="editor"] .unit-grid .rowhead-inner {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
 }
-.unit-carousel-stage { flex: 1 1 auto; min-width: 0; }
-
-.carousel-nav {
-  flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow);
-  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.08s;
+[data-screen="editor"] .unit-grid .unit-edit-name {
+  min-width: 130px;
 }
-.carousel-nav svg { display: block; }
-.carousel-nav:hover:not(:disabled) {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 2px 4px rgba(20, 23, 28, .06), 0 8px 22px rgba(20, 23, 28, .08);
+[data-screen="editor"] .unit-grid td input[type="number"],
+[data-screen="editor"] .unit-grid td select {
+  width: 100%;
+  min-width: 90px;
 }
-.carousel-nav:active:not(:disabled) { transform: translateY(1px); }
-.carousel-nav:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
-/* The next arrow turns into a + (add unit) when on the last unit. */
-.carousel-nav.carousel-add { color: var(--accent); border-color: var(--accent); }
-.carousel-nav.carousel-add:hover:not(:disabled) { background: var(--accent-soft); }
-
-.unit-edit-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 14px 16px;
-  margin-bottom: 14px;
+[data-screen="editor"] .unit-grid tr.ghost {
+  opacity: 0.55;
 }
 
-/* Subtle directional entrance when navigating between units. Direction
-   encodes the move (right = next, left = prev, up = freshly added unit) so a
-   swap between similar-looking forms reads as movement. Applied per render by
-   app.js via a one-shot class; disabled under reduced-motion. */
-@keyframes unit-enter-next { from { opacity: 0; transform: translateX(14px); }  to { opacity: 1; transform: translateX(0); } }
-@keyframes unit-enter-prev { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes unit-enter-add  { from { opacity: 0; transform: translateY(10px); }  to { opacity: 1; transform: translateY(0); } }
-.unit-edit-card.unit-enter-next { animation: unit-enter-next 0.16s ease-out; }
-.unit-edit-card.unit-enter-prev { animation: unit-enter-prev 0.16s ease-out; }
-.unit-edit-card.unit-enter-add  { animation: unit-enter-add 0.2s ease-out; }
-@media (prefers-reduced-motion: reduce) {
-  .unit-edit-card.unit-enter-next,
-  .unit-edit-card.unit-enter-prev,
-  .unit-edit-card.unit-enter-add { animation: none; }
-}
-.unit-edit-head { display: flex; align-items: center; gap: 10px; }
 .unit-edit-name {
   flex: 1 1 auto;
   font: inherit;
