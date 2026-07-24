@@ -6,12 +6,32 @@ export function newUnit(name) {
   return { id: newId('u'), name: name || 'Unit 1', inputs: {}, checks: {}, comments: {} };
 }
 
+const DETAIL_KEYS = ['reviewerName', 'reviewerContact', 'builderName', 'builderPhone', 'builderEmail', 'builderApprovalNo'];
+
+export function emptyDetails() {
+  const d = {};
+  for (const k of DETAIL_KEYS) d[k] = '';
+  return d;
+}
+
+// Merge a partial/missing details object onto the empty shape: fills missing
+// keys, drops unknown keys, coerces values to string. Defensive for legacy
+// stored projects and imported data.
+export function normalizeDetails(d) {
+  const out = emptyDetails();
+  if (d && typeof d === 'object') {
+    for (const k of DETAIL_KEYS) if (d[k] != null) out[k] = String(d[k]);
+  }
+  return out;
+}
+
 function migrateProject(p) {
   if (!p) return p;
-  if (Array.isArray(p.units)) return p;
+  if (Array.isArray(p.units)) return { ...p, details: normalizeDetails(p.details) };
   // Legacy flat project -> wrap into a single unit.
   return {
     id: p.id, name: p.name, updatedAt: p.updatedAt,
+    details: normalizeDetails(p.details),
     units: [{ id: newId('u'), name: 'Unit 1', inputs: p.inputs || {}, checks: p.checks || {}, comments: p.comments || {} }],
   };
 }
@@ -108,6 +128,7 @@ export function createProjectStore({ onChange } = {}) {
   function createProject(name) {
     const project = {
       id: newId('p'), name: name || 'Untitled project',
+      details: emptyDetails(),
       units: [newUnit('Unit 1')], updatedAt: new Date().toISOString(),
     };
     projects.set(project.id, clone(project));
@@ -122,6 +143,7 @@ export function createProjectStore({ onChange } = {}) {
   function serializeProject(project) {
     return JSON.stringify({
       name: project.name,
+      details: normalizeDetails(project.details),
       units: (project.units || []).map(u => ({
         name: u.name, inputs: u.inputs || {}, checks: u.checks || {}, comments: u.comments || {},
       })),
@@ -134,7 +156,7 @@ export function createProjectStore({ onChange } = {}) {
     if (Array.isArray(data.units)) units = data.units.map(normalizeUnit);
     else units = [{ id: newId('u'), name: 'Unit 1', inputs: data.inputs || {}, checks: data.checks || {}, comments: data.comments || {} }];
     if (units.length === 0) units = [newUnit('Unit 1')];
-    const project = { id: newId('p'), name: data.name || 'Imported project', units, updatedAt: new Date().toISOString() };
+    const project = { id: newId('p'), name: data.name || 'Imported project', details: normalizeDetails(data.details), units, updatedAt: new Date().toISOString() };
     projects.set(project.id, clone(project));
     notify('upsert', project.id);
     return clone(project);

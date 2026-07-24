@@ -1,6 +1,6 @@
 // Pure, DOM-free helpers for building and validating a project draft, and for
 // formatting input values. Importable from Node tests (no DOM dependency).
-import { newId, newUnit } from './projectStore.js';
+import { newId, newUnit, emptyDetails } from './projectStore.js';
 
 export function defaultInputValue(def) {
   if (def.type === 'Boolean') return /^true$/i.test(String(def.default));
@@ -45,5 +45,5 @@ export function newDraftUnit(model, name) {
 }
 
 export function newBlankDraft(model) {
-  return { id: newId('p'), name: '', units: [newDraftUnit(model, 'Unit 1')] };
+  return { id: newId('p'), name: '', details: emptyDetails(), units: [newDraftUnit(model, 'Unit 1')] };
 }

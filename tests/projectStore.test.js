@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createProjectStore } from '../src/projectStore.js';
+import { createProjectStore, emptyDetails, normalizeDetails } from '../src/projectStore.js';
 
 test('createProject + getProject returns an independent clone', () => {
   const store = createProjectStore();
@@ -211,4 +211,40 @@ test('setArchived is a no-op for unknown ids and fires no event', () => {
   const store = createProjectStore({ onChange: e => events.push(e) });
   store.setArchived('nope', true);
   assert.deepEqual(events, []);
+});
+
+test('emptyDetails returns six empty-string fields', () => {
+  assert.deepEqual(emptyDetails(), {
+    reviewerName: '', reviewerContact: '',
+    builderName: '', builderPhone: '', builderEmail: '', builderApprovalNo: '',
+  });
+});
+
+test('normalizeDetails fills missing keys, drops unknowns, coerces to string', () => {
+  assert.deepEqual(
+    normalizeDetails({ reviewerName: 'Jo', builderPhone: 123, junk: 'x' }),
+    { reviewerName: 'Jo', reviewerContact: '', builderName: '', builderPhone: '123', builderEmail: '', builderApprovalNo: '' },
+  );
+  assert.deepEqual(normalizeDetails(undefined), emptyDetails());
+});
+
+test('serializeProject includes details and round-trips through importProject', () => {
+  const store = createProjectStore();
+  const p = store.createProject('T');
+  p.details = { ...emptyDetails(), reviewerName: 'Ana', builderEmail: 'b@x.com' };
+  const back = store.importProject(store.serializeProject(p));
+  assert.equal(back.details.reviewerName, 'Ana');
+  assert.equal(back.details.builderEmail, 'b@x.com');
+  assert.equal(back.details.builderName, ''); // untouched fields stay empty
+});
+
+test('createProject seeds empty details', () => {
+  const store = createProjectStore();
+  assert.deepEqual(store.createProject('X').details, emptyDetails());
+});
+
+test('load defaults details on projects that lack it', () => {
+  const store = createProjectStore();
+  store.load([{ id: 'p1', name: 'Old', units: [{ id: 'u1', name: 'U', inputs: {}, checks: {}, comments: {} }] }]);
+  assert.deepEqual(store.getProject('p1').details, emptyDetails());
 });

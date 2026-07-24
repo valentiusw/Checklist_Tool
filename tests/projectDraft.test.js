@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildModel } from '../src/workbookModel.js';
-import { createProjectStore } from '../src/projectStore.js';
+import { createProjectStore, emptyDetails } from '../src/projectStore.js';
 import {
   defaultInputValue, defaultInputs, formatInputValue,
   validateDraft, newBlankDraft, newDraftUnit,
@@ -99,4 +99,8 @@ test('mutating a draft from getProject does not affect the store (cancel safety)
   editDraft.units[0].inputs.Load = 9999;
   assert.equal(store.getProject(draft.id).name, 'Saved');
   assert.notEqual(store.getProject(draft.id).units[0].inputs.Load, 9999);
+});
+
+test('newBlankDraft seeds empty details', () => {
+  assert.deepEqual(newBlankDraft(model).details, emptyDetails());
 });
