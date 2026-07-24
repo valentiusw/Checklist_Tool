@@ -841,6 +841,31 @@ html.no-item-tint .item.partial {
 }
 .editor-units-head { margin-top: 8px; }
 
+[data-screen="editor"] .editor-details { margin: 4px 0 8px; }
+[data-screen="editor"] .editor-details-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px 16px 12px;
+  margin: 0 0 14px;
+}
+[data-screen="editor"] .editor-details-group legend {
+  padding: 0 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+[data-screen="editor"] .editor-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+/* Inside the two-column builder grid the inputs fill their column (the base
+   .editor-field input caps at 420px, which we don't want here). */
+[data-screen="editor"] .editor-details-grid .editor-field input { max-width: none; }
+@media (max-width: 720px) {
+  [data-screen="editor"] .editor-details-grid { grid-template-columns: 1fr; }
+}
+
 /* Let the create-project card fill the window width instead of the default
    1080px cap, giving the wide unit grid room. main's right padding is the
    cushion to the window edge. */

@@ -1,5 +1,5 @@
 import { buildModel } from './workbookModel.js';
-import { createProjectStore } from './projectStore.js';
+import { createProjectStore, normalizeDetails } from './projectStore.js';
 import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
 import { buildExportWorkbook } from './exportWorkbook.js';
 import * as exampleStore from './exampleStore.js';
@@ -671,6 +671,19 @@ function renderEditor() {
   nameInput.value = draft.name;
   nameInput.oninput = () => { draft.name = nameInput.value; markEditorDirty(); };
 
+  const details = draft.details;
+  const wireDetail = (id, key) => {
+    const el = document.getElementById(id);
+    el.value = details[key] || '';
+    el.oninput = () => { details[key] = el.value; markEditorDirty(); };
+  };
+  wireDetail('editor-reviewer-name', 'reviewerName');
+  wireDetail('editor-reviewer-contact', 'reviewerContact');
+  wireDetail('editor-builder-name', 'builderName');
+  wireDetail('editor-builder-phone', 'builderPhone');
+  wireDetail('editor-builder-email', 'builderEmail');
+  wireDetail('editor-builder-approval', 'builderApprovalNo');
+
   renderUnitGrid();
 }
 
@@ -864,6 +877,7 @@ function openEditor(projectId) {
   } else {
     state.editor = { draft: newBlankDraft(state.model), isNew: true, dirty: false };
   }
+  state.editor.draft.details = normalizeDetails(state.editor.draft.details);
   showScreen('editor');
   renderEditor();
   if (state.editor.isNew) document.getElementById('editor-project-name').focus();
