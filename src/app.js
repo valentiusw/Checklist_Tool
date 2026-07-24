@@ -661,13 +661,6 @@ function buildInputControl(def, value, onChange) {
 
 function markEditorDirty() { if (state.editor) state.editor.dirty = true; }
 
-// Thin line icons for the unit carousel controls. currentColor lets the button
-// state (hover / disabled / add) drive the colour; flex centring keeps them
-// perfectly centred in the button.
-const ICON_PREV = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 5 5 12 12 19"/></svg>';
-const ICON_NEXT = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
-const ICON_ADD = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
-
 function renderEditor() {
   const { draft, isNew } = state.editor;
   document.getElementById('editor-heading').textContent = isNew ? 'New Project' : 'Edit Project';
@@ -677,139 +670,146 @@ function renderEditor() {
   nameInput.value = draft.name;
   nameInput.oninput = () => { draft.name = nameInput.value; markEditorDirty(); };
 
-  // Carousel: render one unit at a time. Clamp the index into range first.
-  if (state.editor.unitIndex == null) state.editor.unitIndex = 0;
-  const index = Math.max(0, Math.min(state.editor.unitIndex, draft.units.length - 1));
-  state.editor.unitIndex = index;
-  const unit = draft.units[index];
+  renderUnitGrid();
+}
 
-  document.getElementById('editor-unit-counter').textContent =
-    `Unit ${index + 1} of ${draft.units.length}`;
+// ---- Unit grid (spreadsheet editor) ----------------------------------------
 
-  // Position dots — one per unit, active dot accented, clickable to jump.
-  // Omitted for single-unit drafts (a lone dot reads as clutter).
-  const dotsWrap = document.getElementById('editor-unit-dots');
-  dotsWrap.innerHTML = '';
-  if (draft.units.length > 1) {
-    draft.units.forEach((_u, i) => {
-      const dot = document.createElement('button');
-      dot.type = 'button';
-      dot.className = 'unit-dot' + (i === index ? ' is-active' : '');
-      dot.setAttribute('aria-label', `Go to unit ${i + 1}`);
-      if (i === index) dot.setAttribute('aria-current', 'true');
-      dot.addEventListener('click', () => {
-        if (i === index) return;
-        state.editor.navDir = i > index ? 'next' : 'prev';
-        state.editor.unitIndex = i;
-        renderEditor();
-      });
-      dotsWrap.appendChild(dot);
-    });
+// Rebuild the whole <table>. Cheap for realistic project sizes and keeps
+// row/column indices authoritative after every structural change.
+function renderUnitGrid() {
+  const { draft } = state.editor;
+  const model = state.model;
+  const table = document.getElementById('editor-grid');
+  table.innerHTML = '';
+
+  const thead = document.createElement('thead');
+  const hr = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.className = 'corner';
+  corner.textContent = 'Unit';
+  hr.appendChild(corner);
+  for (const def of model.inputs) {
+    const th = document.createElement('th');
+    th.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
+    hr.appendChild(th);
   }
+  thead.appendChild(hr);
+  table.appendChild(thead);
 
-  // Previous arrow is disabled on the first unit.
-  const prevBtn = document.getElementById('editor-prev-unit');
-  prevBtn.disabled = index === 0;
-  prevBtn.innerHTML = ICON_PREV;
+  const tbody = document.createElement('tbody');
+  draft.units.forEach((unit, rowIdx) => {
+    tbody.appendChild(buildUnitRow(unit, rowIdx, model, false));
+  });
+  tbody.appendChild(buildUnitRow(null, draft.units.length, model, true)); // ghost
+  table.appendChild(tbody);
+}
 
-  // The next arrow becomes an "add" (+) action when on the last unit.
-  const nextBtn = document.getElementById('editor-next-unit');
-  const onLast = index === draft.units.length - 1;
-  nextBtn.classList.toggle('carousel-add', onLast);
-  nextBtn.innerHTML = onLast ? ICON_ADD : ICON_NEXT;
-  nextBtn.setAttribute('aria-label', onLast ? 'Add unit' : 'Next unit');
+// Build one <tr>. isGhost renders a faint blank row that materializes into a
+// real unit on first edit (name or any input).
+function buildUnitRow(unit, rowIdx, model, isGhost) {
+  const tr = document.createElement('tr');
+  tr.dataset.row = String(rowIdx);
+  if (isGhost) tr.className = 'ghost';
 
-  const container = document.getElementById('editor-units');
-  container.innerHTML = '';
-  const card = document.createElement('div');
-  card.className = 'unit-edit-card';
-  // One-shot entrance animation, consumed here so it only plays on navigation
-  // (not on delete, initial open, or a re-render from an unrelated change).
-  const dir = state.editor.navDir;
-  state.editor.navDir = null;
-  if (dir === 'next') card.classList.add('unit-enter-next');
-  else if (dir === 'prev') card.classList.add('unit-enter-prev');
-  else if (dir === 'add') card.classList.add('unit-enter-add');
-
-  const head = document.createElement('div');
-  head.className = 'unit-edit-head';
-  const nameField = document.createElement('input');
-  nameField.type = 'text';
-  nameField.className = 'unit-edit-name';
-  nameField.value = unit.name;
-  nameField.placeholder = 'Unit name';
-  nameField.oninput = () => { unit.name = nameField.value; markEditorDirty(); };
-  head.appendChild(nameField);
+  const rowhead = document.createElement('td');
+  rowhead.className = 'rowhead';
+  const inner = document.createElement('div');
+  inner.className = 'rowhead-inner';
 
   const del = document.createElement('button');
   del.type = 'button';
   del.className = 'unit-delete-x';
   del.innerHTML = '&times;';
+  del.tabIndex = -1; // keep Tab moving between data cells, not delete buttons
   del.setAttribute('aria-label', 'Delete unit');
-  del.disabled = draft.units.length <= 1;
+  del.disabled = isGhost || state.editor.draft.units.length <= 1;
   del.addEventListener('click', () => {
     if (!confirm('Delete this unit?')) return;
-    draft.units.splice(index, 1);
+    state.editor.draft.units.splice(rowIdx, 1);
     markEditorDirty();
-    renderEditor();
+    renderUnitGrid();
   });
-  head.appendChild(del);
-  card.appendChild(head);
 
-  for (const def of state.model.inputs) {
-    if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
-    const label = document.createElement('label');
-    label.className = 'editor-input-label';
-    const labelText = document.createElement('span');
-    labelText.className = 'editor-input-label-text';
-    labelText.textContent = def.label + (def.unit ? ` (${def.unit})` : '');
-    label.appendChild(labelText);
-    const control = buildInputControl(def, unit.inputs[def.name], (v) => {
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'unit-edit-name';
+  nameInput.dataset.col = '0';
+  nameInput.value = isGhost ? '' : unit.name;
+  nameInput.placeholder = isGhost ? 'New unit…' : 'Unit name';
+  if (isGhost) {
+    nameInput.addEventListener('input', () =>
+      materializeGhost(0, (u) => { u.name = nameInput.value; }));
+  } else {
+    nameInput.addEventListener('input', () => { unit.name = nameInput.value; markEditorDirty(); });
+  }
+
+  inner.appendChild(del);
+  inner.appendChild(nameInput);
+  rowhead.appendChild(inner);
+  tr.appendChild(rowhead);
+
+  model.inputs.forEach((def, i) => {
+    const col = i + 1;
+    const td = document.createElement('td');
+    let value;
+    if (isGhost) {
+      value = defaultInputValue(def);
+    } else {
+      if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
+      value = unit.inputs[def.name];
+    }
+    const control = buildInputControl(def, value, (v) => {
+      if (isGhost) { materializeGhost(col, (u) => { u.inputs[def.name] = v; }); return; }
       unit.inputs[def.name] = v;
       markEditorDirty();
     });
-    label.appendChild(control);
-    card.appendChild(label);
-  }
-  container.appendChild(card);
+    control.dataset.col = String(col);
+    td.appendChild(control);
+    tr.appendChild(td);
+  });
+
+  return tr;
 }
 
-function prevEditorUnit() {
-  if (state.editor.unitIndex > 0) {
-    state.editor.navDir = 'prev';
-    state.editor.unitIndex--;
-    renderEditor();
-  }
-}
-
-function nextEditorUnit() {
+// Promote the ghost row into a real unit, apply the just-entered value, then
+// re-render and restore focus/caret to the same cell in the new real row.
+function materializeGhost(col, apply) {
   const draft = state.editor.draft;
-  if (state.editor.unitIndex < draft.units.length - 1) {
-    state.editor.navDir = 'next';
-    state.editor.unitIndex++;
-    renderEditor();
-  } else {
-    addEditorUnit();
-  }
+  const unit = newDraftUnit(state.model, 'Unit ' + (draft.units.length + 1));
+  apply(unit);
+  draft.units.push(unit);
+  markEditorDirty();
+  renderUnitGrid();
+  focusCell(draft.units.length - 1, col, true);
 }
 
+// Append a blank unit via the explicit button and focus its name cell.
 function addEditorUnit() {
   const draft = state.editor.draft;
   draft.units.push(newDraftUnit(state.model, 'Unit ' + (draft.units.length + 1)));
-  state.editor.navDir = 'add';
-  state.editor.unitIndex = draft.units.length - 1;
   markEditorDirty();
-  renderEditor();
-  const nameField = document.querySelector('#editor-units .unit-edit-name');
-  if (nameField) nameField.focus();
+  renderUnitGrid();
+  focusCell(draft.units.length - 1, 0, false);
+}
+
+// Move focus to the control at (row, col); optionally place the caret at end
+// (text inputs only — number inputs reject setSelectionRange, hence the guard).
+function focusCell(row, col, caretEnd) {
+  const el = document.querySelector(`#editor-grid tbody tr[data-row="${row}"] [data-col="${col}"]`);
+  if (!el) return;
+  el.focus();
+  if (caretEnd && el.tagName === 'INPUT' && el.type === 'text') {
+    try { const n = el.value.length; el.setSelectionRange(n, n); } catch (_) { /* unsupported */ }
+  }
 }
 
 function openEditor(projectId) {
   if (!state.model) { alert('Load a checklist workbook in Setup first.'); return; }
   if (projectId) {
-    state.editor = { draft: state.store.getProject(projectId), isNew: false, dirty: false, unitIndex: 0 };
+    state.editor = { draft: state.store.getProject(projectId), isNew: false, dirty: false };
   } else {
-    state.editor = { draft: newBlankDraft(state.model), isNew: true, dirty: false, unitIndex: 0 };
+    state.editor = { draft: newBlankDraft(state.model), isNew: true, dirty: false };
   }
   showScreen('editor');
   renderEditor();
@@ -1554,8 +1554,7 @@ async function init() {
   document.getElementById('btn-edit-project').addEventListener('click', () => openEditor(state.currentProjectId));
   document.getElementById('editor-save').addEventListener('click', saveEditor);
   document.getElementById('editor-cancel').addEventListener('click', cancelEditor);
-  document.getElementById('editor-prev-unit').addEventListener('click', prevEditorUnit);
-  document.getElementById('editor-next-unit').addEventListener('click', nextEditorUnit);
+  document.getElementById('editor-add-unit').addEventListener('click', addEditorUnit);
 
   const importFile = document.getElementById('import-project-file');
   importFile.addEventListener('click', closeNewMenu); // menu closes as the picker opens
