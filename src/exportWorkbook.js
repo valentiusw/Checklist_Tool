@@ -121,7 +121,7 @@ function buildOverviewSheet(XLSX, model, project, reviewDate, mode = 'outstandin
   detail('Builder Name', d.builderName || '');
   detail('Phone', d.builderPhone || '');
   detail('Email', d.builderEmail || '');
-  detail('Approval No. (BUP/BDC/DEP)', d.builderApprovalNo || '');
+  detail('Registration No. (BUP/BDC/DEP)', d.builderApprovalNo || '');
   r++;
 
   // Progress by unit — continuous bordered track meter
