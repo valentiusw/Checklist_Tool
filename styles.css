@@ -900,6 +900,42 @@ html.no-item-tint .item.partial {
   opacity: 0.55;
 }
 
+/* Themed scrollbars on the create-project page so they blend with the surface
+   in both light and (especially) dark mode — the default light scrollbar
+   otherwise stands out against the dark grid. Covers the page's own scrollbar
+   (root, scoped to the editor screen) and the grid's scroll container.
+   Token-driven so it flips with the theme; Chromium/Edge via ::-webkit-*,
+   Firefox via scrollbar-color/width. */
+html[data-screen="editor"],
+[data-screen="editor"] .editor-grid-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+html[data-screen="editor"]::-webkit-scrollbar,
+[data-screen="editor"] .editor-grid-wrap::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+html[data-screen="editor"]::-webkit-scrollbar-track,
+[data-screen="editor"] .editor-grid-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+html[data-screen="editor"]::-webkit-scrollbar-thumb,
+[data-screen="editor"] .editor-grid-wrap::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+  border: 3px solid transparent; /* inset the thumb so it reads slimmer */
+  background-clip: padding-box;
+}
+html[data-screen="editor"]::-webkit-scrollbar-thumb:hover,
+[data-screen="editor"] .editor-grid-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+  background-clip: padding-box;
+}
+[data-screen="editor"] .editor-grid-wrap::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .unit-edit-name {
   flex: 1 1 auto;
   font: inherit;
