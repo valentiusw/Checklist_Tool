@@ -24,7 +24,8 @@
       </div>
       <div class="new-wrap">
         <button id="btn-new-menu" class="new-btn" type="button" aria-haspopup="true" aria-expanded="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
@@ -50,11 +51,17 @@
         </button>
         <div id="nav-pinned-wrap" class="nav-pinned" hidden>
           <button id="nav-pinned" class="side-link" type="button" aria-expanded="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 17v5"/><path d="M9 10.76V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6.76a2 2 0 0 0 .59 1.42l1.7 1.7A1 1 0 0 1 18.59 15H5.41a1 1 0 0 1-.7-1.71l1.7-1.7A2 2 0 0 0 7 10.76z"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M12 17v5" />
+              <path
+                d="M9 10.76V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6.76a2 2 0 0 0 .59 1.42l1.7 1.7A1 1 0 0 1 18.59 15H5.41a1 1 0 0 1-.7-1.71l1.7-1.7A2 2 0 0 0 7 10.76z" />
             </svg>
             <span>Pinned</span>
-            <svg class="nav-pinned-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg class="nav-pinned-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
           <ul id="pinned-sublist" class="pinned-sublist"></ul>
         </div>
@@ -158,63 +165,93 @@
       </section>
 
       <div class="dash-wrap">
-      <section id="screen-dashboard" class="screen" hidden>
-        <div class="row-between">
-          <h2>Projects</h2>
-          <div id="dash-actions" class="dash-actions" hidden>
-            <button id="dash-download" class="icon-btn" type="button" title="Download project file" aria-label="Download project file">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-            </button>
-            <div class="export-wrap">
-              <button id="dash-export" class="icon-btn" type="button" title="Export to ZIP" aria-haspopup="true" aria-expanded="false" aria-label="Export to ZIP">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v7" /><path d="M10 14 21 3" /><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" /></svg>
+        <section id="screen-dashboard" class="screen" hidden>
+          <div class="row-between">
+            <h2>Projects</h2>
+            <div id="dash-actions" class="dash-actions" hidden>
+              <button id="dash-download" class="icon-btn" type="button" title="Download project file"
+                aria-label="Download project file">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
               </button>
-              <div id="export-menu" class="new-menu export-menu" role="menu" hidden>
-                <button id="menu-export-full" class="new-menu-item" type="button" role="menuitem">All Items</button>
-                <button id="menu-export-outstanding" class="new-menu-item" type="button" role="menuitem">Outstanding Items</button>
+              <div class="export-wrap">
+                <button id="dash-export" class="icon-btn" type="button" title="Export to ZIP" aria-haspopup="true"
+                  aria-expanded="false" aria-label="Export to ZIP">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M14 3h7v7" />
+                    <path d="M10 14 21 3" />
+                    <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+                  </svg>
+                </button>
+                <div id="export-menu" class="new-menu export-menu" role="menu" hidden>
+                  <button id="menu-export-full" class="new-menu-item" type="button" role="menuitem">All Items</button>
+                  <button id="menu-export-outstanding" class="new-menu-item" type="button" role="menuitem">Outstanding
+                    Items</button>
+                </div>
               </div>
+              <button id="dash-archive" class="icon-btn" type="button" title="Archive Project"
+                aria-label="Archive project"></button>
+              <button id="dash-delete" class="icon-btn icon-danger" type="button" title="Delete project"
+                aria-label="Delete project">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <line x1="10" y1="11" x2="10" y2="17" />
+                  <line x1="14" y1="11" x2="14" y2="17" />
+                </svg>
+              </button>
             </div>
-            <button id="dash-archive" class="icon-btn" type="button" title="Archive Project" aria-label="Archive project"></button>
-            <button id="dash-delete" class="icon-btn icon-danger" type="button" title="Delete project" aria-label="Delete project">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
-            </button>
           </div>
-        </div>
-        <div id="project-search-row" class="project-search-row" hidden>
-          <div id="project-view-filter" class="project-view-filter" role="tablist" aria-label="Filter projects">
-            <button type="button" class="view-tab is-active" data-view="active" role="tab" aria-selected="true">Active</button>
-            <button type="button" class="view-tab" data-view="pinned" role="tab" aria-selected="false">Pinned</button>
-            <button type="button" class="view-tab" data-view="archived" role="tab" aria-selected="false">Archived</button>
-          </div>
-          <div class="project-search">
-            <svg class="project-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input type="text" id="project-search" placeholder="Search projects&hellip;" autocomplete="off" aria-label="Search projects" />
-            <button type="button" id="project-search-clear" class="project-search-clear" aria-label="Clear search" hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+          <div id="project-search-row" class="project-search-row" hidden>
+            <div id="project-view-filter" class="project-view-filter" role="tablist" aria-label="Filter projects">
+              <button type="button" class="view-tab is-active" data-view="active" role="tab"
+                aria-selected="true">Active</button>
+              <button type="button" class="view-tab" data-view="pinned" role="tab" aria-selected="false">Pinned</button>
+              <button type="button" class="view-tab" data-view="archived" role="tab"
+                aria-selected="false">Archived</button>
+            </div>
+            <div class="project-search">
+              <svg class="project-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
-            </button>
-          </div>
-        </div>
-        <p id="dashboard-empty" class="muted" hidden>No checklist loaded yet &mdash; go to Setup first.</p>
-        <ul id="project-list" class="project-list"></ul>
-        <p id="project-search-empty" class="muted" hidden></p>
-      </section>
-      <div id="dash-splitter" class="card-splitter" role="separator" aria-orientation="vertical"
-        aria-label="Resize panels" hidden></div>
-      <aside id="quicklook" class="screen quicklook" aria-label="Project details">
-        <div class="ql-inner">
-          <div id="ql-empty" class="ql-empty muted">Select a project for more details</div>
-          <div id="ql-detail" hidden>
-            <div class="ql-head">
-              <h2 id="ql-title"></h2>
+              <input type="text" id="project-search" placeholder="Search projects&hellip;" autocomplete="off"
+                aria-label="Search projects" />
+              <button type="button" id="project-search-clear" class="project-search-clear" aria-label="Clear search"
+                hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+              </button>
             </div>
-            <div id="ql-body" class="ql-body"></div>
           </div>
-        </div>
-      </aside>
+          <p id="dashboard-empty" class="muted" hidden>No checklist loaded yet &mdash; go to Setup first.</p>
+          <ul id="project-list" class="project-list"></ul>
+          <p id="project-search-empty" class="muted" hidden></p>
+        </section>
+        <div id="dash-splitter" class="card-splitter" role="separator" aria-orientation="vertical"
+          aria-label="Resize panels" hidden></div>
+        <aside id="quicklook" class="screen quicklook" aria-label="Project details">
+          <div class="ql-inner">
+            <div id="ql-empty" class="ql-empty muted">Select a project for more details</div>
+            <div id="ql-detail" hidden>
+              <div class="ql-head">
+                <h2 id="ql-title"></h2>
+              </div>
+              <div id="ql-body" class="ql-body"></div>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <section id="screen-project" class="screen" hidden>
@@ -224,10 +261,12 @@
             <button id="btn-edit-project">Edit Project</button>
             <button id="btn-save-project">Save Project File</button>
             <div class="export-wrap">
-              <button id="btn-download-zip" class="btn-primary" type="button" aria-haspopup="true" aria-expanded="false">Download ZIP</button>
+              <button id="btn-download-zip" class="btn-primary" type="button" aria-haspopup="true"
+                aria-expanded="false">Download ZIP</button>
               <div id="dl-export-menu" class="new-menu export-menu" role="menu" hidden>
                 <button id="dl-export-full" class="new-menu-item" type="button" role="menuitem">All Items</button>
-                <button id="dl-export-outstanding" class="new-menu-item" type="button" role="menuitem">Outstanding Items</button>
+                <button id="dl-export-outstanding" class="new-menu-item" type="button" role="menuitem">Outstanding
+                  Items</button>
               </div>
             </div>
           </div>
@@ -297,14 +336,16 @@
         <div class="editor-details" id="editor-details">
           <fieldset class="editor-details-group">
             <legend>Reviewer</legend>
-            <label class="editor-field">
-              <span class="setting-title">Name</span>
-              <input type="text" id="editor-reviewer-name" />
-            </label>
-            <label class="editor-field">
-              <span class="setting-title">Contact (email)</span>
-              <input type="text" id="editor-reviewer-contact" />
-            </label>
+            <div class="editor-details-grid">
+              <label class="editor-field">
+                <span class="setting-title">Name</span>
+                <input type="text" id="editor-reviewer-name" />
+              </label>
+              <label class="editor-field">
+                <span class="setting-title">Contact (email)</span>
+                <input type="text" id="editor-reviewer-contact" />
+              </label>
+            </div>
           </fieldset>
           <fieldset class="editor-details-group">
             <legend>Builder</legend>
@@ -322,7 +363,7 @@
                 <input type="text" id="editor-builder-email" />
               </label>
               <label class="editor-field">
-                <span class="setting-title">Approval No. (BUP/BDC/DEP)</span>
+                <span class="setting-title">Registration No. (BUP/BDC/DEP)</span>
                 <input type="text" id="editor-builder-approval" />
               </label>
             </div>

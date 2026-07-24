@@ -841,13 +841,17 @@ html.no-item-tint .item.partial {
 }
 .editor-units-head { margin-top: 8px; }
 
-[data-screen="editor"] .editor-details { margin: 4px 0 8px; }
+[data-screen="editor"] .editor-details { margin: 4px 0 6px; }
 [data-screen="editor"] .editor-details-group {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 2px 16px 12px;
-  margin: 0 0 14px;
+  padding: 0 16px 8px;
+  margin: 0 0 8px;
 }
+/* Tighten the vertical rhythm inside the details card (the global .editor-field
+   margin of 16px is too airy for this compact grouped form). */
+[data-screen="editor"] .editor-details .editor-field { margin: 8px 0 0; }
+[data-screen="editor"] .editor-details .editor-field input { margin-top: 4px; }
 [data-screen="editor"] .editor-details-group legend {
   padding: 0 6px;
   font-weight: 600;
