@@ -107,10 +107,21 @@ function buildOverviewSheet(XLSX, model, project, reviewDate, mode = 'outstandin
     band(ws, r, 4, N - 1, fillable ? '  (to be completed)' : value, valStyle);
     rh(r, 18); r++;
   };
+  const d = project.details || {};
   detail('Date Reviewed', reviewDate);
   detail('Project Title', project.name || '');
-  detail('Reviewed By', '', true);
-  detail('Contact', '', true);
+  // Reviewer fields fall back to the highlighted "(to be completed)" fillable
+  // cell when not captured in-app (preserves the fill-in-Excel workflow).
+  detail('Reviewed By', d.reviewerName || '', !d.reviewerName);
+  detail('Contact', d.reviewerContact || '', !d.reviewerContact);
+  r++;
+
+  // Builder Details — informational; empty fields render as a plain blank cell.
+  sectionBand('BUILDER DETAILS');
+  detail('Builder Name', d.builderName || '');
+  detail('Phone', d.builderPhone || '');
+  detail('Email', d.builderEmail || '');
+  detail('Approval No. (BUP/BDC/DEP)', d.builderApprovalNo || '');
   r++;
 
   // Progress by unit — continuous bordered track meter
