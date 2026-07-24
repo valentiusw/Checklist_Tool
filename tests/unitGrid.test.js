@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { coerceInputValue, UNCHANGED, parseClipboardMatrix } from '../src/unitGrid.js';
+import { applyPasteMatrix } from '../src/unitGrid.js';
 
 const boolDef = { name: 'Pit', type: 'Boolean', choices: [] };
 const intDef = { name: 'Stops', type: 'Integer', choices: [] };
@@ -69,4 +70,61 @@ test('parseClipboardMatrix: single trailing newline dropped', () => {
 
 test('parseClipboardMatrix: single cell', () => {
   assert.deepEqual(parseClipboardMatrix('hello'), [['hello']]);
+});
+
+const model = {
+  inputs: [
+    { name: 'Pit', type: 'Boolean', choices: [] },
+    { name: 'Stops', type: 'Integer', choices: [] },
+    { name: 'Door', type: 'Choice', choices: ['Centre', 'Side'] },
+  ],
+};
+const makeUnit = (i) => ({ name: 'Unit ' + (i + 1), inputs: { Pit: false, Stops: 0, Door: 'Centre' } });
+const seed = () => [{ name: 'A', inputs: { Pit: false, Stops: 1, Door: 'Centre' } }];
+
+test('applyPasteMatrix: fills a row starting at the name column', () => {
+  const out = applyPasteMatrix({
+    units: seed(), model, startRow: 0, startCol: 0,
+    matrix: [['Tower', 'yes', '5', 'Side']], makeUnit,
+  });
+  assert.equal(out.length, 1);
+  assert.deepEqual(out[0], { name: 'Tower', inputs: { Pit: true, Stops: 5, Door: 'Side' } });
+});
+
+test('applyPasteMatrix: rows past the end create units', () => {
+  const out = applyPasteMatrix({
+    units: seed(), model, startRow: 1, startCol: 0,
+    matrix: [['B', 'no', '2', 'Centre'], ['C', 'yes', '3', 'Side']], makeUnit,
+  });
+  assert.equal(out.length, 3);
+  assert.equal(out[1].name, 'B');
+  assert.equal(out[2].name, 'C');
+  assert.equal(out[2].inputs.Stops, 3);
+});
+
+test('applyPasteMatrix: columns past the last input are ignored', () => {
+  const out = applyPasteMatrix({
+    units: seed(), model, startRow: 0, startCol: 0,
+    matrix: [['X', 'yes', '9', 'Side', 'EXTRA', 'MORE']], makeUnit,
+  });
+  assert.equal(out[0].name, 'X');
+  assert.equal(out[0].inputs.Door, 'Side');
+});
+
+test('applyPasteMatrix: starts at a non-zero column', () => {
+  const out = applyPasteMatrix({
+    units: seed(), model, startRow: 0, startCol: 2, // Stops column
+    matrix: [['7', 'Side']], makeUnit,
+  });
+  assert.equal(out[0].name, 'A');           // name untouched
+  assert.equal(out[0].inputs.Stops, 7);
+  assert.equal(out[0].inputs.Door, 'Side');
+});
+
+test('applyPasteMatrix: uninterpretable cells leave existing values', () => {
+  const out = applyPasteMatrix({
+    units: seed(), model, startRow: 0, startCol: 1, // Pit column
+    matrix: [['maybe']], makeUnit,                  // Boolean garbage → UNCHANGED
+  });
+  assert.equal(out[0].inputs.Pit, false); // unchanged from seed
 });

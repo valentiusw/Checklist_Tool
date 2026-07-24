@@ -36,3 +36,25 @@ export function parseClipboardMatrix(text) {
   if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
   return lines.map((line) => line.split('\t'));
 }
+
+export function applyPasteMatrix({ units, model, startRow, startCol, matrix, makeUnit }) {
+  const inputs = model.inputs;
+  const result = units.slice();
+  matrix.forEach((cells, r) => {
+    const rowIdx = startRow + r;
+    while (rowIdx >= result.length) result.push(makeUnit(result.length));
+    const unit = result[rowIdx];
+    cells.forEach((raw, c) => {
+      const colIdx = startCol + c;
+      if (colIdx === 0) {
+        unit.name = String(raw);
+        return;
+      }
+      const def = inputs[colIdx - 1];
+      if (!def) return; // overflow past the last input column
+      const val = coerceInputValue(def, raw);
+      if (val !== UNCHANGED) unit.inputs[def.name] = val;
+    });
+  });
+  return result;
+}
