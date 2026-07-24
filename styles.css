@@ -930,9 +930,6 @@ html.no-item-tint .item.partial {
   width: 100%;
   min-width: 90px;
 }
-[data-screen="editor"] .unit-grid tr.ghost {
-  opacity: 0.55;
-}
 
 /* Themed scrollbars so they blend with the surface in both light and
    (especially) dark mode — the default light scrollbar otherwise stands out

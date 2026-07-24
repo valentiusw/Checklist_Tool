@@ -726,18 +726,15 @@ function renderUnitGrid() {
 
   const tbody = document.createElement('tbody');
   draft.units.forEach((unit, rowIdx) => {
-    tbody.appendChild(buildUnitRow(unit, rowIdx, model, false));
+    tbody.appendChild(buildUnitRow(unit, rowIdx, model));
   });
-  tbody.appendChild(buildUnitRow(null, draft.units.length, model, true)); // ghost
   table.appendChild(tbody);
 }
 
-// Build one <tr>. isGhost renders a faint blank row that materializes into a
-// real unit on first edit (name or any input).
-function buildUnitRow(unit, rowIdx, model, isGhost) {
+// Build one <tr> for a unit: a frozen name/delete cell plus one control per input.
+function buildUnitRow(unit, rowIdx, model) {
   const tr = document.createElement('tr');
   tr.dataset.row = String(rowIdx);
-  if (isGhost) tr.className = 'ghost';
 
   const rowhead = document.createElement('td');
   rowhead.className = 'rowhead';
@@ -750,7 +747,7 @@ function buildUnitRow(unit, rowIdx, model, isGhost) {
   del.innerHTML = '&times;';
   del.tabIndex = -1; // keep Tab moving between data cells, not delete buttons
   del.setAttribute('aria-label', 'Delete unit');
-  del.disabled = isGhost || state.editor.draft.units.length <= 1;
+  del.disabled = state.editor.draft.units.length <= 1;
   del.addEventListener('click', () => {
     if (!confirm('Delete this unit?')) return;
     state.editor.draft.units.splice(rowIdx, 1);
@@ -762,14 +759,9 @@ function buildUnitRow(unit, rowIdx, model, isGhost) {
   nameInput.type = 'text';
   nameInput.className = 'unit-edit-name';
   nameInput.dataset.col = '0';
-  nameInput.value = isGhost ? '' : unit.name;
-  nameInput.placeholder = isGhost ? 'New unit…' : 'Unit name';
-  if (isGhost) {
-    nameInput.addEventListener('input', () =>
-      materializeGhost(0, (u) => { u.name = nameInput.value; }));
-  } else {
-    nameInput.addEventListener('input', () => { unit.name = nameInput.value; markEditorDirty(); });
-  }
+  nameInput.value = unit.name;
+  nameInput.placeholder = 'Unit name';
+  nameInput.addEventListener('input', () => { unit.name = nameInput.value; markEditorDirty(); });
 
   inner.appendChild(del);
   inner.appendChild(nameInput);
@@ -779,15 +771,8 @@ function buildUnitRow(unit, rowIdx, model, isGhost) {
   model.inputs.forEach((def, i) => {
     const col = i + 1;
     const td = document.createElement('td');
-    let value;
-    if (isGhost) {
-      value = defaultInputValue(def);
-    } else {
-      if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
-      value = unit.inputs[def.name];
-    }
-    const control = buildInputControl(def, value, (v) => {
-      if (isGhost) { materializeGhost(col, (u) => { u.inputs[def.name] = v; }); return; }
+    if (!(def.name in unit.inputs)) unit.inputs[def.name] = defaultInputValue(def);
+    const control = buildInputControl(def, unit.inputs[def.name], (v) => {
       unit.inputs[def.name] = v;
       markEditorDirty();
     });
@@ -797,18 +782,6 @@ function buildUnitRow(unit, rowIdx, model, isGhost) {
   });
 
   return tr;
-}
-
-// Promote the ghost row into a real unit, apply the just-entered value, then
-// re-render and restore focus/caret to the same cell in the new real row.
-function materializeGhost(col, apply) {
-  const draft = state.editor.draft;
-  const unit = newDraftUnit(state.model, 'Unit ' + (draft.units.length + 1));
-  apply(unit);
-  draft.units.push(unit);
-  markEditorDirty();
-  renderUnitGrid();
-  focusCell(draft.units.length - 1, col, true);
 }
 
 // Append a blank unit via the explicit button and focus its name cell.
