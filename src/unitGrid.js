@@ -27,3 +27,12 @@ export function coerceInputValue(def, raw) {
   if (Number.isNaN(n)) return UNCHANGED;
   return def.type === 'Integer' ? Math.round(n) : n;
 }
+
+export function parseClipboardMatrix(text) {
+  const norm = String(text ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = norm.split('\n');
+  // Excel appends a trailing newline to a copied block — drop that lone empty
+  // final line (but keep genuinely blank interior rows).
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  return lines.map((line) => line.split('\t'));
+}

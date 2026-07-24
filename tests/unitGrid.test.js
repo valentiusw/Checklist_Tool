@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coerceInputValue, UNCHANGED } from '../src/unitGrid.js';
+import { coerceInputValue, UNCHANGED, parseClipboardMatrix } from '../src/unitGrid.js';
 
 const boolDef = { name: 'Pit', type: 'Boolean', choices: [] };
 const intDef = { name: 'Stops', type: 'Integer', choices: [] };
@@ -47,4 +47,26 @@ test('coerceInputValue: Choice matches case-insensitively to canonical', () => {
 
 test('coerceInputValue: Choice no-match → UNCHANGED', () => {
   assert.equal(coerceInputValue(choiceDef, 'Diagonal'), UNCHANGED);
+});
+
+test('parseClipboardMatrix: LF rows and tab columns', () => {
+  assert.deepEqual(
+    parseClipboardMatrix('a\tb\nc\td'),
+    [['a', 'b'], ['c', 'd']],
+  );
+});
+
+test('parseClipboardMatrix: CRLF normalised', () => {
+  assert.deepEqual(
+    parseClipboardMatrix('a\tb\r\nc\td'),
+    [['a', 'b'], ['c', 'd']],
+  );
+});
+
+test('parseClipboardMatrix: single trailing newline dropped', () => {
+  assert.deepEqual(parseClipboardMatrix('a\tb\n'), [['a', 'b']]);
+});
+
+test('parseClipboardMatrix: single cell', () => {
+  assert.deepEqual(parseClipboardMatrix('hello'), [['hello']]);
 });
