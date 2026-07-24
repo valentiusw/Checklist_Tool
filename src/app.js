@@ -12,6 +12,18 @@ import { defaultInputValue, validateDraft, newBlankDraft, newDraftUnit } from '.
 import { itemApplicableUnits, itemCheckState, unifiedItems } from './checklistView.js';
 import { parseClipboardMatrix, applyPasteMatrix } from './unitGrid.js';
 
+// Dashboard segmented filter (Active / Pinned / Archived) persists across
+// reloads and navigation so the last-selected view is restored.
+const PROJECT_VIEW_KEY = 'dpchecklist.projectView';
+const PROJECT_VIEWS = ['active', 'pinned', 'archived'];
+function loadProjectView() {
+  try {
+    const v = window.localStorage.getItem(PROJECT_VIEW_KEY);
+    if (PROJECT_VIEWS.includes(v)) return v;
+  } catch { /* ignore */ }
+  return 'active';
+}
+
 const state = {
   model: null,
   store: createProjectStore({ onChange: onStoreChange }),
@@ -26,7 +38,7 @@ const state = {
   detailMode: 'editor', // 'editor' (item detail+comment) | 'project' (read-only unit details)
   selectedProjectId: null, // highlighted project on the dashboard
   projectSearch: '', // dashboard keyword filter over project names
-  projectView: 'active', // 'active' | 'pinned' | 'archived' — dashboard segmented filter (session-only)
+  projectView: loadProjectView(), // 'active' | 'pinned' | 'archived' — dashboard segmented filter (persisted)
 };
 
 const screens = ['setup', 'dashboard', 'project', 'about', 'editor'];
@@ -40,7 +52,7 @@ function showScreen(name) {
   for (const id of ['nav-dashboard', 'nav-about', 'nav-setup']) {
     document.getElementById(id).classList.toggle('active', NAV_FOR_SCREEN[name] === id);
   }
-  if (name === 'dashboard') { state.projectView = 'active'; renderDashboard(); }
+  if (name === 'dashboard') renderDashboard();
   if (name === 'about') renderAbout();
 }
 
@@ -388,6 +400,7 @@ function syncViewTabs() {
 function setProjectView(view) {
   if (view === state.projectView) return;
   state.projectView = view;
+  try { window.localStorage.setItem(PROJECT_VIEW_KEY, view); } catch { /* ignore */ }
   deselectProject();
   syncViewTabs();
   applyProjectFilter();
