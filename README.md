@@ -44,7 +44,9 @@ one ships with Windows' Python install.)
    outstanding (one worksheet per unit; columns Item ID, Description, Code, Comments,
    Example) alongside an `Examples` subfolder with the referenced PDFs/images. Where an
    item's Example is a file, the Example cell is a **relative hyperlink** — unzip the
-   bundle and the links open the adjacent files from `Examples/`.
+   bundle and the links open the adjacent files from `Examples/`. The ZIP, the folder
+   inside it and the workbook all share one name: `<Project Name>_DPVT_Out`, or
+   `<Project Name>_DPVT_All` when you pick **All Items** from the dropdown.
 6. **Save project file** downloads the project as `.json` (back it up or move it to
    another machine); **Import project** loads it back.
 

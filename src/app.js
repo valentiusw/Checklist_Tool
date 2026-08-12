@@ -1374,11 +1374,12 @@ async function downloadProjectZip(project = getCurrentProject(), mode = 'outstan
     }
 
     // One base name shared by the ZIP, the folder inside it, and the workbook.
-    // Keep the project title's spaces; strip only characters illegal in file
-    // names. e.g. "Smoke Tower_Compliance Review - Outstanding".
+    // Project title only (never the project number); keep its spaces and strip
+    // only characters illegal in file names. The mode is named outright rather
+    // than suffixed, and abbreviated to keep names short:
+    // "Smoke Tower_DPVT_Out" (outstanding) / "Smoke Tower_DPVT_All" (all items).
     const safeTitle = (project.name || 'Project').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Project';
-    const suffix = mode === 'full' ? 'Full' : 'Outstanding';
-    const base = `${safeTitle}_Compliance Review - ${suffix}`;
+    const base = `${safeTitle}_DPVT_${mode === 'full' ? 'All' : 'Out'}`;
     const zipBlob = await buildExportZip({
       workbookName: `${base}.xlsx`,
       workbookArrayBuffer,
