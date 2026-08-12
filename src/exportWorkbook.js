@@ -110,6 +110,8 @@ function buildOverviewSheet(XLSX, model, project, reviewDate, mode = 'outstandin
   const d = project.details || {};
   detail('Date Reviewed', reviewDate);
   detail('Project Title', project.name || '');
+  // Project number is optional — omit the row entirely rather than leave a blank.
+  if (d.projectNumber) detail('Project No.', d.projectNumber);
   // Reviewer fields fall back to the highlighted "(to be completed)" fillable
   // cell when not captured in-app (preserves the fill-in-Excel workflow).
   detail('Reviewed By', d.reviewerName || '', !d.reviewerName);

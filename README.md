@@ -34,7 +34,10 @@ one ships with Windows' Python install.)
    the root plus an `Examples/` subfolder of the PDFs/images its Example column
    references), or a bare `.xlsx` if you have no example files. `SampleChecklist.xlsx`
    is included here to try it out.
-2. Go to **Dashboard**, click **New project**, give it a name.
+2. Go to **Dashboard**, click **New project**, give it a name. You can also record an
+   optional **project number** — it appears under the name on the project card and the
+   dashboard search box matches it as well as the name, so typing part of a number finds
+   the project. The number never appears in export file names.
 3. Fill in the project **inputs** on the left — the checklist items filter live.
 4. Tick items off and add per-item comments. The progress bar updates as you go.
 5. **Download ZIP** produces a `.zip` containing a spreadsheet of everything still

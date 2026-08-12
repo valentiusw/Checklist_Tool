@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createProjectStore, emptyDetails, normalizeDetails } from '../src/projectStore.js';
+import { createProjectStore, emptyDetails, normalizeDetails, matchesProjectSearch } from '../src/projectStore.js';
 
 test('createProject + getProject returns an independent clone', () => {
   const store = createProjectStore();
@@ -213,9 +213,9 @@ test('setArchived is a no-op for unknown ids and fires no event', () => {
   assert.deepEqual(events, []);
 });
 
-test('emptyDetails returns six empty-string fields', () => {
+test('emptyDetails returns seven empty-string fields', () => {
   assert.deepEqual(emptyDetails(), {
-    reviewerName: '', reviewerContact: '',
+    projectNumber: '', reviewerName: '', reviewerContact: '',
     builderName: '', builderPhone: '', builderEmail: '', builderApprovalNo: '',
   });
 });
@@ -223,7 +223,7 @@ test('emptyDetails returns six empty-string fields', () => {
 test('normalizeDetails fills missing keys, drops unknowns, coerces to string', () => {
   assert.deepEqual(
     normalizeDetails({ reviewerName: 'Jo', builderPhone: 123, junk: 'x' }),
-    { reviewerName: 'Jo', reviewerContact: '', builderName: '', builderPhone: '123', builderEmail: '', builderApprovalNo: '' },
+    { projectNumber: '', reviewerName: 'Jo', reviewerContact: '', builderName: '', builderPhone: '123', builderEmail: '', builderApprovalNo: '' },
   );
   assert.deepEqual(normalizeDetails(undefined), emptyDetails());
 });
@@ -247,4 +247,36 @@ test('load defaults details on projects that lack it', () => {
   const store = createProjectStore();
   store.load([{ id: 'p1', name: 'Old', units: [{ id: 'u1', name: 'U', inputs: {}, checks: {}, comments: {} }] }]);
   assert.deepEqual(store.getProject('p1').details, emptyDetails());
+});
+
+test('projectNumber is part of details and round-trips through serialize/import', () => {
+  const store = createProjectStore();
+  const p = store.createProject('T');
+  assert.equal(p.details.projectNumber, ''); // seeded empty like the other details
+  p.details.projectNumber = 'PN-4471';
+  const back = store.importProject(store.serializeProject(p));
+  assert.equal(back.details.projectNumber, 'PN-4471');
+});
+
+test('normalizeDetails coerces a numeric project number to a string', () => {
+  assert.equal(normalizeDetails({ projectNumber: 4471 }).projectNumber, '4471');
+});
+
+test('matchesProjectSearch matches on name or number, all terms required', () => {
+  const p = { name: 'Smoke Tower', number: 'PN-4471' };
+  assert.equal(matchesProjectSearch(p, ''), true);          // empty query matches all
+  assert.equal(matchesProjectSearch(p, '   '), true);
+  assert.equal(matchesProjectSearch(p, 'tower'), true);     // case-insensitive name
+  assert.equal(matchesProjectSearch(p, '4471'), true);      // number is searchable
+  assert.equal(matchesProjectSearch(p, 'pn-4471'), true);
+  assert.equal(matchesProjectSearch(p, 'smoke 4471'), true); // terms may span both fields
+  assert.equal(matchesProjectSearch(p, 'smoke 9999'), false); // every term must hit
+  assert.equal(matchesProjectSearch(p, 'atrium'), false);
+});
+
+test('matchesProjectSearch tolerates a missing number or missing project', () => {
+  assert.equal(matchesProjectSearch({ name: 'Atrium' }, 'atrium'), true);
+  assert.equal(matchesProjectSearch({ name: 'Atrium' }, '4471'), false);
+  assert.equal(matchesProjectSearch(undefined, 'x'), false);
+  assert.equal(matchesProjectSearch(undefined, ''), true);
 });

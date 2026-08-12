@@ -6,7 +6,17 @@ export function newUnit(name) {
   return { id: newId('u'), name: name || 'Unit 1', inputs: {}, checks: {}, comments: {} };
 }
 
-const DETAIL_KEYS = ['reviewerName', 'reviewerContact', 'builderName', 'builderPhone', 'builderEmail', 'builderApprovalNo'];
+const DETAIL_KEYS = ['projectNumber', 'reviewerName', 'reviewerContact', 'builderName', 'builderPhone', 'builderEmail', 'builderApprovalNo'];
+
+// Windows-Explorer-style dashboard search: every space-separated term must
+// appear in the project's name or its number (case-insensitive). An empty
+// query matches everything.
+export function matchesProjectSearch({ name, number } = {}, query) {
+  const terms = String(query == null ? '' : query).trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+  const haystack = `${name || ''} ${number || ''}`.toLowerCase();
+  return terms.every(t => haystack.includes(t));
+}
 
 export function emptyDetails() {
   const d = {};

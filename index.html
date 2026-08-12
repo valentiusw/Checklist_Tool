@@ -246,7 +246,10 @@
             <div id="ql-empty" class="ql-empty muted">Select a project for more details</div>
             <div id="ql-detail" hidden>
               <div class="ql-head">
-                <h2 id="ql-title"></h2>
+                <div class="ql-head-titles">
+                  <h2 id="ql-title"></h2>
+                  <p id="ql-number" class="ql-number muted" hidden></p>
+                </div>
               </div>
               <div id="ql-body" class="ql-body"></div>
             </div>
@@ -332,6 +335,10 @@
           <input type="text" id="editor-project-name" placeholder="e.g. Tower A" />
         </label>
         <p id="editor-name-error" class="status error" hidden>Project name is required</p>
+        <label class="editor-field">
+          <span class="setting-title">Project number</span>
+          <input type="text" id="editor-project-number" placeholder="e.g. 4500123456" />
+        </label>
 
         <div class="editor-details" id="editor-details">
           <fieldset class="editor-details-group">

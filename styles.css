@@ -513,6 +513,11 @@ input[type="checkbox"] {
 
 .project-card strong { font-size: 16px; font-weight: 600; }
 
+/* Project number: a quiet subtext line under the card title (hidden entirely
+   when the project has no number). */
+.project-card-title { min-width: 0; }
+.project-card-number { display: block; margin-top: 2px; font-size: 12px; }
+
 /* Dashboard header actions (shown when a project is selected). */
 .dash-actions { display: flex; gap: 6px; }
 .dash-actions[hidden] { display: none; }
@@ -1295,6 +1300,8 @@ html:not([data-screen="dashboard"]) .dash-wrap { display: none; }
   position: sticky; top: 0; background: var(--surface); z-index: 1;
 }
 .ql-head h2 { margin: 0; font-size: 1.15rem; }
+.ql-head-titles { min-width: 0; }
+.ql-number { margin: 2px 0 0; font-size: .82rem; }
 .ql-body { padding: 20px; }
 .ql-overall-label { font-weight: 600; }
 .ql-section { margin: 22px 0 8px; font-size: .95rem; }

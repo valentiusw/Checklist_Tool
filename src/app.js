@@ -1,5 +1,5 @@
 import { buildModel } from './workbookModel.js';
-import { createProjectStore, normalizeDetails } from './projectStore.js';
+import { createProjectStore, normalizeDetails, matchesProjectSearch } from './projectStore.js';
 import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
 import { buildExportWorkbook } from './exportWorkbook.js';
 import * as exampleStore from './exampleStore.js';
@@ -321,6 +321,8 @@ function renderDashboard() {
     li.className = 'project-card';
     li.dataset.projectId = project.id;
     li.dataset.name = project.name;
+    const projectNumber = (project.details && project.details.projectNumber) || '';
+    li.dataset.number = projectNumber; // searched alongside the name
     li.dataset.pinned = summary.pinned ? 'true' : 'false';
     li.dataset.archived = summary.archived ? 'true' : 'false';
     // Archived projects can't be pinned, so their card omits the pin button.
@@ -330,7 +332,10 @@ function renderDashboard() {
             aria-pressed="${summary.pinned ? 'true' : 'false'}">${pinSvg(summary.pinned)}</button>`;
     li.innerHTML = `
       <div class="row-between">
-        <strong>${escapeHtml(project.name)}</strong>
+        <div class="project-card-title">
+          <strong>${escapeHtml(project.name)}</strong>
+          ${projectNumber ? `<span class="project-card-number muted">${escapeHtml(projectNumber)}</span>` : ''}
+        </div>
         <span class="btn-row">${pinBtn}</span>
       </div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
@@ -360,24 +365,24 @@ function cardInView(card) {
 }
 
 // Filter the project list by the active view AND the search terms (both must
-// pass). Windows-Explorer-style search: name contains every space-separated
-// keyword (case-insensitive). Shows a context-appropriate empty message.
+// pass). Windows-Explorer-style search: name or project number contains every
+// space-separated keyword (case-insensitive). Shows a context-appropriate
+// empty message.
 function applyProjectFilter() {
-  const terms = (state.projectSearch || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const query = (state.projectSearch || '').trim();
   const cards = document.querySelectorAll('#project-list .project-card');
   let inView = 0, visible = 0;
   cards.forEach(card => {
     if (!cardInView(card)) { card.hidden = true; return; }
     inView++;
-    const name = (card.dataset.name || '').toLowerCase();
-    const match = terms.every(t => name.includes(t));
+    const match = matchesProjectSearch({ name: card.dataset.name, number: card.dataset.number }, query);
     card.hidden = !match;
     if (match) visible++;
   });
   const msg = document.getElementById('project-search-empty');
   let text = '';
   if (visible === 0 && cards.length > 0) {
-    if (terms.length > 0) text = `No projects match "${state.projectSearch.trim()}".`;
+    if (query) text = `No projects match "${query}".`;
     else if (state.projectView === 'pinned') text = 'No pinned projects yet.';
     else if (state.projectView === 'archived') text = 'No archived projects.';
     else if (inView === 0) text = 'No active projects.';
@@ -580,6 +585,10 @@ function renderProjectDetails(projectId) {
   if (!project) return;
   const { checked, applicable, ratio } = computeProjectProgress(state.model, project);
   document.getElementById('ql-title').textContent = project.name;
+  const qlNumber = document.getElementById('ql-number');
+  const projectNumber = (project.details && project.details.projectNumber) || '';
+  qlNumber.textContent = projectNumber ? `Project No. ${projectNumber}` : '';
+  qlNumber.hidden = !projectNumber;
   const units = project.units.map(u => {
     const p = computeProgress(state.model, u);
     const specs = state.model.inputs.map(def =>
@@ -690,6 +699,7 @@ function renderEditor() {
     el.value = details[key] || '';
     el.oninput = () => { details[key] = el.value; markEditorDirty(); };
   };
+  wireDetail('editor-project-number', 'projectNumber');
   wireDetail('editor-reviewer-name', 'reviewerName');
   wireDetail('editor-reviewer-contact', 'reviewerContact');
   wireDetail('editor-builder-name', 'builderName');
