@@ -17,6 +17,10 @@
   --success: #5f7d35;
   --success-soft: #eef2e6;
   --success-fill: rgba(95, 125, 53, 0.08);
+  /* Ticked unit pill: stronger than --success-fill so it still reads with the
+     item tint off, but well short of a full-strength ring. */
+  --success-pill: rgba(95, 125, 53, 0.14);
+  --success-pill-edge: rgba(95, 125, 53, 0.38);
   --warning: #d98a2b;
   --warning-soft: #fbf0e0;
   --warning-fill: rgba(217, 138, 43, 0.08);
@@ -42,6 +46,8 @@ html[data-theme="dark"] {
   --success: #7d9e4a;
   --success-soft: #29311d;
   --success-fill: rgba(125, 158, 74, 0.08);
+  --success-pill: rgba(125, 158, 74, 0.16);
+  --success-pill-edge: rgba(125, 158, 74, 0.45);
   --warning: #e0a458;
   --warning-soft: #33291a;
   --warning-fill: rgba(224, 164, 88, 0.08);
@@ -681,7 +687,10 @@ html.no-item-tint .item.partial {
   vertical-align: middle;
 }
 
-/* Per-unit tags under a checklist item; green (0.08) when that unit is done. */
+/* Per-unit tags under a checklist item. A ticked unit gets a quiet green wash
+   and a softly greened edge — enough to pick out at a glance in dark mode with
+   "Colour completed items" off (no bubble tint behind it), without shouting.
+   Declared after :hover so the green edge survives hover. */
 .unit-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .unit-tag {
   font-size: 12px; font-weight: 600; line-height: 1.4;
@@ -690,7 +699,12 @@ html.no-item-tint .item.partial {
   border: 1px solid var(--border); cursor: pointer;
 }
 .unit-tag:hover { border-color: var(--border-strong); }
-.unit-tag.done { background: var(--success-fill); border-color: var(--success-fill); }
+.unit-tag.done {
+  background: var(--success-pill);
+  border-color: var(--success-pill-edge);
+}
+/* Hover on a done chip firms up its own edge rather than going neutral grey. */
+.unit-tag.done:hover { border-color: var(--success); }
 
 .item-note {
   font-size: 13px;
