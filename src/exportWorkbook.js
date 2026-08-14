@@ -46,8 +46,7 @@ const NOTES = [
   'Outstanding items are grouped by discipline (from the Sections defined in the checklist).',
   'The Overview tab summarises progress for each unit as at the review date shown above.',
   'Complete the highlighted Reviewed By and Contact fields before circulating.',
-  'Items with an entry in the Example column link to a supporting file in the Examples/ folder of this bundle.',
-  'After downloading, extract the ZIP file. Keep this workbook in the top-level (parent) folder and the Examples in the "Examples" sub-folder inside it — the Example links only work when this folder structure is preserved.',
+  'Items with an entry in the Example column link to a supporting file online — click to open it in your browser.',
 ];
 
 const NOTES_FULL = [
@@ -56,8 +55,7 @@ const NOTES_FULL = [
   'Row colours: green = Done (checked); plain = Outstanding (applicable, not yet checked); grey = Not Applicable to that unit.',
   'The Overview tab summarises progress for each unit as at the review date shown above.',
   'Complete the highlighted Reviewed By and Contact fields before circulating.',
-  'Items with an entry in the Example column link to a supporting file in the Examples/ folder of this bundle.',
-  'After downloading, extract the ZIP file. Keep this workbook in the top-level (parent) folder and the Examples in the "Examples" sub-folder inside it — the Example links only work when this folder structure is preserved.',
+  'Items with an entry in the Example column link to a supporting file online — click to open it in your browser.',
 ];
 
 // ---- styled-sheet builder (XLSX injected) ----------------------------------
@@ -181,9 +179,7 @@ function buildOverviewSheet(XLSX, model, project, reviewDate, mode = 'outstandin
   notes.forEach((note, i) => {
     const text = `${i + 1}.  ${note}`;
     const lines = Math.max(1, Math.ceil(text.length / CHARS_PER_LINE));
-    // The final note (extract-the-ZIP / folder-structure warning) is shown in red.
-    const color = i === notes.length - 1 ? RED_SUB : INK;
-    band(ws, r, 0, N - 1, text, { font: { color: { rgb: color } }, alignment: { vertical: 'top', wrapText: true, indent: 1 } });
+    band(ws, r, 0, N - 1, text, { font: { color: { rgb: INK } }, alignment: { vertical: 'top', wrapText: true, indent: 1 } });
     rh(r, 14 + lines * 14); r++;
   });
 
@@ -235,9 +231,10 @@ function buildUnitSheet(XLSX, unitPlan, model) {
       put(ws, r, 1, it.description, { alignment: { vertical: 'top', wrapText: true }, border });
       put(ws, r, 2, it.code, { alignment: { vertical: 'top' }, border });
       put(ws, r, 3, it.comment || '', { alignment: { vertical: 'top', wrapText: true }, border });
-      if (it.exampleFile) {
-        put(ws, r, 4, it.exampleFile, { font: { color: { rgb: LINK }, underline: true }, alignment: { vertical: 'top' }, border },
-          { link: { Target: 'Examples/' + it.exampleFile, Tooltip: 'Open ' + it.exampleFile } });
+      if (it.exampleLink) {
+        const label = it.example || it.exampleLink;
+        put(ws, r, 4, label, { font: { color: { rgb: LINK }, underline: true }, alignment: { vertical: 'top' }, border },
+          { link: { Target: it.exampleLink, Tooltip: 'Open ' + label } });
       } else {
         put(ws, r, 4, it.example || '', { alignment: { vertical: 'top', wrapText: true }, border });
       }
@@ -277,9 +274,10 @@ function buildUnitSheetFull(XLSX, unitPlan, model) {
       put(ws, r, 2, it.code, fullCell(it.status, { wrap: false }));
       put(ws, r, 3, STATUS_TEXT[it.status] || '', fullCell(it.status, { bold: it.status !== 'outstanding', wrap: false }));
       put(ws, r, 4, it.comment || '', fullCell(it.status));
-      if (it.exampleFile) {
-        put(ws, r, 5, it.exampleFile, fullCell(it.status, { link: true, wrap: false }),
-          { link: { Target: 'Examples/' + it.exampleFile, Tooltip: 'Open ' + it.exampleFile } });
+      if (it.exampleLink) {
+        const label = it.example || it.exampleLink;
+        put(ws, r, 5, label, fullCell(it.status, { link: true, wrap: false }),
+          { link: { Target: it.exampleLink, Tooltip: 'Open ' + label } });
       } else {
         put(ws, r, 5, it.example || '', fullCell(it.status));
       }
