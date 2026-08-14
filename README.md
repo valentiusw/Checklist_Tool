@@ -30,22 +30,18 @@ one ships with Windows' Python install.)
 
 ## First use
 
-1. Go to **Setup** and load your checklist workbook. Upload a setup `.zip` (workbook at
-   the root plus an `Examples/` subfolder of the PDFs/images its Example column
-   references), or a bare `.xlsx` if you have no example files. `SampleChecklist.xlsx`
-   is included here to try it out.
+1. Go to **Setup** and load your checklist workbook — a single `.xlsx`.
+   `SampleChecklist.xlsx` is included here to try it out.
 2. Go to **Dashboard**, click **New project**, give it a name. You can also record an
    optional **project number** — it appears under the name on the project card and the
    dashboard search box matches it as well as the name, so typing part of a number finds
    the project. The number never appears in export file names.
 3. Fill in the project **inputs** on the left — the checklist items filter live.
 4. Tick items off and add per-item comments. The progress bar updates as you go.
-5. **Download ZIP** produces a `.zip` containing a spreadsheet of everything still
-   outstanding (one worksheet per unit; columns Item ID, Description, Code, Comments,
-   Example) alongside an `Examples` subfolder with the referenced PDFs/images. Where an
-   item's Example is a file, the Example cell is a **relative hyperlink** — unzip the
-   bundle and the links open the adjacent files from `Examples/`. The ZIP, the folder
-   inside it and the workbook all share one name: `<Project Name>_DPVT_Out`, or
+5. **Download Workbook** produces a `.xlsx` of everything still outstanding — one
+   worksheet per unit, columns Item ID, Description, Code, Comments, Example. Where an
+   item has an example link, the Example cell is a **hyperlink** that opens the file in
+   your browser. The workbook is named `<Project Name>_DPVT_Out`, or
    `<Project Name>_DPVT_All` when you pick **All Items** from the dropdown.
 6. **Save project file** downloads the project as `.json` (back it up or move it to
    another machine); **Import project** loads it back.
@@ -60,7 +56,7 @@ same checklist but track their own inputs, ticks, and comments. Use the **Unit**
 on the project screen to switch units, and **Add unit** / **Rename** / **Delete unit** to
 manage them (a project always keeps at least one). The progress label shows both the
 current unit and the project-wide total, and the Dashboard card shows the unit count plus
-aggregate progress. **Download ZIP** then produces one worksheet per unit.
+aggregate progress. **Download Workbook** then produces one worksheet per unit.
 
 ### Sections & About
 
@@ -74,7 +70,7 @@ Your projects are stored in your browser. To make them durable, open **Settings*
 and use **Auto-save to a file** (Edge/Chrome): pick a backup file — ideally inside
 a synced folder like OneDrive — and the app writes your work to it automatically.
 After a browser-data wipe or on a new machine, **Settings → Open existing backup…**
-restores everything (re-import your setup ZIP to bring back the example images).
+restores everything (re-import your checklist workbook to bring back the example links).
 In browsers without this feature, use the manual **Save project library** /
 **Restore library** buttons.
 
@@ -84,18 +80,22 @@ Your `.xlsx` must contain two sheets, named exactly **`Checklist`** and **`Input
 
 ### Sheet `Checklist`
 
-| Item ID | Conditions | Description | Code | Note | Example |
-|---------|------------|-------------|------|------|---------|
+| Item ID | Conditions | Description | Code | Note | Example | Link | HyperLink |
+|---------|------------|-------------|------|------|---------|------|-----------|
 
 - **Conditions** — leave blank for items that always apply. Otherwise reference your
   inputs (see grammar below).
-- **Example** — how to complete the item. Each cell is **either**:
-  - a paragraph of explanatory text, **or**
-  - a single file name (e.g. `weather-seal.png`, `detail.pdf`) — the tool detects this by
-    the file extension (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.pdf`). Bundle
-    the actual files in an `Examples/` subfolder of your setup `.zip` (see First use §1).
+- **Example** — the label shown for the item's supporting file, usually its file name
+  (e.g. `ShaftVentilation.png`), or a paragraph of explanatory text.
+- **Link** — the example's URL (Dropbox, SharePoint, anywhere reachable). Optional: an
+  Example with no Link shows as plain text. Only absolute `http://` / `https://` values
+  are used; anything else is ignored.
+- **HyperLink** — optional, and never read by the tool. Keep a
+  `=HYPERLINK(Link, Example)` formula here if you like a clickable cell while editing the
+  spreadsheet; the tool takes its URL from **Link**.
 
-  Both forms flow into the **Download ZIP** export. Files are carried as **relative hyperlinks** — the Example cell links to the adjacent file in the `Examples/` folder, so any format (PNG, JPG, SVG, PDF, …) works.
+  In the export, an Example with a Link becomes a **clickable hyperlink** in the Example
+  cell, so any format (PNG, JPG, SVG, PDF, …) works.
 
 ### Sheet `Inputs`
 
@@ -158,7 +158,7 @@ npm test        # runs node --test
 
 The browser glue is `src/app.js`; `index.html` loads the vendored spreadsheet
 engine (`vendor/xlsx.bundle.js` — xlsx-js-style, a SheetJS fork that can write
-cell styles such as the bold header and blue hyperlinked Example cells) and
-JSZip (`vendor/jszip.min.js`), then `app.js`.
+cell styles such as the bold header and blue hyperlinked Example cells), then
+`app.js`.
 
 Design and implementation notes are under `docs/superpowers/`.
