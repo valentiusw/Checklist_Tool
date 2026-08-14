@@ -62,6 +62,20 @@ test('the full export links its example cells too', () => {
   assert.equal(cell.l.Target, 'https://dropbox.com/s/abc.png');
 });
 
+test('a linked item with no Example label falls back to the URL as the cell text', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example', 'Link'],
+    ['A20', '', 'No label supplied', 'CODE', '', '', 'https://dropbox.com/s/no-label.png'],
+  ];
+  const model = buildModel({ checklistRows: rows, inputRows });
+  const project = { name: 'Smoke Tower', details: {}, units: [{ name: 'Lift 1', inputs: {}, checks: {}, comments: {} }] };
+  const plan = buildExportPlan(model, project, { mode: 'outstanding' });
+  const wb = buildExportWorkbook({ XLSX, model, project, plan, reviewDate: '14/08/2026', mode: 'outstanding' });
+  const cell = cellWithText(wb, 'https://dropbox.com/s/no-label.png');
+  assert.ok(cell, 'expected the URL itself as the cell text when Example is empty');
+  assert.equal(cell.l.Target, 'https://dropbox.com/s/no-label.png');
+});
+
 test('no export note mentions the Examples folder or the ZIP', () => {
   for (const mode of ['outstanding', 'full']) {
     const overview = build(mode).Sheets.Overview;

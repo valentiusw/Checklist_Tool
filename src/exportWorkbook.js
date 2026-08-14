@@ -233,7 +233,7 @@ function buildUnitSheet(XLSX, unitPlan, model) {
       put(ws, r, 3, it.comment || '', { alignment: { vertical: 'top', wrapText: true }, border });
       if (it.exampleLink) {
         const label = it.example || it.exampleLink;
-        put(ws, r, 4, label, { font: { color: { rgb: LINK }, underline: true }, alignment: { vertical: 'top' }, border },
+        put(ws, r, 4, label, { font: { color: { rgb: LINK }, underline: true }, alignment: { vertical: 'top', wrapText: true }, border },
           { link: { Target: it.exampleLink, Tooltip: 'Open ' + label } });
       } else {
         put(ws, r, 4, it.example || '', { alignment: { vertical: 'top', wrapText: true }, border });
@@ -276,7 +276,7 @@ function buildUnitSheetFull(XLSX, unitPlan, model) {
       put(ws, r, 4, it.comment || '', fullCell(it.status));
       if (it.exampleLink) {
         const label = it.example || it.exampleLink;
-        put(ws, r, 5, label, fullCell(it.status, { link: true, wrap: false }),
+        put(ws, r, 5, label, fullCell(it.status, { link: true, wrap: true }),
           { link: { Target: it.exampleLink, Tooltip: 'Open ' + label } });
       } else {
         put(ws, r, 5, it.example || '', fullCell(it.status));
