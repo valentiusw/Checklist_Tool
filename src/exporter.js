@@ -24,18 +24,6 @@ export function computeProjectProgress(model, project) {
   return { checked, applicable, ratio };
 }
 
-export function buildExportRows(model, unit) {
-  const header = ['Item ID', 'Description', 'Code', 'Comments', 'Example'];
-  const checks = unit.checks || {};
-  const comments = unit.comments || {};
-  const rows = [header];
-  for (const item of applicableItems(model, unit.inputs || {})) {
-    if (checks[item.id] === true) continue;
-    rows.push([item.id, item.description, item.code, comments[item.id] || '', item.example]);
-  }
-  return rows;
-}
-
 export function buildExportPlan(model, project, { mode = 'outstanding' } = {}) {
   const full = mode === 'full';
   const units = (project.units || []).map(unit => {
@@ -48,7 +36,7 @@ export function buildExportPlan(model, project, { mode = 'outstanding' } = {}) {
       code: item.code,
       comment: comments[item.id] || '',
       example: item.example,
-      exampleFile: item.exampleFile || '',
+      exampleLink: item.exampleLink || '',
       section: item.section,
       sectionPrefix: item.sectionPrefix,
     });
@@ -69,15 +57,5 @@ export function buildExportPlan(model, project, { mode = 'outstanding' } = {}) {
     }
     return { name: unit.name, rows };
   });
-  const referencedFiles = [];
-  const seen = new Set();
-  for (const unit of units) {
-    for (const row of unit.rows) {
-      if (row.exampleFile && !seen.has(row.exampleFile)) {
-        seen.add(row.exampleFile);
-        referencedFiles.push(row.exampleFile);
-      }
-    }
-  }
-  return { units, referencedFiles };
+  return { units };
 }
