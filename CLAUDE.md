@@ -11,8 +11,8 @@ checklist (maintained in Excel) into a dynamic checklist. Per project the user e
 inputs; only items whose conditions are met are shown. Tracks multiple project drafts with
 progress bars and exports outstanding items to Excel.
 
-- **No backend, no build step, no network.** Pure browser. Checklist data never leaves the
-  machine — the `.xlsx` is parsed client-side.
+- **No backend, no build step.** The app itself makes no network requests — the `.xlsx` is
+  parsed client-side and never uploaded. Clicking an example does open its hosted URL.
 - Dependencies are **vendored** (`vendor/xlsx.bundle.js` = xlsx-js-style fork that writes
   cell styles). No npm runtime deps.
 

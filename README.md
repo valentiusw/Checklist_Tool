@@ -94,8 +94,8 @@ Your `.xlsx` must contain two sheets, named exactly **`Checklist`** and **`Input
   `=HYPERLINK(Link, Example)` formula here if you like a clickable cell while editing the
   spreadsheet; the tool takes its URL from **Link**.
 
-  In the export, an Example with a Link becomes a **clickable hyperlink** in the Example
-  cell, so any format (PNG, JPG, SVG, PDF, …) works.
+In the export, an Example with a Link becomes a **clickable hyperlink** in the Example
+cell, so any format (PNG, JPG, SVG, PDF, …) works.
 
 ### Sheet `Inputs`
 

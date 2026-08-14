@@ -1,3 +1,8 @@
 node_modules/
 *.log
-SampleSetup.zip
+
+# The user's real working files: a workbook with live Dropbox share links, and
+# logo assets not part of the vendored/committed branding. Never commit these.
+Checklist_14.08.26.xlsx
+Schindler_Logo_Clean.png
+schindler_logo.jpg

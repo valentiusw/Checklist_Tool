@@ -952,10 +952,11 @@ In the page, run `indexedDB.open('dpchecklist')` and assert `result.version === 
 
 - [ ] **Step 8: Report and commit any fixes**
 
-If every check passes, report the results verbatim. If a step fails, fix it, re-run `npm test` and the failing smoke step, then:
+If every check passes, report the results verbatim. If a step fails, fix it, re-run `npm test` and the failing smoke step, then stage only the specific files you touched by name (never `git add -A` —
+`Checklist_14.08.26.xlsx` is untracked on purpose and must not be added, see the note below):
 
 ```bash
-git add -A
+git add <the files your fix touched, named explicitly>
 git commit -m "fix: <what the smoke test caught>"
 ```
 
