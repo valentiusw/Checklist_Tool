@@ -80,8 +80,15 @@ Loaded 45 items, 9 inputs.
 
 Deleted: `src/zipBundle.js`, `src/exampleStore.js`, `tests/exampleStore.test.js`.
 
-`db.js` bumps to **v3** and drops the `examples` object store in `onupgradeneeded`. The
-schema stays owned by `db.js` alone, per the existing convention.
+`db.js` bumps to **v3**: `examples` comes out of the `STORES` list, and
+`onupgradeneeded` gains a `db.deleteObjectStore('examples')` guarded by
+`objectStoreNames.contains`, so an existing v2 database sheds the blob store on first
+open. The schema stays owned by `db.js` alone, per the existing convention.
+
+The setup screen's copy (`index.html:112-115`) currently explains the ZIP layout. It
+becomes a single line — upload your checklist workbook (`.xlsx`); nothing is uploaded,
+everything stays in your browser — and the file input's
+`accept=".zip,.xlsx,.xls"` narrows to `accept=".xlsx"`.
 
 **Accepted consequence:** examples now require internet. The checklist data itself is
 still parsed client-side and never leaves the machine; only clicking an example reaches
@@ -128,6 +135,11 @@ replaced by one:
 
 With `zipBundle.js` gone, JSZip has no remaining caller: the
 `<script src="vendor/jszip.min.js">` tag and `vendor/jszip.min.js` are removed.
+
+The export controls stop saying ZIP. `#btn-download-zip` (id kept, label changed) reads
+**Download Workbook**; the dashboard's `#dash-export` icon button's `title` and
+`aria-label` become **Export Workbook**. Both stay Title Case, per the button-label
+convention. The dropdown items (**All Items** / **Outstanding**) are unchanged.
 
 ## Migration & repo housekeeping
 
