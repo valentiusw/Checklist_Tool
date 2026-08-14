@@ -3,7 +3,7 @@ import { createProjectStore, normalizeDetails, matchesProjectSearch } from './pr
 import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
 import { buildExportWorkbook } from './exportWorkbook.js';
 import * as exampleStore from './exampleStore.js';
-import { readSetupZip, buildExportZip } from './zipBundle.js';
+import { readSetupZip } from './zipBundle.js';
 import * as db from './db.js';
 import { readLegacy } from './legacyMigration.js';
 import * as fileBackup from './fileBackup.js';
@@ -522,12 +522,12 @@ function wireExportDropdown({ btnId, menuId, fullId, outId, getProject }) {
   document.getElementById(fullId).addEventListener('click', () => {
     close();
     const p = getProject();
-    if (p) downloadProjectZip(p, 'full');
+    if (p) downloadProjectWorkbook(p, 'full');
   });
   document.getElementById(outId).addEventListener('click', () => {
     close();
     const p = getProject();
-    if (p) downloadProjectZip(p, 'outstanding');
+    if (p) downloadProjectWorkbook(p, 'outstanding');
   });
 }
 
@@ -1303,42 +1303,25 @@ function downloadBlob(blob, filename) {
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
 }
 
-async function downloadProjectZip(project = getCurrentProject(), mode = 'outstanding') {
+function downloadProjectWorkbook(project = getCurrentProject(), mode = 'outstanding') {
   if (!project) return;
   try {
     const plan = buildExportPlan(state.model, project, { mode });
     const now = new Date();
     const reviewDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     const wb = buildExportWorkbook({ XLSX, model: state.model, project, plan, reviewDate, mode });
-    const workbookArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
+    const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
 
-    const files = new Map();
-    const missing = [];
-    for (const name of plan.referencedFiles) {
-      const blob = await exampleStore.get(name);
-      if (blob) files.set(name, blob);
-      else missing.push(name);
-    }
-
-    // One base name shared by the ZIP, the folder inside it, and the workbook.
     // Project title only (never the project number); keep its spaces and strip
     // only characters illegal in file names. The mode is named outright rather
     // than suffixed, and abbreviated to keep names short:
     // "Smoke Tower_DPVT_Out" (outstanding) / "Smoke Tower_DPVT_All" (all items).
     const safeTitle = (project.name || 'Project').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Project';
     const base = `${safeTitle}_DPVT_${mode === 'full' ? 'All' : 'Out'}`;
-    const zipBlob = await buildExportZip({
-      workbookName: `${base}.xlsx`,
-      workbookArrayBuffer,
-      files,
-      folderName: base,
-    });
-    downloadBlob(zipBlob, `${base}.zip`);
-    if (missing.length) {
-      alert(`Exported. These referenced files weren't in your library:\n${missing.join('\n')}`);
-    }
+    const type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    downloadBlob(new Blob([data], { type }), `${base}.xlsx`);
   } catch (err) {
-    alert('Could not build the ZIP: ' + err.message);
+    alert('Could not build the workbook: ' + err.message);
   }
 }
 
