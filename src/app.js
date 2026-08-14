@@ -1023,7 +1023,7 @@ function renderItems() {
           <span class="id">${escapeHtml(item.id)}</span> — ${escapeHtml(item.description)}${displayCode(item.code) ? `<span class="code-tag">${escapeHtml(displayCode(item.code))}</span>` : ''}
           ${tags ? `<div class="unit-tags">${tags}</div>` : ''}
         </div>
-        ${item.exampleFile ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleFile)}" title="View example" aria-label="View example for ${escapeHtml(item.id)}">${INFO_ICON}</button>` : ''}
+        ${item.exampleLink ? `<button type="button" class="item-info" data-example="${escapeHtml(item.exampleLink)}" title="View example" aria-label="View example for ${escapeHtml(item.id)}">${INFO_ICON}</button>` : ''}
       </div>`;
     const cb = div.querySelector('[data-check]');
     cb.checked = cs === 'all';
@@ -1081,23 +1081,6 @@ function highlightSelectedItem() {
     el.classList.toggle('selected', !!activeId && el.dataset.itemId === activeId));
 }
 
-const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
-
-// Blobs come out of the setup ZIP (JSZip) and IndexedDB with an empty MIME
-// type. Opening an untyped blob in a new tab makes the browser render the raw
-// bytes as text (a PDF shows up as garbage), so we re-stamp the type from the
-// filename before building the object URL.
-const CONTENT_TYPE_BY_EXT = {
-  pdf: 'application/pdf',
-  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
-  webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml',
-};
-
-function contentTypeFor(name) {
-  const ext = name.split('.').pop().toLowerCase();
-  return CONTENT_TYPE_BY_EXT[ext] || 'application/octet-stream';
-}
-
 // The "SL" code (State/local regulatory requirement) is intentionally not shown
 // as a boxed code tag in the UI. Every other code renders as-is; a code that is
 // exactly "SL" (trimmed, case-insensitive) is suppressed. Mixed codes like
@@ -1107,47 +1090,11 @@ function displayCode(code) {
   return code.trim().toUpperCase() === 'SL' ? '' : code;
 }
 
-// Open an item's example file from the in-browser library: images in a
-// lightbox, everything else (PDFs) in a new tab.
-async function openExample(name) {
-  let blob;
-  try {
-    blob = await exampleStore.get(name);
-  } catch {
-    alert(`Could not read example "${name}" from your library.`);
-    return;
-  }
-  if (!blob) {
-    alert(`Example file "${name}" isn't in your library. Re-import your setup ZIP to include it.`);
-    return;
-  }
-  const wantType = contentTypeFor(name);
-  if (blob.type !== wantType) blob = blob.slice(0, blob.size, wantType);
-  const url = URL.createObjectURL(blob);
-  if (IMAGE_EXT.test(name)) {
-    showLightbox(url, name);
-  } else {
-    window.open(url, '_blank', 'noopener');
-    // The new tab now owns the URL; revoke after a grace period.
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  }
-}
-
-function showLightbox(url, name) {
-  const overlay = document.createElement('div');
-  overlay.className = 'lightbox';
-  overlay.innerHTML =
-    `<figure class="lightbox-fig"><img src="${url}" alt="Example: ${escapeHtml(name)}">` +
-    `<figcaption>${escapeHtml(name)}</figcaption></figure>`;
-  const onKey = e => { if (e.key === 'Escape') close(); };
-  function close() {
-    overlay.remove();
-    URL.revokeObjectURL(url);
-    document.removeEventListener('keydown', onKey);
-  }
-  overlay.addEventListener('click', close);
-  document.addEventListener('keydown', onKey);
-  document.body.appendChild(overlay);
+// Open an item's example. The workbook's Link column holds an absolute URL, so
+// hand it to the browser in a new tab — images and PDFs alike.
+function openExample(url) {
+  if (!url) return;
+  window.open(url, '_blank', 'noopener');
 }
 
 function formatInputValue(def, value) {
@@ -1253,7 +1200,7 @@ function renderItemEditor() {
     ${showUnitSelect ? `<label class="ed-unit-row"><span>Unit Selection</span><select id="ed-unit-select"></select></label>` : ''}
     <div class="ed-comment-label">Comments</div>
     <textarea id="ed-comment" class="ed-comment" rows="6" placeholder="${isAll ? 'Comment applied to all lifts…' : 'Comment for this unit…'}"></textarea>
-    ${item.exampleFile ? `<button type="button" id="ed-see-example" class="ed-see-example">See Example</button>` : ''}`;
+    ${item.exampleLink ? `<button type="button" id="ed-see-example" class="ed-see-example">See Example</button>` : ''}`;
 
   const sel = body.querySelector('#ed-unit-select');
   if (sel) {
@@ -1300,7 +1247,7 @@ function renderItemEditor() {
   });
 
   const exampleBtn = body.querySelector('#ed-see-example');
-  if (exampleBtn) exampleBtn.addEventListener('click', () => openExample(item.exampleFile));
+  if (exampleBtn) exampleBtn.addEventListener('click', () => openExample(item.exampleLink));
 }
 
 function renderProgress() {

@@ -779,40 +779,6 @@ html.no-item-tint .item.partial {
 
 .section-count { font-weight: 600; letter-spacing: 0; }
 
-/* ---- Example lightbox ------------------------------------------------- */
-
-.lightbox {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: rgba(15, 17, 21, .72);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
-  cursor: zoom-out;
-}
-
-.lightbox-fig {
-  margin: 0;
-  max-width: 92vw;
-  max-height: 92vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.lightbox-fig img {
-  max-width: 92vw;
-  max-height: 84vh;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 10px 44px rgba(0, 0, 0, .5);
-}
-
-.lightbox-fig figcaption { color: #fff; font-size: 13px; }
-
 /* ---- About tables ----------------------------------------------------- */
 
 .info-table {
