@@ -2,8 +2,6 @@ import { buildModel } from './workbookModel.js';
 import { createProjectStore, normalizeDetails, matchesProjectSearch } from './projectStore.js';
 import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
 import { buildExportWorkbook } from './exportWorkbook.js';
-import * as exampleStore from './exampleStore.js';
-import { readSetupZip } from './zipBundle.js';
 import * as db from './db.js';
 import { readLegacy } from './legacyMigration.js';
 import * as fileBackup from './fileBackup.js';
@@ -97,8 +95,11 @@ function rebuildModel(data) {
     ...data.inputs.map(i => [i.name, i.type, i.label, i.unit, i.choices.join(';'), i.default]),
   ];
   const checklistRows = [
-    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
-    ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note, i.exampleFile || i.exampleImage || i.example]),
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example', 'Link'],
+    // A model saved before examples became links stored the file name in
+    // `exampleFile` and left `example` empty; keep it as the label.
+    ...data.items.map(i => [i.id, i.conditionsText, i.description, i.code, i.note,
+      i.example || i.exampleFile || '', i.exampleLink || '']),
   ];
   const sectionRows = (data.sections && data.sections.length)
     ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
@@ -247,22 +248,12 @@ function renderBackupControls() {
 
 async function handleSetupFile(file) {
   try {
-    setStatus('Reading setup…');
-    const buffer = await file.arrayBuffer();
-    let workbookBuffer = buffer;
-    let files = new Map();
-    if (/\.zip$/i.test(file.name)) {
-      const res = await readSetupZip(buffer);
-      workbookBuffer = res.workbookArrayBuffer;
-      files = res.files;
-    }
-    const workbook = XLSX.read(workbookBuffer, { type: 'array' });
+    setStatus('Reading workbook…');
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
     const model = loadModelFromWorkbook(workbook);
-    await exampleStore.clear();
-    if (files.size) await exampleStore.putAll(files);
     state.model = model;
     markModelDirty();
-    setStatus(`Loaded ${model.items.length} items, ${model.inputs.length} inputs, ${files.size} example file${files.size === 1 ? '' : 's'}.`, 'ok');
+    setStatus(`Loaded ${model.items.length} items, ${model.inputs.length} inputs.`, 'ok');
   } catch (err) {
     state.model = null;
     setStatus('Could not load setup: ' + err.message, 'error');

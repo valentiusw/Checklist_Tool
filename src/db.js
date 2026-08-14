@@ -1,8 +1,8 @@
 // The one place that defines the IndexedDB schema for the whole app.
-// Stores: examples (filename -> Blob), projects (id -> project), kv (key -> value).
+// Stores: projects (id -> project), kv (key -> value).
 const DB_NAME = 'dpchecklist';
-const VERSION = 2;
-const STORES = ['examples', 'projects', 'kv'];
+const VERSION = 3;
+const STORES = ['projects', 'kv'];
 
 let dbPromise = null;
 
@@ -15,6 +15,8 @@ export function open() {
       for (const name of STORES) {
         if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
       }
+      // v3 dropped the example-file blob store — examples are URLs now.
+      if (db.objectStoreNames.contains('examples')) db.deleteObjectStore('examples');
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);

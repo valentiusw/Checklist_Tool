@@ -109,11 +109,9 @@
     <main>
       <section id="screen-setup" class="screen">
         <h2>Load checklist workbook</h2>
-        <p class="muted">Upload a setup <code>.zip</code> containing your checklist workbook
-          (<code>.xlsx</code>) at the root and an <code>Examples</code> subfolder of the PDFs and
-          images its Example column references. A bare <code>.xlsx</code> also works (no examples).
-          Nothing is uploaded &mdash; everything stays in your browser.</p>
-        <input type="file" id="workbook-file" accept=".zip,.xlsx,.xls" />
+        <p class="muted">Upload your checklist workbook (<code>.xlsx</code>). Nothing is
+          uploaded &mdash; everything stays in your browser.</p>
+        <input type="file" id="workbook-file" accept=".xlsx" />
         <p id="setup-status" class="status"></p>
 
         <h3 class="setting-group">Appearance</h3>
@@ -403,7 +401,6 @@
   </div>
 
   <script src="vendor/xlsx.bundle.js"></script>
-  <script src="vendor/jszip.min.js"></script>
   <script type="module" src="src/app.js"></script>
 </body>
 
