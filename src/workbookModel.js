@@ -8,12 +8,17 @@ export class ModelError extends Error {
 }
 
 const CHECKLIST_COLS = ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'];
+// "Link" holds the example's URL. Optional so older workbooks still load.
+// The workbook's third example column, "HyperLink", is a =HYPERLINK(Link,Example)
+// formula for humans reading the spreadsheet — its cached value carries no
+// target, so it is never read.
+const CHECKLIST_OPTIONAL_COLS = ['Link'];
 const INPUT_COLS = ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'];
 const SECTION_COLS = ['Prefix', 'Name'];
 const GLOSSARY_COLS = ['Term', 'Meaning'];
 const VALID_TYPES = ['Choice', 'Float', 'Integer', 'Boolean'];
 
-function headerIndex(rows, requiredCols, sheetName) {
+function headerIndex(rows, requiredCols, sheetName, optionalCols = []) {
   if (!rows || rows.length === 0) throw new ModelError(`Sheet "${sheetName}" is empty`);
   const header = rows[0].map(c => String(c ?? '').trim());
   const idx = {};
@@ -22,18 +27,24 @@ function headerIndex(rows, requiredCols, sheetName) {
     if (i === -1) throw new ModelError(`Sheet "${sheetName}" is missing required column: ${col}`);
     idx[col] = i;
   }
+  // Optional columns are simply absent from idx when the sheet omits them;
+  // cell() then reads undefined and yields ''.
+  for (const col of optionalCols) {
+    const i = header.indexOf(col);
+    if (i !== -1) idx[col] = i;
+  }
   return idx;
 }
 
 function cell(row, i) {
+  if (i === undefined) return ''; // column not present in this workbook
   const v = row[i];
   return v === undefined || v === null ? '' : String(v).trim();
 }
 
-// An Example cell is treated as a file reference when its whole value is a
-// filename ending in a known extension; otherwise it is explanatory text.
-function isExampleFile(value) {
-  return /\.(png|jpe?g|gif|svg|webp|bmp|pdf)$/i.test(String(value).trim());
+// A Link cell counts as a target only when it is an absolute http(s) URL.
+function isUrl(value) {
+  return /^https?:\/\//i.test(String(value).trim());
 }
 
 function buildInputs(inputRows) {
@@ -96,7 +107,7 @@ function buildGlossary(glossaryRows) {
 }
 
 function buildItems(checklistRows, inputDefs, sectionMap) {
-  const idx = headerIndex(checklistRows, CHECKLIST_COLS, 'Checklist');
+  const idx = headerIndex(checklistRows, CHECKLIST_COLS, 'Checklist', CHECKLIST_OPTIONAL_COLS);
   const items = [];
   for (let r = 1; r < checklistRows.length; r++) {
     const row = checklistRows[r];
@@ -123,9 +134,9 @@ function buildItems(checklistRows, inputDefs, sectionMap) {
       description: cell(row, idx['Description']),
       code: cell(row, idx['Code']),
       note: cell(row, idx['Note']),
-      // One Example column: either prose guidance or a single file name.
-      example: isExampleFile(cell(row, idx['Example'])) ? '' : cell(row, idx['Example']),
-      exampleFile: isExampleFile(cell(row, idx['Example'])) ? cell(row, idx['Example']) : '',
+      // Example is the display label (usually a file name); Link is its URL.
+      example: cell(row, idx['Example']),
+      exampleLink: isUrl(cell(row, idx['Link'])) ? cell(row, idx['Link']) : '',
     });
   }
   return items;

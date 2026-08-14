@@ -114,24 +114,48 @@ test('glossary is empty array when sheet absent', () => {
   assert.deepEqual(model.glossary, []);
 });
 
-test('a prose Example is text, with no exampleFile', () => {
-  const model = buildModel({ checklistRows, inputRows });
-  assert.equal(model.items[0].example, 'Seal the enclosure');
-  assert.equal(model.items[0].exampleFile, '');
-});
-
-test('an Example cell that is a file name becomes exampleFile (image or pdf)', () => {
+test('a Link URL becomes exampleLink, with Example kept as the label', () => {
   const rows = [
-    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
-    ['A08', '', 'Lifts not exposed to weather', 'AS3000', '', 'a08-weather-seal.png'],
-    ['A09', '', 'Prose item', 'SL', '', 'Provide a protected lobby.'],
-    ['A10', '', 'Spec sheet item', 'EN81', '', 'a10-spec.pdf'],
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example', 'Link', 'HyperLink'],
+    ['A08', '', 'Weather', 'AS3000', '', 'ShaftVentilation.png', 'https://dropbox.com/s/abc/ShaftVentilation.PNG?dl=0', 'ShaftVentilation.png'],
   ];
   const model = buildModel({ checklistRows: rows, inputRows });
-  assert.equal(model.items[0].exampleFile, 'a08-weather-seal.png');
-  assert.equal(model.items[0].example, '');
-  assert.equal(model.items[1].exampleFile, '');
-  assert.equal(model.items[1].example, 'Provide a protected lobby.');
-  assert.equal(model.items[2].exampleFile, 'a10-spec.pdf');
-  assert.equal(model.items[2].example, '');
+  assert.equal(model.items[0].example, 'ShaftVentilation.png');
+  assert.equal(model.items[0].exampleLink, 'https://dropbox.com/s/abc/ShaftVentilation.PNG?dl=0');
+});
+
+test('an Example with no Link stays plain text', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example', 'Link'],
+    ['A09', '', 'Lobby', 'SL', '', 'Provide a protected lobby.', ''],
+  ];
+  const model = buildModel({ checklistRows: rows, inputRows });
+  assert.equal(model.items[0].example, 'Provide a protected lobby.');
+  assert.equal(model.items[0].exampleLink, '');
+});
+
+test('a Link that is not an http(s) URL is ignored', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example', 'Link'],
+    ['A10', '', 'Spec', 'EN81', '', 'a10-spec.pdf', 'C:\\shared\\a10-spec.pdf'],
+    ['A11', '', 'Spec', 'EN81', '', 'a11-spec.pdf', 'see the drive'],
+  ];
+  const model = buildModel({ checklistRows: rows, inputRows });
+  assert.equal(model.items[0].exampleLink, '');
+  assert.equal(model.items[1].exampleLink, '');
+});
+
+test('a workbook with no Link column still loads', () => {
+  const model = buildModel({ checklistRows, inputRows });
+  assert.equal(model.items[0].example, 'Seal the enclosure');
+  assert.equal(model.items[0].exampleLink, '');
+});
+
+test('a Link value is trimmed', () => {
+  const rows = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example', 'Link'],
+    ['A12', '', 'x', '', '', 'x.png', '  https://dropbox.com/s/x.png  '],
+  ];
+  const model = buildModel({ checklistRows: rows, inputRows });
+  assert.equal(model.items[0].exampleLink, 'https://dropbox.com/s/x.png');
 });
