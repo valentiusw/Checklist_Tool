@@ -20,6 +20,11 @@ export function open() {
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
+    // Fires instead of onsuccess/onerror when another tab still holds the DB
+    // open at the old version — without this, the upgrade promise never
+    // settles and every later `await db.…` hangs silently.
+    req.onblocked = () => reject(new Error(
+      'Another Smart Checklist tab is open. Close it and reload to finish the update.'));
   });
   return dbPromise;
 }

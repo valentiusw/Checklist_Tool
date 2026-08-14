@@ -247,6 +247,10 @@ function renderBackupControls() {
 }
 
 async function handleSetupFile(file) {
+  if (/\.zip$/i.test(file.name)) {
+    setStatus('Setup is now a single .xlsx workbook, not a ZIP — example files are URLs in the workbook\'s Link column instead.', 'error');
+    return;
+  }
   try {
     setStatus('Reading workbook…');
     const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
