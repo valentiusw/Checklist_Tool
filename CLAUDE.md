@@ -75,6 +75,28 @@ dependency-free modules only (DOM glue in `app.js` is not unit-tested — see sm
 - **Done/partial tint tokens:** `--success-fill` / `--warning-fill` are translucent (0.08 alpha) and used for **both** background and border so the edge blends (no hard outline). Item bubbles go green (all units checked), amber (some), or plain. Per-unit pills deliberately do **not** reuse that faint fill — a ticked pill gets its own slightly stronger translucent pair, `--success-pill` (bg) / `--success-pill-edge` (border), so it stays legible in dark mode and with "Colour completed items" off (when there is no bubble tint behind it) while staying quiet. **No tick glyph** on ticked pills — the user asked for colour only; hover firms the edge to `--success`.
 - The user's notes in `Context.txt` are requirements/feedback, often dated — treat as intent, confirm current state against code before acting.
 
+## Deployment
+
+Published via **GitHub Pages** ("deploy from branch", `main` at repo root) at
+<https://valentiusw.github.io/Checklist_Tool/>. There is no build step, so no Actions
+workflow is involved — Pages serves the repo as-is. See `docs/DEPLOYING.md` for the runbook.
+
+- **Every asset path must stay relative.** The site lives on the `/Checklist_Tool/` subpath;
+  an absolute `/…` path breaks it. That includes `start_url` and `scope` in `manifest.json`,
+  both of which are `"./"`.
+- **There is deliberately no service worker.** `serve.py` exists to send no-cache headers so
+  users never see a stale version; a service-worker cache reintroduces exactly that problem
+  and is far harder for a non-technical user to clear than a refresh. The offline win would
+  be small anyway — the parsed model already persists in IndexedDB, and example links are
+  remote URLs needing a connection regardless. Edge reports the app installable **without**
+  one, so there is no reason to add it. Don't, without a deliberate update strategy.
+- **Icons are generated, not hand-drawn.** `icons/*.png` are rendered from `logo.svg` by
+  headless Edge. Note `logo.svg` carries `fill="#e6e8eb"` because `styles.css` uses it as a
+  CSS mask (only the shape matters there) — rendering it directly gives a near-invisible
+  light-grey glyph, so the icon wrappers inline the SVG with a white fill over `--accent`.
+- The repo is **private**; it must be public for free Pages hosting. The real checklist
+  workbook is gitignored and must never be committed — colleagues receive it internally.
+
 ## Development workflow (this repo uses Superpowers SDD)
 
 Work is done in **spec → plan → tasks** under `docs/superpowers/` (specs/, plans/), tracked in

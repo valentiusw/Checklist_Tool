@@ -8,15 +8,27 @@ progress bars and export the outstanding items to Excel.
 Everything runs in your browser. **Your checklist data is never uploaded** — the Excel
 file is parsed locally.
 
-## Running it
+## Using it
 
-**Easiest — double-click `start.cmd`.** It launches a local web server for this folder
-and opens the tool in your browser. To stop it, close the "Smart Checklist server"
-window.
+**Just open <https://valentiusw.github.io/Checklist_Tool/>.** Nothing to install, and
+everyone is always on the current version. Your projects are saved in your own browser
+and are never uploaded.
+
+You can install it as a desktop app if you like: in Edge or Chrome, open the ⋯ menu →
+**Apps** → **Install this site as an app**. It then opens in its own window with its own
+icon.
+
+On first use you'll be asked to load the checklist workbook (`.xlsx`) — ask the tool's
+maintainer for the current one. It's remembered in your browser afterwards, so it's a
+one-time step.
+
+## Running it locally (development)
+
+**Double-click `start.cmd`.** It launches a local web server for this folder and opens
+the tool in your browser. To stop it, close the "Smart Checklist server" window.
 
 > Note: you can't just open `index.html` directly (`file://`) — browsers block the
-> tool's ES-module imports over `file://`, so a local server is required. No internet
-> is needed; everything is served from this folder.
+> tool's ES-module imports over `file://`, so a local server is required.
 
 **Manual alternative** — run a static server yourself:
 
