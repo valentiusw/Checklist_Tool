@@ -47,6 +47,16 @@
 
 **Why this way:** `python -c "import cairosvg"` fails (not installed) and Pillow cannot rasterize SVG. Installing a rasterizer would breach the no-new-deps constraint. Headless Edge renders the SVG and screenshots it, using the browser already required for this repo's smoke tests.
 
+> **Corrected during execution (2026-08-15).** Two things in the original steps were wrong
+> and are fixed below:
+> 1. `--screenshot` needs an **absolute Windows path**. A relative path fails with
+>    "The system cannot find the path specified" and writes nothing.
+> 2. Rendering `logo.svg` directly produces a **near-invisible icon**. The file carries
+>    `fill="#e6e8eb"` because `styles.css:109` uses it as a CSS mask, where only the shape
+>    matters and the colour comes from the element behind it. The wrappers therefore inline
+>    the SVG with a white fill over the accent background. A "more than one distinct colour"
+>    assertion passes on the broken version — the verification below checks contrast instead.
+
 - [ ] **Step 1: Create the render wrappers in a scratch directory**
 
 These are throwaway files — put them in your session scratchpad, **not** in the repo. Replace `<SCRATCH>` with your scratch directory path and `<REPO>` with `C:/Users/valen/Desktop/CLAUDE_PROJECTS/DP_ChecklistTool`.
@@ -215,7 +225,13 @@ Expected: `200` on every line. Stop the server when done.
 
 Open `http://localhost:8123/DP_ChecklistTool/` in Edge. Expected: the Setup screen renders with styling, and the browser console shows no 404s or module errors. This confirms the relative-path assumption holds for the real app, not just for `curl`.
 
-- [ ] **Step 6: Check installability, and STOP if it needs a service worker**
+- [x] **Step 6: Check installability, and STOP if it needs a service worker**
+
+> **Settled during execution (2026-08-15): installable with NO service worker.** Driving
+> headless Edge over CDP, `Page.getAppManifest` returned `errors: []` and
+> `Page.getInstallabilityErrors` returned an empty list. The escape hatch below was not
+> needed and no service worker was added. Worth one confirmation in headed Edge, since the
+> check ran headless.
 
 In Edge on that subpath URL: **F12 → Application → Manifest**. Confirm the name, the three icons, and read the installability report at the top of that panel.
 
