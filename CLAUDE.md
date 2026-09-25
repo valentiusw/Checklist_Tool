@@ -39,11 +39,11 @@ dependency-free modules only (DOM glue in `app.js` is not unit-tested — see sm
 **Pure logic (DOM-free, unit-tested) — `src/`:**
 - `conditionEngine.js` — parse + evaluate item conditions (`AND`/`OR`/parens, comparison ops). `ConditionError`.
 - `workbookModel.js` — build the in-memory model from parsed sheets. `ModelError`.
-- `exporter.js` — `applicableItems`, `computeProgress`, `computeProjectProgress`, `buildExportPlan` (rows carry `section`).
+- `exporter.js` — `applicableItems`, `computeProgress` (per-unit, excludes project-level items), `computeScopeProgress` (the project-level items, counted once), `computeProjectProgress` (the sum), `buildExportPlan` (rows carry `section`; returns `{ units, projectItems }`).
 - `exportWorkbook.js` — builds the styled export workbook (branded Overview sheet + discipline-grouped unit sheets); `XLSX` is injected so it stays DOM-free/testable.
 - `projectStore.js` / `projectDraft.js` — project + unit data model, id/unit creation, draft validation, input defaulting.
 - `checklistView.js` — `itemApplicableUnits` (which units a given item's condition matches → drives unit tags).
-- `itemScope.js` — project-level items: `isProjectScoped`, any-unit `projectItemApplicable`, the project tick/comment accessors, and `migrateItemScope` (the one-time fold of pre-scope per-unit data).
+- `itemScope.js` — project-level items: `isProjectScoped`, any-unit `projectItemApplicable`, the project tick/comment accessors, `projectScopeLabel` (names the export sheet, the Overview meter and the in-app progress row, so the three cannot drift), and `migrateItemScope` (the one-time fold of pre-scope per-unit data).
 - `librarySnapshot.js` — connected-backup file format + reconcile rule (pure).
 - `legacyMigration.js` — one-time read of the old localStorage layout.
 
