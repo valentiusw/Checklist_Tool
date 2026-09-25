@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { buildModel } from '../src/workbookModel.js';
 import {
   isProjectScoped, projectItemApplicable, projectItemChecked, projectItemComment, projectScopeLabel,
+  migrateItemScope,
 } from '../src/itemScope.js';
 
 const inputRows = [
@@ -73,4 +74,65 @@ test('projectScopeLabel is empty when no section is project-scoped', () => {
     inputRows,
   });
   assert.equal(projectScopeLabel(none), '');
+});
+
+// ---- migration of pre-scope projects -------
+
+function legacyProject() {
+  return {
+    checks: {}, comments: {},
+    units: [
+      { id: 'u1', name: 'Lift 1', inputs: { EH: 20 }, checks: { A01: true, F01: true }, comments: {} },
+      { id: 'u2', name: 'Lift 2', inputs: { EH: 20 }, checks: {}, comments: { F01: 'Chased 12/09' } },
+    ],
+  };
+}
+
+test('migration drops per-unit ticks on project items but keeps unit ticks', () => {
+  const p = legacyProject();
+  assert.equal(migrateItemScope(model, p), true);
+  assert.equal(p.checks.F01, undefined, 'project item starts outstanding');
+  assert.equal(p.units[0].checks.F01, undefined, 'per-unit tick removed');
+  assert.equal(p.units[0].checks.A01, true, 'per-unit item untouched');
+});
+
+test('migration folds the first non-empty comment up to the project', () => {
+  const p = legacyProject();
+  migrateItemScope(model, p);
+  assert.equal(p.comments.F01, 'Chased 12/09');
+  assert.equal(p.units[1].comments.F01, undefined, 'per-unit comment removed');
+});
+
+test('migration keeps the earliest unit comment when several units have one', () => {
+  const p = legacyProject();
+  p.units[0].comments.F01 = 'From Lift 1';
+  migrateItemScope(model, p);
+  assert.equal(p.comments.F01, 'From Lift 1');
+});
+
+test('migration never overwrites a comment already held at project level', () => {
+  const p = legacyProject();
+  p.comments.F01 = 'Already written here';
+  migrateItemScope(model, p);
+  assert.equal(p.comments.F01, 'Already written here');
+});
+
+test('migration is idempotent and reports no change on a second pass', () => {
+  const p = legacyProject();
+  assert.equal(migrateItemScope(model, p), true);
+  const after = JSON.parse(JSON.stringify(p));
+  assert.equal(migrateItemScope(model, p), false, 'nothing left to move');
+  assert.deepEqual(p, after);
+});
+
+test('migration reports no change for a project with no project-level data', () => {
+  const p = { checks: {}, comments: {}, units: [{ id: 'u1', inputs: {}, checks: { A01: true }, comments: {} }] };
+  assert.equal(migrateItemScope(model, p), false);
+});
+
+test('migration seeds the project maps when they are absent', () => {
+  const p = { units: [{ id: 'u1', inputs: {}, checks: {}, comments: { F01: 'text' } }] };
+  migrateItemScope(model, p);
+  assert.deepEqual(p.checks, {});
+  assert.equal(p.comments.F01, 'text');
 });

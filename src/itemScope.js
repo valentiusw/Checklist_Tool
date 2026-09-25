@@ -35,3 +35,35 @@ export function projectScopeLabel(model) {
     .map(s => s.name)
     .join(' & ');
 }
+
+// One-time fold of pre-scope data. A project-level item's tick and comment used
+// to be stored on every unit. Ticks are dropped so a half-ticked report is
+// re-confirmed rather than assumed done; the first non-empty comment moves up to
+// the project so no typing is lost. The per-unit entries are deleted as we go,
+// which is what makes a second pass a no-op.
+//
+// Mutates `project` (callers pass a store clone) and returns whether anything
+// moved, so a caller can skip saving — and so loading the app does not bump
+// every project's updatedAt.
+export function migrateItemScope(model, project) {
+  if (!model || !project) return false;
+  let changed = false;
+  if (!project.checks) { project.checks = {}; changed = true; }
+  if (!project.comments) { project.comments = {}; changed = true; }
+  for (const item of model.items) {
+    if (!isProjectScoped(item)) continue;
+    for (const unit of project.units || []) {
+      if (unit.checks && item.id in unit.checks) {
+        delete unit.checks[item.id];
+        changed = true;
+      }
+      if (unit.comments && item.id in unit.comments) {
+        const text = unit.comments[item.id];
+        if (text && !project.comments[item.id]) project.comments[item.id] = text;
+        delete unit.comments[item.id];
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
