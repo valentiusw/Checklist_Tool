@@ -43,6 +43,7 @@ dependency-free modules only (DOM glue in `app.js` is not unit-tested — see sm
 - `exportWorkbook.js` — builds the styled export workbook (branded Overview sheet + discipline-grouped unit sheets); `XLSX` is injected so it stays DOM-free/testable.
 - `projectStore.js` / `projectDraft.js` — project + unit data model, id/unit creation, draft validation, input defaulting.
 - `checklistView.js` — `itemApplicableUnits` (which units a given item's condition matches → drives unit tags).
+- `itemScope.js` — project-level items: `isProjectScoped`, any-unit `projectItemApplicable`, the project tick/comment accessors, and `migrateItemScope` (the one-time fold of pre-scope per-unit data).
 - `librarySnapshot.js` — connected-backup file format + reconcile rule (pure).
 - `legacyMigration.js` — one-time read of the old localStorage layout.
 
@@ -66,6 +67,15 @@ dependency-free modules only (DOM glue in `app.js` is not unit-tested — see sm
   never** in a file name). The workbook has a branded **Overview** sheet (project details with fillable Reviewed By/Contact, per-unit progress meters, the checklist's glossary, how-to notes; **Date Reviewed** formatted `DD/MM/YYYY`) then one sheet per unit whose **outstanding** items are grouped into named **discipline sections** (from the model's `Sections` map, `item.section`). Per-item column order **ID, Description, Code, SL comments, Example** (the comments
   column is headed `SL comments` and is 50 wide — `COMMENT_WCH`, which the row-height
   heuristics divide by too); Example cells with a `Link` become blue underlined external hyperlinks to that URL (cell text = the Example label); Example cells without one stay plain text; the **Note** column is excluded; **`S`-prefixed items are excluded** (filtered in `buildExportPlan`, `/^s/i`). Rendering lives in `exportWorkbook.js`; the vendored `xlsx-js-style` styles cells but **cannot embed images** (branding is styled cells, no logo). The export button offers two modes via a dropdown: **Outstanding Items** (base name `<Project Title>_DPVT_Out`) and **All Items** (`<Project Title>_DPVT_All`) — the mode is named outright and abbreviated, not appended as an extra suffix, to keep names short. The full workbook lists **every** item per unit — including `S`-prefixed items — each tagged with a per-unit **Status** (Done / Outstanding / Not Applicable) shown by a Status column and a row tint (green Done / plain Outstanding / grey N/A); its Overview adds a Status Key legend. Mode is threaded through `buildExportPlan(model, project, { mode })` and `buildExportWorkbook({ …, mode })`, and selects the base-name word.
+- **Item scope comes from the workbook.** The Sections sheet's optional `Scope` column
+  marks a section `project` (its items carry **one tick and one comment per project**,
+  stored in `project.checks` / `project.comments`) or `unit`/blank (per-unit, as
+  before). An unrecognised value throws `ModelError`. Project-level items show **no unit
+  pills and no unit picker**, are excluded from per-unit progress but included in the
+  project total (`computeScopeProgress`), and export to **one extra sheet after
+  Overview** named from the project-scoped section names (`Reports & Statements`) —
+  **omitted when it would have no rows**, so a finished Outstanding export has no extra
+  tab. The real checklist marks `F` (Reports) and `G` (Statements) as `project`.
 - **No em dashes in text the export *generates*.** The prose `exportWorkbook.js` writes
   itself — Overview how-to notes, the Status Key legend, empty-state lines, column
   headers — uses commas, colons or full stops instead of `—`/`–`. This is a house-style
@@ -148,4 +158,6 @@ Setup now loads a single `.xlsx` (no ZIP, no bundled example files); the workboo
 sheet carries `Example` / `Link` / `HyperLink` columns and example links open as URLs in a new
 browser tab rather than an in-app lightbox.
 
-No specific in-flight task at last update — driven by ad-hoc requests in `Context.txt` / chat.
+Project-level items (marked in the workbook's Sections sheet with `Scope: project`) now track
+one tick and one comment per project rather than per unit, show no lift tags, and export to
+their own sheet in the workbook — a feature that lands on this branch.
