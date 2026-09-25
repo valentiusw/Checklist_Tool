@@ -37,11 +37,15 @@ export function normalizeDetails(d) {
 
 function migrateProject(p) {
   if (!p) return p;
-  if (Array.isArray(p.units)) return { ...p, details: normalizeDetails(p.details) };
-  // Legacy flat project -> wrap into a single unit.
+  if (Array.isArray(p.units)) {
+    return { ...p, details: normalizeDetails(p.details), checks: p.checks || {}, comments: p.comments || {} };
+  }
+  // Legacy flat project -> wrap into a single unit. Its checks/comments are that
+  // unit's, not the project's, so project-level starts empty.
   return {
     id: p.id, name: p.name, updatedAt: p.updatedAt,
     details: normalizeDetails(p.details),
+    checks: {}, comments: {},
     units: [{ id: newId('u'), name: 'Unit 1', inputs: p.inputs || {}, checks: p.checks || {}, comments: p.comments || {} }],
   };
 }
@@ -139,6 +143,7 @@ export function createProjectStore({ onChange } = {}) {
     const project = {
       id: newId('p'), name: name || 'Untitled project',
       details: emptyDetails(),
+      checks: {}, comments: {},
       units: [newUnit('Unit 1')], updatedAt: new Date().toISOString(),
     };
     projects.set(project.id, clone(project));
@@ -154,6 +159,8 @@ export function createProjectStore({ onChange } = {}) {
     return JSON.stringify({
       name: project.name,
       details: normalizeDetails(project.details),
+      checks: project.checks || {},
+      comments: project.comments || {},
       units: (project.units || []).map(u => ({
         name: u.name, inputs: u.inputs || {}, checks: u.checks || {}, comments: u.comments || {},
       })),
@@ -163,10 +170,24 @@ export function createProjectStore({ onChange } = {}) {
   function importProject(jsonString) {
     const data = JSON.parse(jsonString);
     let units;
-    if (Array.isArray(data.units)) units = data.units.map(normalizeUnit);
-    else units = [{ id: newId('u'), name: 'Unit 1', inputs: data.inputs || {}, checks: data.checks || {}, comments: data.comments || {} }];
+    // Project-level maps exist only in the unit-shaped format. In the legacy flat
+    // format those same keys are the single unit's, so they must not be lifted.
+    let checks = {};
+    let comments = {};
+    if (Array.isArray(data.units)) {
+      units = data.units.map(normalizeUnit);
+      checks = data.checks || {};
+      comments = data.comments || {};
+    } else {
+      units = [{ id: newId('u'), name: 'Unit 1', inputs: data.inputs || {}, checks: data.checks || {}, comments: data.comments || {} }];
+    }
     if (units.length === 0) units = [newUnit('Unit 1')];
-    const project = { id: newId('p'), name: data.name || 'Imported project', details: normalizeDetails(data.details), units, updatedAt: new Date().toISOString() };
+    const project = {
+      id: newId('p'), name: data.name || 'Imported project',
+      details: normalizeDetails(data.details),
+      checks, comments, units,
+      updatedAt: new Date().toISOString(),
+    };
     projects.set(project.id, clone(project));
     notify('upsert', project.id);
     return clone(project);
