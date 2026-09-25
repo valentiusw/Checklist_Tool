@@ -165,3 +165,80 @@ test("a user's own em dashes survive: comments and checklist text are not rewrit
   }
 });
 
+// ---- the project-level sheet ------------------------------------------------
+
+const scopeSectionRows = [
+  ['Prefix', 'Name', 'Scope'],
+  ['A', 'Architectural', ''],
+  ['F', 'Reports', 'project'],
+  ['G', 'Statements', 'project'],
+];
+const scopeChecklistRows = [
+  ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+  ['A01', '', 'Per-unit item', 'SL', '', ''],
+  ['F01', '', 'BCA Report', 'SL', '', ''],
+  ['G01', '', 'Redundancy Statement', 'RDM', '', ''],
+];
+const scopeModel = buildModel({ checklistRows: scopeChecklistRows, inputRows, sectionRows: scopeSectionRows });
+
+function buildScoped(mode, project) {
+  const plan = buildExportPlan(scopeModel, project, { mode });
+  return buildExportWorkbook({ XLSX, model: scopeModel, project, plan, reviewDate: '25/09/2026', mode });
+}
+const scopedProject = (over = {}) => ({
+  name: 'Smoke Tower', details: {}, checks: {}, comments: {},
+  units: [{ id: 'u1', name: 'Lift 1', inputs: {}, checks: {}, comments: {} }],
+  ...over,
+});
+
+test('the project-level sheet sits right after Overview', () => {
+  const wb = buildScoped('outstanding', scopedProject());
+  assert.deepEqual(wb.SheetNames, ['Overview', 'Reports & Statements', 'Lift 1']);
+});
+
+test('the project-level sheet is named from the project-scoped sections', () => {
+  const oneSection = buildModel({
+    checklistRows: [scopeChecklistRows[0], scopeChecklistRows[1], scopeChecklistRows[2]],
+    inputRows,
+    sectionRows: [['Prefix', 'Name', 'Scope'], ['A', 'Architectural', ''], ['F', 'Reports', 'project']],
+  });
+  const project = scopedProject();
+  const plan = buildExportPlan(oneSection, project, { mode: 'outstanding' });
+  const wb = buildExportWorkbook({ XLSX, model: oneSection, project, plan, reviewDate: '25/09/2026', mode: 'outstanding' });
+  assert.deepEqual(wb.SheetNames, ['Overview', 'Reports', 'Lift 1']);
+});
+
+test('no project-level sheet when nothing is outstanding', () => {
+  const wb = buildScoped('outstanding', scopedProject({ checks: { F01: true, G01: true } }));
+  assert.deepEqual(wb.SheetNames, ['Overview', 'Lift 1'], 'the extra tab is omitted entirely');
+});
+
+test('no project-level sheet when the workbook has no project-scoped sections', () => {
+  const wb = build('outstanding'); // the module-level unit-scoped fixture
+  assert.ok(!wb.SheetNames.includes('Reports & Statements'));
+});
+
+test('the full export always carries the project-level sheet, even all-done', () => {
+  const wb = buildScoped('full', scopedProject({ checks: { F01: true, G01: true } }));
+  assert.deepEqual(wb.SheetNames, ['Overview', 'Reports & Statements', 'Lift 1']);
+});
+
+test('the project-level sheet groups its rows into discipline bands', () => {
+  const ws = buildScoped('outstanding', scopedProject()).Sheets['Reports & Statements'];
+  const text = Object.entries(ws)
+    .filter(([addr]) => !addr.startsWith('!'))
+    .map(([, cell]) => String(cell.v || ''));
+  assert.ok(text.includes('REPORTS'), 'REPORTS band');
+  assert.ok(text.includes('STATEMENTS'), 'STATEMENTS band');
+  assert.ok(text.includes('SL comments'), 'same header as a unit sheet');
+  assert.ok(text.includes('BCA Report'));
+});
+
+test('the Overview gains a progress meter for the project-level items', () => {
+  const ws = buildScoped('outstanding', scopedProject()).Sheets.Overview;
+  const text = Object.entries(ws)
+    .filter(([addr]) => !addr.startsWith('!'))
+    .map(([, cell]) => String(cell.v || ''));
+  assert.ok(text.includes('Reports & Statements'), 'meter label on the Overview');
+});
+

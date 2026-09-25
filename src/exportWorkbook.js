@@ -4,7 +4,8 @@
 // Pure logic: the vendored `XLSX` (xlsx-js-style) is injected so this module has
 // no global/DOM dependency and can be exercised in Node. The library can style
 // cells but cannot embed images, so branding is done with styled cells (no logo).
-import { computeProgress, computeProjectProgress } from './exporter.js';
+import { computeProgress, computeProjectProgress, computeScopeProgress } from './exporter.js';
+import { projectScopeLabel } from './itemScope.js';
 
 // ---- palette ---------------------------------------------------------------
 const RED_DK = 'B30510';   // unit-sheet header + discipline-band text
@@ -145,6 +146,9 @@ function buildOverviewSheet(XLSX, model, project, reviewDate, mode = 'outstandin
     const p = computeProgress(model, unit);
     meter(unit.name || 'Unit', Math.round(p.ratio * 100));
   }
+  // Project-level items get one meter for the whole project, not one per unit.
+  const scope = computeScopeProgress(model, project);
+  if (scope.applicable > 0) meter(projectScopeLabel(model), Math.round(scope.ratio * 100));
   const overall = computeProjectProgress(model, project);
   meter('Overall', Math.round(overall.ratio * 100), true);
   r++;
@@ -311,6 +315,17 @@ export function buildExportWorkbook({ XLSX, model, project, plan, reviewDate, mo
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buildOverviewSheet(XLSX, model, project, reviewDate, mode), 'Overview');
   const used = new Set(['Overview']);
+  // Project-level items (Reports/Statements) come first, before the lifts. The
+  // sheet is omitted when it would have no rows: an outstanding export with every
+  // report done carries no extra tab.
+  const scopeRows = plan.projectItems || [];
+  if (scopeRows.length) {
+    const scopePlan = { name: projectScopeLabel(model), rows: scopeRows };
+    const sheet = mode === 'full'
+      ? buildUnitSheetFull(XLSX, scopePlan, model)
+      : buildUnitSheet(XLSX, scopePlan, model);
+    XLSX.utils.book_append_sheet(wb, sheet, sanitizeSheetName(scopePlan.name, used));
+  }
   for (const unitPlan of plan.units) {
     const sheet = mode === 'full'
       ? buildUnitSheetFull(XLSX, unitPlan, model)
