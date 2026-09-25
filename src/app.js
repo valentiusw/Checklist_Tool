@@ -616,7 +616,7 @@ function renderProjectDetails(projectId) {
           <span class="unit-name">${escapeHtml(projectScopeLabel(state.model))}</span>
           <div class="progress progress-sm"><div class="progress-bar" style="width:${Math.round(scope.ratio * 100)}%"></div></div>
           <span class="unit-count muted">${scope.checked} / ${scope.applicable}</span>
-          <span></span>
+          <span class="ql-chevron-space" aria-hidden="true"></span>
         </div>
       </div>`;
   document.getElementById('ql-body').innerHTML = `

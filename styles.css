@@ -1317,6 +1317,9 @@ html:not([data-screen="dashboard"]) .dash-wrap { display: none; }
 .ql-unit-head .unit-count { font-size: 13px; white-space: nowrap; }
 .ql-chevron { transition: transform .15s ease; color: var(--text-muted); }
 .ql-unit-head.open .ql-chevron { transform: rotate(180deg); }
+/* Holds the grid column the chevron occupies on a unit row, so the static
+   project-level row's bar and count line up with the rows above it. */
+.ql-chevron-space { width: 16px; }
 /* The project-level progress row is a static readout, not an expandable unit. */
 .ql-unit-static { cursor: default; }
 .ql-unit-specs { padding: 2px 0 14px; }
