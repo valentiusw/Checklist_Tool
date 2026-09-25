@@ -105,7 +105,7 @@ function rebuildModel(data) {
       i.example || i.exampleFile || '', i.exampleLink || '']),
   ];
   const sectionRows = (data.sections && data.sections.length)
-    ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
+    ? [['Prefix', 'Name', 'Scope'], ...data.sections.map(s => [s.prefix, s.name, s.scope || ''])]
     : undefined;
   const glossaryRows = (data.glossary && data.glossary.length)
     ? [['Term', 'Meaning'], ...data.glossary.map(g => [g.term, g.meaning])]
@@ -1662,6 +1662,7 @@ async function init() {
     if (confirm('Restore projects from this file? Projects with the same id will be overwritten.')) {
       try {
         const n = state.store.importLibrary(await file.text());
+        migrateScopedItems();
         alert(`Restored ${n} project${n === 1 ? '' : 's'} into your library.`);
         renderDashboard();
       } catch (err) {
