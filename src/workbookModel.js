@@ -33,9 +33,12 @@ function headerIndex(rows, requiredCols, sheetName, optionalCols = []) {
     idx[col] = i;
   }
   // Optional columns are simply absent from idx when the sheet omits them;
-  // cell() then reads undefined and yields ''.
+  // cell() then reads undefined and yields ''. Matched case-insensitively: these
+  // sheets are hand-edited, and a mistyped "scope" would otherwise disable a
+  // whole feature silently rather than erroring.
   for (const col of optionalCols) {
-    const i = header.indexOf(col);
+    const want = col.toLowerCase();
+    const i = header.findIndex(h => h.toLowerCase() === want);
     if (i !== -1) idx[col] = i;
   }
   return idx;

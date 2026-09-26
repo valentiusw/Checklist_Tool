@@ -49,14 +49,14 @@ function fullCell(status, { bold = false, wrap = true, link = false } = {}) {
 // em or en dashes. Checklist text and comments are the user's own and pass through
 // verbatim, dashes included.
 const NOTES = [
-  'This workbook lists only the OUTSTANDING (unchecked) compliance items, one tab per unit.',
+  'This workbook lists only the OUTSTANDING (unchecked) compliance items: one tab per unit, plus a tab for any items that apply to the whole project rather than to a single unit.',
   'Outstanding items are grouped by discipline (from the Sections defined in the checklist).',
   'The Overview tab summarises progress for each unit as at the review date shown above.',
   'Items with an entry in the Example column link to a supporting file online. Click to open it in your browser.',
 ];
 
 const NOTES_FULL = [
-  'This workbook lists ALL compliance items, one tab per unit, with each item marked Done, Outstanding, or Not Applicable for that unit.',
+  'This workbook lists ALL compliance items: one tab per unit, plus a tab for any items that apply to the whole project rather than to a single unit. Each item is marked Done, Outstanding, or Not Applicable.',
   'Items are grouped by discipline (from the Sections defined in the checklist).',
   'Row colours: green = Done (checked); plain = Outstanding (applicable, not yet checked); grey = Not Applicable to that unit.',
   'The Overview tab summarises progress for each unit as at the review date shown above.',
@@ -162,9 +162,9 @@ function buildOverviewSheet(XLSX, model, project, reviewDate, mode = 'outstandin
       band(ws, r, 2, N - 1, label, { font: { color: { rgb: INK } }, alignment: { vertical: 'center', indent: 1 } });
       rh(r, 18); r++;
     };
-    legendRow(DONE_FILL, 'Done: applicable to this unit and checked complete');
+    legendRow(DONE_FILL, 'Done: applicable here and checked complete');
     legendRow(WHITE, 'Outstanding: applicable but not yet checked');
-    legendRow(NA_FILL, "Not Applicable: item's condition does not apply to this unit");
+    legendRow(NA_FILL, "Not Applicable: the item's condition does not apply here");
     r++;
   }
 

@@ -127,7 +127,7 @@ cell, so any format (PNG, JPG, SVG, PDF, …) works.
 | Prefix | Name | Scope |
 |--------|------|-------|
 
-Maps the **leading letters of each Item ID** to a section name (`A` -> `Architectural`).
+Maps the **leading letters of each Item ID** to a section name (`A` → `Architectural`).
 Items are grouped and filterable by section. If this sheet is absent, the bare prefix
 letter is used as the section name.
 

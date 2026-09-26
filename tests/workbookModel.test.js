@@ -211,6 +211,19 @@ test('an unrecognised Scope value throws ModelError naming it', () => {
   });
 });
 
+test('a lower-case "scope" header is matched case-insensitively', () => {
+  const sectionRows = [
+    ['Prefix', 'Name', 'scope'],
+    ['F', 'Reports', 'project'],
+  ];
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['F02', '', 'BCA Report', '', '', ''],
+  ];
+  const model = buildModel({ checklistRows: checklist, inputRows, sectionRows });
+  assert.equal(model.items[0].scope, 'project');
+});
+
 test('model.sections carries each section scope', () => {
   const sectionRows = [['Prefix', 'Name', 'Scope'], ['A', 'Architectural', ''], ['F', 'Reports', 'project']];
   const checklist = [
