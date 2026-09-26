@@ -12,3 +12,8 @@ schindler_logo.jpg
 # because this repo must be public for free GitHub Pages hosting.
 CLAUDE.md
 Context.txt
+
+# This feature's spec and plan quote the real checklist's structure and one
+# internal design threshold. Kept locally, never tracked, for the same reason.
+docs/superpowers/specs/2026-09-25-project-level-items-design.md
+docs/superpowers/plans/2026-09-25-project-level-items.md
