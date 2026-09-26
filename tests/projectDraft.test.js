@@ -104,3 +104,9 @@ test('mutating a draft from getProject does not affect the store (cancel safety)
 test('newBlankDraft seeds empty details', () => {
   assert.deepEqual(newBlankDraft(model).details, emptyDetails());
 });
+
+test('newBlankDraft seeds empty project-level checks and comments', () => {
+  const draft = newBlankDraft(model);
+  assert.deepEqual(draft.checks, {});
+  assert.deepEqual(draft.comments, {});
+});

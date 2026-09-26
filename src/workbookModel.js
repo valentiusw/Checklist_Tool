@@ -15,6 +15,11 @@ const CHECKLIST_COLS = ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 
 const CHECKLIST_OPTIONAL_COLS = ['Link'];
 const INPUT_COLS = ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'];
 const SECTION_COLS = ['Prefix', 'Name'];
+// "Scope" marks a whole section as belonging to the project rather than to each
+// unit (Reports/Statements). Optional, so a workbook without the column keeps
+// every section per-unit and behaves exactly as before.
+const SECTION_OPTIONAL_COLS = ['Scope'];
+const VALID_SCOPES = ['unit', 'project'];
 const GLOSSARY_COLS = ['Term', 'Meaning'];
 const VALID_TYPES = ['Choice', 'Float', 'Integer', 'Boolean'];
 
@@ -28,9 +33,12 @@ function headerIndex(rows, requiredCols, sheetName, optionalCols = []) {
     idx[col] = i;
   }
   // Optional columns are simply absent from idx when the sheet omits them;
-  // cell() then reads undefined and yields ''.
+  // cell() then reads undefined and yields ''. Matched case-insensitively: these
+  // sheets are hand-edited, and a mistyped "scope" would otherwise disable a
+  // whole feature silently rather than erroring.
   for (const col of optionalCols) {
-    const i = header.indexOf(col);
+    const want = col.toLowerCase();
+    const i = header.findIndex(h => h.toLowerCase() === want);
     if (i !== -1) idx[col] = i;
   }
   return idx;
@@ -79,19 +87,30 @@ function sectionPrefix(id) {
 
 function buildSectionMap(sectionRows) {
   if (!sectionRows || sectionRows.length === 0) return {};
-  const idx = headerIndex(sectionRows, SECTION_COLS, 'Sections');
+  const idx = headerIndex(sectionRows, SECTION_COLS, 'Sections', SECTION_OPTIONAL_COLS);
   const map = {};
   for (let r = 1; r < sectionRows.length; r++) {
     const prefix = cell(sectionRows[r], idx['Prefix']).toUpperCase();
     if (!prefix) continue;
-    map[prefix] = cell(sectionRows[r], idx['Name']) || prefix;
+    const rawScope = cell(sectionRows[r], idx['Scope']);
+    const scope = rawScope.toLowerCase();
+    if (scope && !VALID_SCOPES.includes(scope)) {
+      throw new ModelError(`Section "${prefix}" has invalid Scope "${rawScope}" (must be one of ${VALID_SCOPES.join(', ')})`);
+    }
+    map[prefix] = {
+      name: cell(sectionRows[r], idx['Name']) || prefix,
+      scope: scope || 'unit',
+    };
   }
   return map;
 }
 
-function resolveSectionName(prefix, sectionMap) {
-  if (prefix === '') return 'Other';
-  return sectionMap[prefix] || prefix;
+// Unlisted prefixes (and the empty prefix) are per-unit, as they were before
+// Scope existed.
+function resolveSection(prefix, sectionMap) {
+  if (prefix === '') return { name: 'Other', scope: 'unit' };
+  const entry = sectionMap[prefix];
+  return { name: (entry && entry.name) || prefix, scope: (entry && entry.scope) || 'unit' };
 }
 
 function buildGlossary(glossaryRows) {
@@ -114,6 +133,7 @@ function buildItems(checklistRows, inputDefs, sectionMap) {
     const id = cell(row, idx['Item ID']);
     if (!id) continue;
     const prefix = sectionPrefix(id);
+    const section = resolveSection(prefix, sectionMap);
     const conditionsText = cell(row, idx['Conditions']);
     let condition = null;
     if (conditionsText) {
@@ -128,7 +148,8 @@ function buildItems(checklistRows, inputDefs, sectionMap) {
     items.push({
       id,
       sectionPrefix: prefix,
-      section: resolveSectionName(prefix, sectionMap),
+      section: section.name,
+      scope: section.scope,
       conditionsText,
       condition,
       description: cell(row, idx['Description']),
@@ -153,7 +174,7 @@ export function buildModel({ checklistRows, inputRows, sectionRows, glossaryRows
   for (const item of items) {
     if (seen.has(item.sectionPrefix)) continue;
     seen.add(item.sectionPrefix);
-    sections.push({ prefix: item.sectionPrefix, name: item.section });
+    sections.push({ prefix: item.sectionPrefix, name: item.section, scope: item.scope });
   }
   const glossary = buildGlossary(glossaryRows);
   return { items, inputs, inputDefs, sections, glossary };

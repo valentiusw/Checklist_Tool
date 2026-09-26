@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildModel } from '../src/workbookModel.js';
-import { applicableItems, computeProgress, computeProjectProgress, buildExportPlan } from '../src/exporter.js';
+import { applicableItems, computeProgress, computeProjectProgress, buildExportPlan, computeScopeProgress } from '../src/exporter.js';
 
 const inputRows = [
   ['Name', 'Type', 'Label', 'Unit', 'Choices', 'Default'],
@@ -146,4 +146,110 @@ test('buildExportPlan full mode includes S-items; outstanding excludes them', ()
   assert.deepEqual(full.units[0].rows.map(r => r.id), ['A08', 'S01']);
   const out = buildExportPlan(m, project);
   assert.deepEqual(out.units[0].rows.map(r => r.id), ['A08']);
+});
+
+// ---- project-level items ----------------------------------------------------
+
+const scopeSectionRows = [
+  ['Prefix', 'Name', 'Scope'],
+  ['A', 'Architectural', ''],
+  ['F', 'Reports', 'project'],
+];
+const scopeChecklistRows = [
+  ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+  ['A01', '', 'Per-unit item', 'SL', '', ''],
+  ['F01', '', 'BCA Report', 'SL', '', ''],
+  ['F02', 'MaxFFLInt: >11', 'Tall-building report', 'SL', '', ''],
+];
+const scopeModel = buildModel({ checklistRows: scopeChecklistRows, inputRows, sectionRows: scopeSectionRows });
+const scopeProject = () => ({
+  name: 'Smoke Tower',
+  checks: {}, comments: {},
+  units: [
+    { id: 'u1', name: 'Lift 1', inputs: { PitToEarth: true, MaxFFLInt: 20 }, checks: {}, comments: {} },
+    { id: 'u2', name: 'Lift 2', inputs: { PitToEarth: true, MaxFFLInt: 4 }, checks: {}, comments: {} },
+  ],
+});
+
+test('computeProgress excludes project-level items from a unit', () => {
+  const p = computeProgress(scopeModel, scopeProject().units[0]);
+  assert.deepEqual(p, { checked: 0, applicable: 1, ratio: 0 }, 'only A01 counts');
+});
+
+test('a unit can reach 100% with a report outstanding', () => {
+  const project = scopeProject();
+  project.units[0].checks.A01 = true;
+  assert.equal(computeProgress(scopeModel, project.units[0]).ratio, 1);
+});
+
+test('computeScopeProgress counts each project item once, any-unit applicable', () => {
+  const project = scopeProject();
+  // F01 always applies; F02 applies because Lift 1 has MaxFFLInt 20.
+  assert.deepEqual(computeScopeProgress(scopeModel, project), { checked: 0, applicable: 2, ratio: 0 });
+  project.checks.F01 = true;
+  assert.deepEqual(computeScopeProgress(scopeModel, project), { checked: 1, applicable: 2, ratio: 0.5 });
+});
+
+test('computeProjectProgress is the units plus the project-level items', () => {
+  const project = scopeProject();
+  project.units[0].checks.A01 = true;
+  project.units[1].checks.A01 = true;
+  const all = computeProjectProgress(scopeModel, project);
+  assert.deepEqual(all, { checked: 2, applicable: 4, ratio: 0.5 }, '2 unit items + 2 project items');
+});
+
+test('the overall bar is not 100% while a report is outstanding', () => {
+  const project = scopeProject();
+  project.units[0].checks.A01 = true;
+  project.units[1].checks.A01 = true;
+  project.checks.F01 = true;
+  assert.notEqual(computeProjectProgress(scopeModel, project).ratio, 1);
+});
+
+test('buildExportPlan keeps project items out of the unit sheets', () => {
+  const plan = buildExportPlan(scopeModel, scopeProject(), { mode: 'outstanding' });
+  for (const unit of plan.units) {
+    assert.deepEqual(unit.rows.map(r => r.id), ['A01'], `${unit.name} holds only its own items`);
+  }
+});
+
+test('buildExportPlan lists outstanding project items once, with the project comment', () => {
+  const project = scopeProject();
+  project.comments.F01 = 'Issued 12/09';
+  const plan = buildExportPlan(scopeModel, project, { mode: 'outstanding' });
+  assert.deepEqual(plan.projectItems.map(r => r.id), ['F01', 'F02']);
+  assert.equal(plan.projectItems[0].comment, 'Issued 12/09');
+  assert.equal(plan.projectItems[0].section, 'Reports');
+});
+
+test('a ticked project item drops out of the outstanding plan', () => {
+  const project = scopeProject();
+  project.checks.F01 = true;
+  const plan = buildExportPlan(scopeModel, project, { mode: 'outstanding' });
+  assert.deepEqual(plan.projectItems.map(r => r.id), ['F02']);
+});
+
+test('a project item applicable to no unit is left out of the outstanding plan', () => {
+  const project = scopeProject();
+  project.units[0].inputs.MaxFFLInt = 4; // now no unit is over 11
+  const plan = buildExportPlan(scopeModel, project, { mode: 'outstanding' });
+  assert.deepEqual(plan.projectItems.map(r => r.id), ['F01']);
+});
+
+test('the full plan lists every project item with a status, na included', () => {
+  const project = scopeProject();
+  project.units[0].inputs.MaxFFLInt = 4; // F02 applies to nobody
+  project.checks.F01 = true;
+  const plan = buildExportPlan(scopeModel, project, { mode: 'full' });
+  assert.deepEqual(plan.projectItems.map(r => ({ id: r.id, status: r.status })), [
+    { id: 'F01', status: 'done' },
+    { id: 'F02', status: 'na' },
+  ]);
+});
+
+test('the full plan still keeps project items off the unit sheets', () => {
+  const plan = buildExportPlan(scopeModel, scopeProject(), { mode: 'full' });
+  for (const unit of plan.units) {
+    assert.ok(!unit.rows.some(r => r.id.startsWith('F')), `${unit.name} has no project items`);
+  }
 });

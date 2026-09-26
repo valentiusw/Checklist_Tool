@@ -779,6 +779,22 @@ html.no-item-tint .item.partial {
 
 .section-count { font-weight: 600; letter-spacing: 0; }
 
+/* "Project-wide" tag on a section whose items belong to the project rather than
+   to each unit (Reports/Statements), explaining the absent unit pills. */
+.scope-badge {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: none;
+  vertical-align: middle;
+}
+
 /* ---- About tables ----------------------------------------------------- */
 
 .info-table {
@@ -1301,6 +1317,11 @@ html:not([data-screen="dashboard"]) .dash-wrap { display: none; }
 .ql-unit-head .unit-count { font-size: 13px; white-space: nowrap; }
 .ql-chevron { transition: transform .15s ease; color: var(--text-muted); }
 .ql-unit-head.open .ql-chevron { transform: rotate(180deg); }
+/* Holds the grid column the chevron occupies on a unit row, so the static
+   project-level row's bar and count line up with the rows above it. */
+.ql-chevron-space { width: 16px; }
+/* The project-level progress row is a static readout, not an expandable unit. */
+.ql-unit-static { cursor: default; }
 .ql-unit-specs { padding: 2px 0 14px; }
 
 /* Export dropdown (reuses .new-menu styling; right-aligned under its trigger). */

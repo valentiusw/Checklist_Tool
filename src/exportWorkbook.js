@@ -4,7 +4,8 @@
 // Pure logic: the vendored `XLSX` (xlsx-js-style) is injected so this module has
 // no global/DOM dependency and can be exercised in Node. The library can style
 // cells but cannot embed images, so branding is done with styled cells (no logo).
-import { computeProgress, computeProjectProgress } from './exporter.js';
+import { computeProgress, computeProjectProgress, computeScopeProgress } from './exporter.js';
+import { projectScopeLabel } from './itemScope.js';
 
 // ---- palette ---------------------------------------------------------------
 const RED_DK = 'B30510';   // unit-sheet header + discipline-band text
@@ -24,8 +25,11 @@ const NA_FILL = 'F0F1F3';    // full-export "Not Applicable" row tint (grey)
 const NA_TEXT = '9AA1AB';    // muted text on N/A rows
 
 const OVERVIEW_COLS = 16;
-const UNIT_HEADER = ['Item ID', 'Description', 'Code', 'Comments', 'Example'];
-const UNIT_HEADER_FULL = ['Item ID', 'Description', 'Code', 'Status', 'Comments', 'Example'];
+const UNIT_HEADER = ['Item ID', 'Description', 'Code', 'SL comments', 'Example'];
+const UNIT_HEADER_FULL = ['Item ID', 'Description', 'Code', 'Status', 'SL comments', 'Example'];
+// Comments read as prose, so the column is wide; the row-height heuristics below
+// divide by the same number to guess how many lines a comment wraps to.
+const COMMENT_WCH = 50;
 const STATUS_TEXT = { done: 'Done', outstanding: 'Outstanding', na: 'N/A' };
 
 // Per-cell style for a full-export row, tinted by status. `bd`/`fill` are module-scope.
@@ -41,21 +45,22 @@ function fullCell(status, { bold = false, wrap = true, link = false } = {}) {
   return s;
 }
 
+// Text this module generates itself (notes, legends, empty states, headers) uses no
+// em or en dashes. Checklist text and comments are the user's own and pass through
+// verbatim, dashes included.
 const NOTES = [
-  'This workbook lists only the OUTSTANDING (unchecked) compliance items — one tab per unit.',
+  'This workbook lists only the OUTSTANDING (unchecked) compliance items: one tab per unit, plus a tab for any items that apply to the whole project rather than to a single unit.',
   'Outstanding items are grouped by discipline (from the Sections defined in the checklist).',
   'The Overview tab summarises progress for each unit as at the review date shown above.',
-  'Complete the highlighted Reviewed By and Contact fields before circulating.',
-  'Items with an entry in the Example column link to a supporting file online — click to open it in your browser.',
+  'Items with an entry in the Example column link to a supporting file online. Click to open it in your browser.',
 ];
 
 const NOTES_FULL = [
-  'This workbook lists ALL compliance items — one tab per unit — with each item marked Done, Outstanding, or Not Applicable for that unit.',
+  'This workbook lists ALL compliance items: one tab per unit, plus a tab for any items that apply to the whole project rather than to a single unit. Each item is marked Done, Outstanding, or Not Applicable.',
   'Items are grouped by discipline (from the Sections defined in the checklist).',
   'Row colours: green = Done (checked); plain = Outstanding (applicable, not yet checked); grey = Not Applicable to that unit.',
   'The Overview tab summarises progress for each unit as at the review date shown above.',
-  'Complete the highlighted Reviewed By and Contact fields before circulating.',
-  'Items with an entry in the Example column link to a supporting file online — click to open it in your browser.',
+  'Items with an entry in the Example column link to a supporting file online. Click to open it in your browser.',
 ];
 
 // ---- styled-sheet builder (XLSX injected) ----------------------------------
@@ -141,6 +146,9 @@ function buildOverviewSheet(XLSX, model, project, reviewDate, mode = 'outstandin
     const p = computeProgress(model, unit);
     meter(unit.name || 'Unit', Math.round(p.ratio * 100));
   }
+  // Project-level items get one meter for the whole project, not one per unit.
+  const scope = computeScopeProgress(model, project);
+  if (scope.applicable > 0) meter(projectScopeLabel(model), Math.round(scope.ratio * 100));
   const overall = computeProjectProgress(model, project);
   meter('Overall', Math.round(overall.ratio * 100), true);
   r++;
@@ -154,9 +162,9 @@ function buildOverviewSheet(XLSX, model, project, reviewDate, mode = 'outstandin
       band(ws, r, 2, N - 1, label, { font: { color: { rgb: INK } }, alignment: { vertical: 'center', indent: 1 } });
       rh(r, 18); r++;
     };
-    legendRow(DONE_FILL, 'Done — applicable to this unit and checked complete');
-    legendRow(WHITE, 'Outstanding — applicable but not yet checked');
-    legendRow(NA_FILL, "Not Applicable — item's condition does not apply to this unit");
+    legendRow(DONE_FILL, 'Done: applicable here and checked complete');
+    legendRow(WHITE, 'Outstanding: applicable but not yet checked');
+    legendRow(NA_FILL, "Not Applicable: the item's condition does not apply here");
     r++;
   }
 
@@ -208,7 +216,7 @@ function orderedSections(model, rows) {
 function buildUnitSheet(XLSX, unitPlan, model) {
   const { newSheet, put, band, finalize } = makeApi(XLSX);
   const ws = newSheet(UNIT_HEADER.length);
-  ws['!cols'] = [{ wch: 10 }, { wch: 46 }, { wch: 14 }, { wch: 28 }, { wch: 40 }];
+  ws['!cols'] = [{ wch: 10 }, { wch: 46 }, { wch: 14 }, { wch: COMMENT_WCH }, { wch: 40 }];
   const rows = [];
   const rh = (r, hpt) => { rows[r] = { hpt }; };
   let r = 0;
@@ -217,7 +225,7 @@ function buildUnitSheet(XLSX, unitPlan, model) {
   rh(r, 18); r++;
 
   if (!unitPlan.rows.length) {
-    band(ws, r, 0, UNIT_HEADER.length - 1, 'No outstanding items — all applicable checks are complete.', { font: { italic: true, color: { rgb: '2E7D32' } }, alignment: { vertical: 'center', indent: 1 } });
+    band(ws, r, 0, UNIT_HEADER.length - 1, 'No outstanding items. All applicable checks are complete.', { font: { italic: true, color: { rgb: '2E7D32' } }, alignment: { vertical: 'center', indent: 1 } });
     rh(r, 18); r++;
     return finalize(ws);
   }
@@ -239,7 +247,7 @@ function buildUnitSheet(XLSX, unitPlan, model) {
         put(ws, r, 4, it.example || '', { alignment: { vertical: 'top', wrapText: true }, border });
       }
       // rough height: whichever of description/comment wraps to the most lines
-      const lines = Math.max(1, Math.ceil((it.description || '').length / 46), Math.ceil((it.comment || '').length / 28));
+      const lines = Math.max(1, Math.ceil((it.description || '').length / 46), Math.ceil((it.comment || '').length / COMMENT_WCH));
       rh(r, 4 + lines * 14); r++;
     }
   }
@@ -251,7 +259,7 @@ function buildUnitSheet(XLSX, unitPlan, model) {
 function buildUnitSheetFull(XLSX, unitPlan, model) {
   const { newSheet, put, band, finalize } = makeApi(XLSX);
   const ws = newSheet(UNIT_HEADER_FULL.length);
-  ws['!cols'] = [{ wch: 10 }, { wch: 44 }, { wch: 12 }, { wch: 13 }, { wch: 26 }, { wch: 38 }];
+  ws['!cols'] = [{ wch: 10 }, { wch: 44 }, { wch: 12 }, { wch: 13 }, { wch: COMMENT_WCH }, { wch: 38 }];
   const rows = [];
   const rh = (r, hpt) => { rows[r] = { hpt }; };
   let r = 0;
@@ -281,7 +289,7 @@ function buildUnitSheetFull(XLSX, unitPlan, model) {
       } else {
         put(ws, r, 5, it.example || '', fullCell(it.status));
       }
-      const lines = Math.max(1, Math.ceil((it.description || '').length / 44), Math.ceil((it.comment || '').length / 26));
+      const lines = Math.max(1, Math.ceil((it.description || '').length / 44), Math.ceil((it.comment || '').length / COMMENT_WCH));
       rh(r, 4 + lines * 14); r++;
     }
   }
@@ -307,6 +315,17 @@ export function buildExportWorkbook({ XLSX, model, project, plan, reviewDate, mo
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buildOverviewSheet(XLSX, model, project, reviewDate, mode), 'Overview');
   const used = new Set(['Overview']);
+  // Project-level items (Reports/Statements) come first, before the lifts. The
+  // sheet is omitted when it would have no rows: an outstanding export with every
+  // report done carries no extra tab.
+  const scopeRows = plan.projectItems || [];
+  if (scopeRows.length) {
+    const scopePlan = { name: projectScopeLabel(model), rows: scopeRows };
+    const sheet = mode === 'full'
+      ? buildUnitSheetFull(XLSX, scopePlan, model)
+      : buildUnitSheet(XLSX, scopePlan, model);
+    XLSX.utils.book_append_sheet(wb, sheet, sanitizeSheetName(scopePlan.name, used));
+  }
   for (const unitPlan of plan.units) {
     const sheet = mode === 'full'
       ? buildUnitSheetFull(XLSX, unitPlan, model)

@@ -124,12 +124,18 @@ cell, so any format (PNG, JPG, SVG, PDF, …) works.
 
 ### Sheet `Sections` (optional)
 
-| Prefix | Name |
-|--------|------|
+| Prefix | Name | Scope |
+|--------|------|-------|
 
 Maps the **leading letters of each Item ID** to a section name (`A` → `Architectural`).
 Items are grouped and filterable by section. If this sheet is absent, the bare prefix
 letter is used as the section name.
+
+`Scope` is optional. Leave it blank (or write `unit`) for a normal per-lift section.
+Write `project` for a section whose items describe the **building rather than a lift**,
+such as Reports and Statements. Those items carry **one tick and one comment for the
+whole project**, show no lift tags, and are exported to their own sheet. Any other value
+is rejected when the workbook loads.
 
 ### Sheet `Glossary` (optional)
 

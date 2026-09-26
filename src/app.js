@@ -1,6 +1,6 @@
 import { buildModel } from './workbookModel.js';
 import { createProjectStore, normalizeDetails, matchesProjectSearch } from './projectStore.js';
-import { computeProgress, computeProjectProgress, applicableItems, buildExportPlan } from './exporter.js';
+import { computeProgress, computeProjectProgress, computeScopeProgress, applicableItems, buildExportPlan } from './exporter.js';
 import { buildExportWorkbook } from './exportWorkbook.js';
 import * as db from './db.js';
 import { readLegacy } from './legacyMigration.js';
@@ -9,6 +9,9 @@ import { buildSnapshot, parseSnapshot, chooseNewer } from './librarySnapshot.js'
 import { defaultInputValue, validateDraft, newBlankDraft, newDraftUnit } from './projectDraft.js';
 import { itemApplicableUnits, itemCheckState, unifiedItems } from './checklistView.js';
 import { parseClipboardMatrix, applyPasteMatrix } from './unitGrid.js';
+import {
+  isProjectScoped, projectItemChecked, projectItemComment, migrateItemScope, projectScopeLabel,
+} from './itemScope.js';
 
 // Dashboard segmented filter (Active / Pinned / Archived) persists across
 // reloads and navigation so the last-selected view is restored.
@@ -102,7 +105,7 @@ function rebuildModel(data) {
       i.example || i.exampleFile || '', i.exampleLink || '']),
   ];
   const sectionRows = (data.sections && data.sections.length)
-    ? [['Prefix', 'Name'], ...data.sections.map(s => [s.prefix, s.name])]
+    ? [['Prefix', 'Name', 'Scope'], ...data.sections.map(s => [s.prefix, s.name, s.scope || ''])]
     : undefined;
   const glossaryRows = (data.glossary && data.glossary.length)
     ? [['Term', 'Meaning'], ...data.glossary.map(g => [g.term, g.meaning])]
@@ -201,6 +204,7 @@ async function applySnapshot(snap) {
   }
   if (snap.model) { await db.setMeta('model', snap.model); state.model = rebuildModel(snap.model); }
   await db.setMeta('savedAt', snap.savedAt || new Date().toISOString());
+  migrateScopedItems();
 }
 
 async function reconcileWithFile() {
@@ -257,6 +261,7 @@ async function handleSetupFile(file) {
     const model = loadModelFromWorkbook(workbook);
     state.model = model;
     markModelDirty();
+    migrateScopedItems();
     setStatus(`Loaded ${model.items.length} items, ${model.inputs.length} inputs.`, 'ok');
   } catch (err) {
     state.model = null;
@@ -601,13 +606,26 @@ function renderProjectDetails(projectId) {
         <div class="ql-unit-specs" hidden><dl class="inputs-readout">${specs}</dl></div>
       </div>`;
   }).join('');
+  // Project-level items (Reports/Statements) are in no unit's numbers, so they get
+  // their own row — otherwise the unit rows below Overall do not add up to it.
+  // Static, not a toggle: there are no per-unit input specs to reveal.
+  const scope = computeScopeProgress(state.model, project);
+  const scopeRow = scope.applicable === 0 ? '' : `
+      <div class="ql-unit">
+        <div class="ql-unit-head ql-unit-static">
+          <span class="unit-name">${escapeHtml(projectScopeLabel(state.model))}</span>
+          <div class="progress progress-sm"><div class="progress-bar" style="width:${Math.round(scope.ratio * 100)}%"></div></div>
+          <span class="unit-count muted">${scope.checked} / ${scope.applicable}</span>
+          <span class="ql-chevron-space" aria-hidden="true"></span>
+        </div>
+      </div>`;
   document.getElementById('ql-body').innerHTML = `
     <div class="ql-overall">
       <div class="row-between"><span class="ql-overall-label">Overall</span><span class="muted">${checked} / ${applicable} checked</span></div>
       <div class="progress"><div class="progress-bar" style="width:${Math.round(ratio * 100)}%"></div></div>
     </div>
     <h3 class="ql-section">Units</h3>
-    <div class="ql-units">${units}</div>`;
+    <div class="ql-units">${units}${scopeRow}</div>`;
   document.querySelectorAll('#ql-body [data-unit-toggle]').forEach(btn =>
     btn.addEventListener('click', () => {
       const specs = btn.nextElementSibling;
@@ -955,6 +973,19 @@ function saveCurrent(project) {
   state.store.saveProject(project);
 }
 
+// Fold pre-scope per-unit data for project-level items up to the project. Runs
+// wherever the model or the project list changes — including after a workbook
+// reload, since a newly added Scope column can make a section project-level for
+// projects that already exist. Idempotent, and only the projects that actually
+// changed are saved, so updatedAt (and the dashboard's order) is left alone.
+function migrateScopedItems() {
+  if (!state.model) return;
+  for (const s of state.store.listProjects()) {
+    const p = state.store.getProject(s.id);
+    if (p && migrateItemScope(state.model, p)) state.store.saveProject(p);
+  }
+}
+
 
 // Ensure any input added to the workbook since the unit was created has a
 // value, so item conditions evaluate correctly. (Inputs are edited from the
@@ -975,13 +1006,19 @@ function renderItems() {
   let items = unifiedItems(state.model, project);
   if (state.sectionFilter) items = items.filter(i => i.sectionPrefix === state.sectionFilter);
 
-  // Tri-state per item (drives the checkbox and the section counts).
+  // Tri-state per item (drives the checkbox and the section counts). A
+  // project-level item has one tick, so it is only ever 'all' or 'none'.
   const stateById = new Map();
   const unitsById = new Map();
   for (const i of items) {
-    const units = itemApplicableUnits(state.model, project, i);
-    unitsById.set(i.id, units);
-    stateById.set(i.id, itemCheckState(i, units));
+    if (isProjectScoped(i)) {
+      unitsById.set(i.id, []);
+      stateById.set(i.id, projectItemChecked(project, i) ? 'all' : 'none');
+    } else {
+      const units = itemApplicableUnits(state.model, project, i);
+      unitsById.set(i.id, units);
+      stateById.set(i.id, itemCheckState(i, units));
+    }
   }
   const showUnitTags = project.units.length > 1;
 
@@ -1000,12 +1037,15 @@ function renderItems() {
       currentSection = item.section;
       const h = document.createElement('h3');
       h.className = 'section-heading';
-      h.innerHTML = `<span>${escapeHtml(currentSection)}</span>` +
+      // These items belong to the project, not to a lift, so say so where the
+      // missing unit pills would otherwise look like a bug.
+      const badge = isProjectScoped(item) ? '<span class="scope-badge">Project-wide</span>' : '';
+      h.innerHTML = `<span>${escapeHtml(currentSection)}${badge}</span>` +
         `<span class="section-count">${done.get(currentSection) || 0} / ${total.get(currentSection) || 0}</span>`;
       container.appendChild(h);
     }
     const cs = stateById.get(item.id);
-    const tags = showUnitTags ? unitsById.get(item.id).map(u =>
+    const tags = showUnitTags && !isProjectScoped(item) ? unitsById.get(item.id).map(u =>
       `<button type="button" class="unit-tag${(u.checks || {})[item.id] === true ? ' done' : ''}" data-tag-item="${escapeHtml(item.id)}" data-tag-unit="${escapeHtml(u.id)}">${escapeHtml(u.name)}</button>`
     ).join('') : '';
     const div = document.createElement('div');
@@ -1044,11 +1084,16 @@ function renderItems() {
       const itemId = cb.getAttribute('data-check');
       const item = state.model.items.find(i => i.id === itemId);
       const p = getCurrentProject();
-      const applicable = itemApplicableUnits(state.model, p, item);
-      const target = itemCheckState(item, applicable) !== 'all';
-      for (const u of applicable) {
-        const live = p.units.find(x => x.id === u.id);
-        live.checks[itemId] = target;
+      if (isProjectScoped(item)) {
+        p.checks = p.checks || {};
+        p.checks[itemId] = !projectItemChecked(p, item);
+      } else {
+        const applicable = itemApplicableUnits(state.model, p, item);
+        const target = itemCheckState(item, applicable) !== 'all';
+        for (const u of applicable) {
+          const live = p.units.find(x => x.id === u.id);
+          live.checks[itemId] = target;
+        }
       }
       saveCurrent(p);
       renderItems();
@@ -1146,11 +1191,15 @@ function openItemEditor(itemId, unitId) {
   if (!item) return;
   state.detailMode = 'editor';
   applyDetailMode();
-  const applicable = itemApplicableUnits(state.model, getCurrentProject(), item);
   state.editorItemId = itemId;
-  if (unitId && applicable.some(u => u.id === unitId)) state.editorUnitId = unitId;
-  else if (!applicable.some(u => u.id === state.editorUnitId)) {
-    state.editorUnitId = applicable[0] ? applicable[0].id : null;
+  // A project-level item has no unit dimension, so the unit selection is left as
+  // it was for whichever per-unit item is opened next.
+  if (!isProjectScoped(item)) {
+    const applicable = itemApplicableUnits(state.model, getCurrentProject(), item);
+    if (unitId && applicable.some(u => u.id === unitId)) state.editorUnitId = unitId;
+    else if (!applicable.some(u => u.id === state.editorUnitId)) {
+      state.editorUnitId = applicable[0] ? applicable[0].id : null;
+    }
   }
   renderItemEditor();
   highlightSelectedItem();
@@ -1170,11 +1219,14 @@ function renderItemEditor() {
     return;
   }
   empty.hidden = true; body.hidden = false;
-  const showUnitSelect = project.units.length > 1; // single-unit projects need no unit picker
+  // A project-level item carries one tick and one comment for the whole project:
+  // no unit picker, no "All Lifts".
+  const scoped = isProjectScoped(item);
+  const showUnitSelect = !scoped && project.units.length > 1; // single-unit projects need no unit picker
   const showAll = showUnitSelect && applicable.length > 1; // "All Lifts" only when >1 to act on
   const isAll = showAll && state.editorUnitId === ALL_UNITS;
-  const unit = isAll ? null : (applicable.find(u => u.id === state.editorUnitId) || applicable[0]);
-  if (!isAll) state.editorUnitId = unit.id;
+  const unit = (scoped || isAll) ? null : (applicable.find(u => u.id === state.editorUnitId) || applicable[0]);
+  if (unit) state.editorUnitId = unit.id;
 
   // Aggregate view when "All Lifts" is selected: tri-state check + shared comment.
   const allChecked = applicable.every(u => (u.checks || {})[item.id] === true);
@@ -1182,8 +1234,10 @@ function renderItemEditor() {
   const comments = applicable.map(u => (u.comments || {})[item.id] || '');
   const sharedComment = comments.every(c => c === comments[0]) ? comments[0] : '';
 
-  const isChecked = isAll ? allChecked : unit.checks[item.id] === true;
-  const commentValue = isAll ? sharedComment : (unit.comments[item.id] || '');
+  const isChecked = scoped ? projectItemChecked(project, item)
+    : (isAll ? allChecked : unit.checks[item.id] === true);
+  const commentValue = scoped ? projectItemComment(project, item)
+    : (isAll ? sharedComment : (unit.comments[item.id] || ''));
 
   const edCode = displayCode(item.code);
   body.innerHTML = `
@@ -1194,7 +1248,7 @@ function renderItemEditor() {
     ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
     ${showUnitSelect ? `<label class="ed-unit-row"><span>Unit Selection</span><select id="ed-unit-select"></select></label>` : ''}
     <div class="ed-comment-label">Comments</div>
-    <textarea id="ed-comment" class="ed-comment" rows="6" placeholder="${isAll ? 'Comment applied to all lifts…' : 'Comment for this unit…'}"></textarea>
+    <textarea id="ed-comment" class="ed-comment" rows="6" placeholder="${scoped ? 'Comment for this project…' : (isAll ? 'Comment applied to all lifts…' : 'Comment for this unit…')}"></textarea>
     ${item.exampleLink ? `<button type="button" id="ed-see-example" class="ed-see-example">See Example</button>` : ''}`;
 
   const sel = body.querySelector('#ed-unit-select');
@@ -1215,7 +1269,7 @@ function renderItemEditor() {
   }
 
   const check = body.querySelector('#ed-check');
-  const partial = isAll && !allChecked && !noneChecked;
+  const partial = !scoped && isAll && !allChecked && !noneChecked;
   if (isAll) check.indeterminate = partial;
   check.classList.toggle('partial', partial); // amber (not green) indeterminate dash, matching the list
 
@@ -1229,14 +1283,28 @@ function renderItemEditor() {
   const commentBox = body.querySelector('#ed-comment');
   commentBox.value = commentValue;
   commentBox.addEventListener('input', e => {
+    if (scoped) {
+      const p = getCurrentProject();
+      p.comments = p.comments || {};
+      p.comments[item.id] = e.target.value;
+      saveCurrent(p);
+      return;
+    }
     const { p, units } = targetUnits();
     for (const u of units) u.comments[item.id] = e.target.value;
     saveCurrent(p);
   });
   check.addEventListener('change', e => {
-    const { p, units } = targetUnits();
-    for (const u of units) u.checks[item.id] = e.target.checked;
-    saveCurrent(p);
+    if (scoped) {
+      const p = getCurrentProject();
+      p.checks = p.checks || {};
+      p.checks[item.id] = e.target.checked;
+      saveCurrent(p);
+    } else {
+      const { p, units } = targetUnits();
+      for (const u of units) u.checks[item.id] = e.target.checked;
+      saveCurrent(p);
+    }
     renderItems();
     renderProgress();
   });
@@ -1522,6 +1590,7 @@ async function init() {
   }
   state.model = snap.model ? rebuildModel(snap.model) : null;
   state.store.load(snap.projects);
+  migrateScopedItems();
   renderPinnedNav();
   wireSetup();
   wireThemeToggle();
@@ -1571,6 +1640,7 @@ async function init() {
     try {
       const text = await file.text();
       state.store.importProject(text);
+      migrateScopedItems();
       renderDashboard();
     } catch (err) {
       alert('Could not import project: ' + err.message);
@@ -1592,6 +1662,7 @@ async function init() {
     if (confirm('Restore projects from this file? Projects with the same id will be overwritten.')) {
       try {
         const n = state.store.importLibrary(await file.text());
+        migrateScopedItems();
         alert(`Restored ${n} project${n === 1 ? '' : 's'} into your library.`);
         renderDashboard();
       } catch (err) {

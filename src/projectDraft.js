@@ -45,5 +45,12 @@ export function newDraftUnit(model, name) {
 }
 
 export function newBlankDraft(model) {
-  return { id: newId('p'), name: '', details: emptyDetails(), units: [newDraftUnit(model, 'Unit 1')] };
+  return {
+    id: newId('p'), name: '', details: emptyDetails(),
+    // Project-level items (Reports/Statements) live here, not on a unit. Seeded so a
+    // brand-new project has the same shape as a stored one: saveEditor stores the
+    // draft verbatim and saveProject does not run migrateProject.
+    checks: {}, comments: {},
+    units: [newDraftUnit(model, 'Unit 1')],
+  };
 }

@@ -280,3 +280,45 @@ test('matchesProjectSearch tolerates a missing number or missing project', () =>
   assert.equal(matchesProjectSearch(undefined, 'x'), false);
   assert.equal(matchesProjectSearch(undefined, ''), true);
 });
+
+test('a new project has empty project-level checks and comments', () => {
+  const store = createProjectStore();
+  const p = store.createProject('Smoke Tower');
+  assert.deepEqual(p.checks, {});
+  assert.deepEqual(p.comments, {});
+});
+
+test('project-level checks and comments survive serialize -> import', () => {
+  const store = createProjectStore();
+  const p = store.createProject('Smoke Tower');
+  p.checks = { F02: true };
+  p.comments = { F02: 'Issued 12/09' };
+  store.saveProject(p);
+  const restored = store.importProject(store.serializeProject(p));
+  assert.deepEqual(restored.checks, { F02: true });
+  assert.deepEqual(restored.comments, { F02: 'Issued 12/09' });
+});
+
+test('a stored project without the maps loads with empty ones', () => {
+  const store = createProjectStore();
+  store.load([{ id: 'p1', name: 'Old', units: [{ id: 'u1', name: 'Lift 1', inputs: {}, checks: {}, comments: {} }] }]);
+  const p = store.getProject('p1');
+  assert.deepEqual(p.checks, {});
+  assert.deepEqual(p.comments, {});
+});
+
+test('a legacy flat project keeps its checks on the unit, not the project', () => {
+  const store = createProjectStore();
+  store.load([{ id: 'p1', name: 'Flat', inputs: { EH: 10 }, checks: { A01: true }, comments: { A01: 'note' } }]);
+  const p = store.getProject('p1');
+  assert.deepEqual(p.checks, {}, 'project level starts empty');
+  assert.equal(p.units[0].checks.A01, true, 'the flat data is the unit\'s');
+  assert.equal(p.units[0].comments.A01, 'note');
+});
+
+test('importing a legacy flat JSON keeps its checks on the unit', () => {
+  const store = createProjectStore();
+  const p = store.importProject(JSON.stringify({ name: 'Flat', inputs: {}, checks: { A01: true }, comments: {} }));
+  assert.deepEqual(p.checks, {});
+  assert.equal(p.units[0].checks.A01, true);
+});

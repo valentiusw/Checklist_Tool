@@ -37,6 +37,8 @@ checklist = [
     ["C02", "PitToEarth: FALSE", "Earthing of car and well per wiring rules", "AS3000",
      "Earthing continuity required where pit is not to solid earth.",
      "Measure and record earth continuity resistance.", ""],
+    ["F01", "", "DA Consent (NOD document)", "SL", "", "", ""],
+    ["F02", "", "BCA Report", "SL", "", "", ""],
 ]
 
 inputs = [
@@ -47,11 +49,14 @@ inputs = [
     ["BuildingClass", "Choice", "Building classification", "", "Class 2;Class 3;Class 9b", "Class 2"],
 ]
 
+# "Scope" marks a section project-level: its items carry one tick and one comment
+# for the whole project instead of one per unit. Blank means per-unit.
 sections = [
-    ["Prefix", "Name"],
-    ["A", "Architectural"],
-    ["B", "Structural"],
-    ["C", "Electrical"],
+    ["Prefix", "Name", "Scope"],
+    ["A", "Architectural", ""],
+    ["B", "Structural", ""],
+    ["C", "Electrical", ""],
+    ["F", "Reports", "project"],
 ]
 
 glossary = [

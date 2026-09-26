@@ -91,8 +91,8 @@ test('model.sections lists present sections in first-appearance order', () => {
   ];
   const model = buildModel({ checklistRows: checklist, inputRows, sectionRows });
   assert.deepEqual(model.sections, [
-    { prefix: 'B', name: 'Structural' },
-    { prefix: 'A', name: 'Architectural' },
+    { prefix: 'B', name: 'Structural', scope: 'unit' },
+    { prefix: 'A', name: 'Architectural', scope: 'unit' },
   ]);
 });
 
@@ -158,4 +158,82 @@ test('a Link value is trimmed', () => {
   ];
   const model = buildModel({ checklistRows: rows, inputRows });
   assert.equal(model.items[0].exampleLink, 'https://dropbox.com/s/x.png');
+});
+
+test('Scope column marks a section project-level; blank and absent default to unit', () => {
+  const sectionRows = [
+    ['Prefix', 'Name', 'Scope'],
+    ['A', 'Architectural', ''],
+    ['F', 'Reports', 'project'],
+    ['G', 'Statements', 'PROJECT '],
+  ];
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A08', '', 'arch item', '', '', ''],
+    ['F02', '', 'BCA Report', '', '', ''],
+    ['G01', '', 'Redundancy Statement', '', '', ''],
+  ];
+  const model = buildModel({ checklistRows: checklist, inputRows, sectionRows });
+  assert.equal(model.items[0].scope, 'unit');
+  assert.equal(model.items[1].scope, 'project');
+  assert.equal(model.items[2].scope, 'project', 'case and trailing space tolerated');
+});
+
+test('a Sections sheet with no Scope column leaves every section unit-scoped', () => {
+  const sectionRows = [['Prefix', 'Name'], ['F', 'Reports']];
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['F02', '', 'BCA Report', '', '', ''],
+  ];
+  const model = buildModel({ checklistRows: checklist, inputRows, sectionRows });
+  assert.equal(model.items[0].scope, 'unit');
+});
+
+test('an item whose prefix has no Sections row is unit-scoped', () => {
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['Z01', '', 'unlisted prefix', '', '', ''],
+  ];
+  const model = buildModel({ checklistRows: checklist, inputRows });
+  assert.equal(model.items[0].scope, 'unit');
+});
+
+test('an unrecognised Scope value throws ModelError naming it', () => {
+  const sectionRows = [['Prefix', 'Name', 'Scope'], ['F', 'Reports', 'projet']];
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['F02', '', 'BCA Report', '', '', ''],
+  ];
+  assert.throws(() => buildModel({ checklistRows: checklist, inputRows, sectionRows }), err => {
+    assert.equal(err.name, 'ModelError');
+    assert.match(err.message, /projet/);
+    return true;
+  });
+});
+
+test('a lower-case "scope" header is matched case-insensitively', () => {
+  const sectionRows = [
+    ['Prefix', 'Name', 'scope'],
+    ['F', 'Reports', 'project'],
+  ];
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['F02', '', 'BCA Report', '', '', ''],
+  ];
+  const model = buildModel({ checklistRows: checklist, inputRows, sectionRows });
+  assert.equal(model.items[0].scope, 'project');
+});
+
+test('model.sections carries each section scope', () => {
+  const sectionRows = [['Prefix', 'Name', 'Scope'], ['A', 'Architectural', ''], ['F', 'Reports', 'project']];
+  const checklist = [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A01', '', 'a', '', '', ''],
+    ['F01', '', 'f', '', '', ''],
+  ];
+  const model = buildModel({ checklistRows: checklist, inputRows, sectionRows });
+  assert.deepEqual(model.sections, [
+    { prefix: 'A', name: 'Architectural', scope: 'unit' },
+    { prefix: 'F', name: 'Reports', scope: 'project' },
+  ]);
 });
