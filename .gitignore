@@ -6,3 +6,9 @@ node_modules/
 Checklist_14.08.26.xlsx
 Schindler_Logo_Clean.png
 schindler_logo.jpg
+
+# Internal working notes: the orientation doc and the running notes inbox. Kept
+# locally so tooling and future sessions can read them, deliberately NOT tracked
+# because this repo must be public for free GitHub Pages hosting.
+CLAUDE.md
+Context.txt
