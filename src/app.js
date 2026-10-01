@@ -1,7 +1,7 @@
 import { buildModel } from './workbookModel.js';
 import { createProjectStore, normalizeDetails, matchesProjectSearch } from './projectStore.js';
 import { computeProgress, computeProjectProgress, computeScopeProgress, applicableItems, buildExportPlan } from './exporter.js';
-import { buildExportWorkbook } from './exportWorkbook.js';
+import { buildExportWorkbook, exportFileName } from './exportWorkbook.js';
 import * as db from './db.js';
 import { readLegacy } from './legacyMigration.js';
 import * as fileBackup from './fileBackup.js';
@@ -1379,17 +1379,9 @@ function downloadProjectWorkbook(project = getCurrentProject(), mode = 'outstand
     const reviewDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     const wb = buildExportWorkbook({ XLSX, model: state.model, project, plan, reviewDate, mode });
     const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
-
-    // Project title only (never the project number); keep its spaces and strip
-    // only characters illegal in file names. The mode is named outright rather
-    // than suffixed, and abbreviated to keep names short:
-    // "Smoke Tower_DPVT_Out" (outstanding) / "Smoke Tower_DPVT_All" (all items) /
-    // "Smoke Tower_DPVT_Comp" (comprehensive, one sheet for the whole project).
-    const safeTitle = (project.name || 'Project').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Project';
-    const MODE_WORD = { full: 'All', outstanding: 'Out', comprehensive: 'Comp' };
-    const base = `${safeTitle}_DPVT_${MODE_WORD[mode] || 'Out'}`;
     const type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    downloadBlob(new Blob([data], { type }), `${base}.xlsx`);
+    // Same `now` as the Date Reviewed cell, so the name and the sheet agree.
+    downloadBlob(new Blob([data], { type }), exportFileName(project, mode, now));
   } catch (err) {
     alert('Could not build the workbook: ' + err.message);
   }

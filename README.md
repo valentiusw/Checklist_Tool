@@ -53,13 +53,15 @@ one ships with Windows' Python install.)
 5. **Download Workbook** produces a `.xlsx` of everything still outstanding — one
    worksheet per unit, columns Item ID, Description, Code, Comments, Example. Where an
    item has an example link, the Example cell is a **hyperlink** that opens the file in
-   your browser. The workbook is named `<Project Name>_DPVT_Out`, or
-   `<Project Name>_DPVT_All` when you pick **All Items** from the dropdown.
+   your browser. The workbook is named `<Project Name>_DPVT_Out_<DD.MM.YY>` (e.g.
+   `Lalor Park_DPVT_Out_01.10.26`), or `_DPVT_All_` when you pick **All Items** from the
+   dropdown. Every export name ends with the date it was exported.
    **Comprehensive** (`<Project Name>_DPVT_Comp`) puts the whole project on one sheet
    instead: each outstanding item once, an **Applicable To** column (`All Lifts` or the
    lifts it is still outstanding on), the lifts' comments merged into SL comments (a
    shared comment once; differing ones as `Lift 1: …` lines), and a blank **Response**
-   column for the client. Its header is just the title, reviewer and date.
+   column (last) for the client. Its header is a "Schindler DPVT Outstanding Checklist"
+   title band, then just the project title, reviewer and date.
 6. **Save project file** downloads the project as `.json` (back it up or move it to
    another machine); **Import project** loads it back.
 
