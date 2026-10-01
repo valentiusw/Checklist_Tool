@@ -296,6 +296,77 @@ function buildUnitSheetFull(XLSX, unitPlan, model) {
   return finalize(ws);
 }
 
+// ---- comprehensive sheet: the whole project on one page --------------------
+// Every outstanding item once, with the lifts it is outstanding on and their
+// merged comments, plus a Response column for the client. The header is just the
+// job title, reviewer and date: no Overview, no progress, no how-to notes.
+const COMP_HEADER = ['Item ID', 'Description', 'Code', 'Applicable To', 'SL comments', 'Response', 'Example'];
+const RESPONSE_WCH = 40;
+
+// Lines a wrapped cell needs: each explicit line wraps on its own.
+const wrapLines = (text, wch) => String(text || '').split('\n')
+  .reduce((n, line) => n + Math.max(1, Math.ceil(line.length / wch)), 0);
+
+function buildComprehensiveSheet(XLSX, model, project, plan, reviewDate) {
+  const N = COMP_HEADER.length;
+  const { newSheet, put, band, finalize } = makeApi(XLSX);
+  const ws = newSheet(N);
+  ws['!cols'] = [{ wch: 14 }, { wch: 46 }, { wch: 14 }, { wch: 16 }, { wch: COMMENT_WCH }, { wch: RESPONSE_WCH }, { wch: 34 }];
+  const rows = [];
+  const rh = (r, hpt) => { rows[r] = { hpt }; };
+  let r = 0;
+
+  band(ws, r, 0, N - 1, 'SCHINDLER', { fill: fill(RED_SUB), font: { bold: true, sz: 12, color: { rgb: WHITE } }, alignment: { vertical: 'center', indent: 1 } }); rh(r, 15); r++;
+  const detail = (label, value, fillable = false) => {
+    put(ws, r, 0, label, { font: { bold: true, color: { rgb: INK } }, alignment: { vertical: 'center' }, border: { bottom: bd() } });
+    band(ws, r, 1, 2, fillable ? '  (to be completed)' : value, fillable
+      ? { fill: fill(FILLABLE), font: { italic: true, color: { rgb: '9A7B00' } }, alignment: { vertical: 'center', indent: 1 }, border: { bottom: bd() } }
+      : { font: { bold: label === 'Project Title', color: { rgb: INK } }, alignment: { vertical: 'center', indent: 1 }, border: { bottom: bd() } });
+    rh(r, 18); r++;
+  };
+  const d = project.details || {};
+  // Column A is 14 wide (not the usual 10) so these labels fit beside their values.
+  detail('Project Title', project.name || '');
+  detail('Reviewed By', d.reviewerName || '', !d.reviewerName);
+  detail('Date Reviewed', reviewDate);
+  r++;
+
+  COMP_HEADER.forEach((h, c) => put(ws, r, c, h, { font: { bold: true, color: { rgb: WHITE } }, fill: fill(RED_DK), alignment: { vertical: 'center', wrapText: true } }));
+  rh(r, 18); r++;
+
+  if (!plan.rows.length) {
+    band(ws, r, 0, N - 1, 'No outstanding items. All applicable checks are complete.', { font: { italic: true, color: { rgb: '2E7D32' } }, alignment: { vertical: 'center', indent: 1 } });
+    rh(r, 18); r++;
+  }
+
+  for (const group of orderedSections(model, plan.rows)) {
+    band(ws, r, 0, N - 1, String(group.name).toUpperCase(), { fill: fill(SECTION), font: { bold: true, color: { rgb: RED_DK } }, alignment: { vertical: 'center' }, border: { top: bd(), bottom: bd() } });
+    rh(r, 18); r++;
+    for (const it of group.rows) {
+      const border = { bottom: bd(GREY_LN) };
+      const cell = { alignment: { vertical: 'top', wrapText: true }, border };
+      put(ws, r, 0, it.id, { font: { bold: true, color: { rgb: INK } }, alignment: { vertical: 'top' }, border });
+      put(ws, r, 1, it.description, cell);
+      put(ws, r, 2, it.code, { alignment: { vertical: 'top' }, border });
+      put(ws, r, 3, it.applicableTo || '', cell);
+      put(ws, r, 4, it.comment || '', cell);
+      put(ws, r, 5, '', { ...cell, fill: fill(FILLABLE) });
+      if (it.exampleLink) {
+        const label = it.example || it.exampleLink;
+        put(ws, r, 6, label, { ...cell, font: { color: { rgb: LINK }, underline: true } },
+          { link: { Target: it.exampleLink, Tooltip: 'Open ' + label } });
+      } else {
+        put(ws, r, 6, it.example || '', cell);
+      }
+      const lines = Math.max(wrapLines(it.description, 46), wrapLines(it.comment, COMMENT_WCH), wrapLines(it.applicableTo, 16));
+      rh(r, 4 + lines * 14); r++;
+    }
+  }
+
+  ws['!rows'] = rows;
+  return finalize(ws);
+}
+
 // ---- sheet-name sanitiser (Excel: <=31 chars, no []:*?/\, unique) ----------
 function sanitizeSheetName(name, used) {
   let base = String(name || 'Unit').replace(/[\[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'Unit';
@@ -313,6 +384,10 @@ function sanitizeSheetName(name, used) {
 // ---- assemble --------------------------------------------------------------
 export function buildExportWorkbook({ XLSX, model, project, plan, reviewDate, mode = 'outstanding' }) {
   const wb = XLSX.utils.book_new();
+  if (mode === 'comprehensive') {
+    XLSX.utils.book_append_sheet(wb, buildComprehensiveSheet(XLSX, model, project, plan, reviewDate), 'Checklist');
+    return wb;
+  }
   XLSX.utils.book_append_sheet(wb, buildOverviewSheet(XLSX, model, project, reviewDate, mode), 'Overview');
   const used = new Set(['Overview']);
   // Project-level items (Reports/Statements) come first, before the lifts. The

@@ -242,3 +242,53 @@ test('the Overview gains a progress meter for the project-level items', () => {
   assert.ok(text.includes('Reports & Statements'), 'meter label on the Overview');
 });
 
+
+// ---- the comprehensive export: one sheet for the whole project --------------
+
+function buildComp(project) {
+  const plan = buildExportPlan(scopeModel, project, { mode: 'comprehensive' });
+  return buildExportWorkbook({ XLSX, model: scopeModel, project, plan, reviewDate: '01/10/2026', mode: 'comprehensive' });
+}
+const sheetText = (ws) => Object.entries(ws).filter(([a]) => !a.startsWith('!')).map(([, c]) => String(c.v || ''));
+
+test('comprehensive: a single sheet, no Overview', () => {
+  const wb = buildComp(scopedProject());
+  assert.deepEqual(wb.SheetNames, ['Checklist']);
+});
+
+test('comprehensive: the header carries title, reviewer and date only', () => {
+  const ws = buildComp(scopedProject({ details: { reviewerName: 'J. Smith' } })).Sheets.Checklist;
+  const text = sheetText(ws);
+  for (const t of ['Project Title', 'Smoke Tower', 'Reviewed By', 'J. Smith', 'Date Reviewed', '01/10/2026']) {
+    assert.ok(text.includes(t), `missing ${t}`);
+  }
+  assert.ok(!text.some(t => /%|HOW TO USE|PROGRESS/i.test(t)), 'no progress or how-to content');
+});
+
+test('comprehensive: a blank reviewer falls back to the fillable cell', () => {
+  const text = sheetText(buildComp(scopedProject()).Sheets.Checklist);
+  assert.ok(text.includes('  (to be completed)'));
+});
+
+test('comprehensive: columns and widths, Response 40 and SL comments 50', () => {
+  const ws = buildComp(scopedProject()).Sheets.Checklist;
+  const text = sheetText(ws);
+  const header = ['Item ID', 'Description', 'Code', 'Applicable To', 'SL comments', 'Response', 'Example'];
+  for (const h of header) assert.ok(text.includes(h), `missing header ${h}`);
+  assert.equal(ws['!cols'][header.indexOf('SL comments')].wch, 50);
+  assert.equal(ws['!cols'][header.indexOf('Response')].wch, 40);
+});
+
+test('comprehensive: rows are grouped into discipline bands with Applicable To filled', () => {
+  const project = scopedProject();
+  project.units.push({ id: 'u2', name: 'Lift 2', inputs: {}, checks: { A01: true }, comments: {} });
+  const text = sheetText(buildComp(project).Sheets.Checklist);
+  assert.ok(text.includes('ARCHITECTURAL') && text.includes('REPORTS'));
+  assert.ok(text.includes('Lift 1'), 'A01 outstanding only on Lift 1');
+  assert.ok(text.includes('All Lifts'), 'project-level rows');
+});
+
+test('comprehensive: generated text has no em or en dash', () => {
+  const text = sheetText(buildComp(scopedProject()).Sheets.Checklist).join('\n');
+  assert.ok(!/[—–]/.test(text));
+});

@@ -46,6 +46,48 @@ export function computeProjectProgress(model, project) {
   return { checked, applicable, ratio };
 }
 
+const ALL_UNITS_LABEL = 'All Lifts';
+
+// The comprehensive export's single comment cell for one item. A comment every
+// outstanding lift shares (what an "All Lifts" edit writes) appears once; when
+// they differ, each lift's comment is labelled on its own line. Blank lifts are
+// skipped rather than shown as an empty "Lift 2:".
+export function mergeUnitComments(entries) {
+  const said = entries
+    .map(e => ({ name: e.name, comment: String(e.comment || '').trim() }))
+    .filter(e => e.comment);
+  if (!said.length) return '';
+  const shared = said.length === entries.length && said.every(e => e.comment === said[0].comment);
+  if (shared) return said[0].comment;
+  return said.map(e => `${e.name}: ${e.comment}`).join('\n');
+}
+
+// Comprehensive mode: one row per item still outstanding anywhere, naming the
+// lifts it is outstanding on ("All Lifts" when that is every lift) and merging
+// their comments. Same exclusions as the outstanding export (ticked, S-items).
+function comprehensiveRows(model, project, rowOf) {
+  const units = project.units || [];
+  const rows = [];
+  for (const item of model.items) {
+    if (/^s/i.test(item.id)) continue;
+    if (isProjectScoped(item)) {
+      if (!projectItemApplicable(model, project, item) || projectItemChecked(project, item)) continue;
+      rows.push({ ...rowOf(item, projectItemComment(project, item)), applicableTo: ALL_UNITS_LABEL });
+      continue;
+    }
+    const open = units.filter(unit =>
+      isApplicable(item.condition, unit.inputs || {}, model.inputDefs)
+      && (unit.checks || {})[item.id] !== true);
+    if (!open.length) continue;
+    const applicableTo = open.length === units.length
+      ? ALL_UNITS_LABEL
+      : open.map(u => u.name).join(', ');
+    const comment = mergeUnitComments(open.map(u => ({ name: u.name, comment: (u.comments || {})[item.id] })));
+    rows.push({ ...rowOf(item, comment), applicableTo });
+  }
+  return rows;
+}
+
 export function buildExportPlan(model, project, { mode = 'outstanding' } = {}) {
   const full = mode === 'full';
   const rowOf = (item, comment) => ({
@@ -58,6 +100,8 @@ export function buildExportPlan(model, project, { mode = 'outstanding' } = {}) {
     section: item.section,
     sectionPrefix: item.sectionPrefix,
   });
+
+  if (mode === 'comprehensive') return { rows: comprehensiveRows(model, project, rowOf) };
 
   const units = (project.units || []).map(unit => {
     const values = unit.inputs || {};

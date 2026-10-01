@@ -55,6 +55,11 @@ one ships with Windows' Python install.)
    item has an example link, the Example cell is a **hyperlink** that opens the file in
    your browser. The workbook is named `<Project Name>_DPVT_Out`, or
    `<Project Name>_DPVT_All` when you pick **All Items** from the dropdown.
+   **Comprehensive** (`<Project Name>_DPVT_Comp`) puts the whole project on one sheet
+   instead: each outstanding item once, an **Applicable To** column (`All Lifts` or the
+   lifts it is still outstanding on), the lifts' comments merged into SL comments (a
+   shared comment once; differing ones as `Lift 1: …` lines), and a blank **Response**
+   column for the client. Its header is just the title, reviewer and date.
 6. **Save project file** downloads the project as `.json` (back it up or move it to
    another machine); **Import project** loads it back.
 
