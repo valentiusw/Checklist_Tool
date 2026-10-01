@@ -253,3 +253,108 @@ test('the full plan still keeps project items off the unit sheets', () => {
     assert.ok(!unit.rows.some(r => r.id.startsWith('F')), `${unit.name} has no project items`);
   }
 });
+
+// ---- comprehensive mode: one row per outstanding item for the whole project ----
+
+import { mergeUnitComments } from '../src/exporter.js';
+
+test('mergeUnitComments: one shared comment appears once, unlabelled', () => {
+  const merged = mergeUnitComments([
+    { name: 'Lift 1', comment: 'Pit is correct.' },
+    { name: 'Lift 2', comment: 'Pit is correct.' },
+  ]);
+  assert.equal(merged, 'Pit is correct.');
+});
+
+test('mergeUnitComments: differing comments are labelled, one lift per line', () => {
+  const merged = mergeUnitComments([
+    { name: 'Lift 1', comment: 'Headroom = 3200.' },
+    { name: 'Lift 2', comment: 'Headroom = 3000.' },
+  ]);
+  assert.equal(merged, 'Lift 1: Headroom = 3200.\nLift 2: Headroom = 3000.');
+});
+
+test('mergeUnitComments: blank lifts are skipped, and a partial comment stays labelled', () => {
+  const merged = mergeUnitComments([
+    { name: 'Lift 1', comment: 'Check pit.' },
+    { name: 'Lift 2', comment: '' },
+    { name: 'Lift 3', comment: '   ' },
+  ]);
+  assert.equal(merged, 'Lift 1: Check pit.');
+});
+
+test('mergeUnitComments: no comments gives an empty cell; a single lift is unlabelled', () => {
+  assert.equal(mergeUnitComments([{ name: 'Lift 1', comment: '' }, { name: 'Lift 2', comment: '' }]), '');
+  assert.equal(mergeUnitComments([{ name: 'Lift 1', comment: 'Only one.' }]), 'Only one.');
+});
+
+const compModel = buildModel({
+  checklistRows: [
+    ['Item ID', 'Conditions', 'Description', 'Code', 'Note', 'Example'],
+    ['A01', '', 'Everywhere', 'SL', '', ''],
+    ['A02', 'PitToEarth: TRUE', 'Pit lifts only', 'SL', '', ''],
+    ['S01', '', 'Internal item', 'SL', '', ''],
+    ['F01', '', 'BCA Report', 'SL', '', ''],
+  ],
+  inputRows,
+  sectionRows: [['Prefix', 'Name', 'Scope'], ['A', 'Architectural', ''], ['S', 'Schindler', ''], ['F', 'Reports', 'project']],
+});
+const compProject = (over = {}) => ({
+  name: 'Smoke Tower', details: {}, checks: {}, comments: {},
+  units: [
+    { id: 'u1', name: 'Lift 1', inputs: { PitToEarth: true }, checks: {}, comments: {} },
+    { id: 'u2', name: 'Lift 2', inputs: { PitToEarth: false }, checks: {}, comments: {} },
+    { id: 'u3', name: 'Lift 3', inputs: { PitToEarth: true }, checks: {}, comments: {} },
+  ],
+  ...over,
+});
+const compRow = (plan, id) => plan.rows.find(r => r.id === id);
+
+test('comprehensive: an item outstanding on every lift reads "All Lifts"', () => {
+  const plan = buildExportPlan(compModel, compProject(), { mode: 'comprehensive' });
+  assert.equal(compRow(plan, 'A01').applicableTo, 'All Lifts');
+});
+
+test('comprehensive: a subset of lifts is named in unit order', () => {
+  const plan = buildExportPlan(compModel, compProject(), { mode: 'comprehensive' });
+  assert.equal(compRow(plan, 'A02').applicableTo, 'Lift 1, Lift 3');
+});
+
+test('comprehensive: a ticked lift drops off the list along with its comment', () => {
+  const p = compProject();
+  p.units[0].checks = { A01: true };
+  p.units[0].comments = { A01: 'Done here.' };
+  p.units[1].comments = { A01: 'Lobby missing.' };
+  const row = compRow(buildExportPlan(compModel, p, { mode: 'comprehensive' }), 'A01');
+  assert.equal(row.applicableTo, 'Lift 2, Lift 3');
+  assert.equal(row.comment, 'Lift 2: Lobby missing.');
+});
+
+test('comprehensive: an item ticked on every lift is left out', () => {
+  const p = compProject();
+  for (const u of p.units) u.checks = { A01: true };
+  const plan = buildExportPlan(compModel, p, { mode: 'comprehensive' });
+  assert.equal(compRow(plan, 'A01'), undefined);
+});
+
+test('comprehensive: an "All Lifts" comment shows once', () => {
+  const p = compProject();
+  for (const u of p.units) u.comments = { A01: 'Provide fire rating.' };
+  const row = compRow(buildExportPlan(compModel, p, { mode: 'comprehensive' }), 'A01');
+  assert.equal(row.comment, 'Provide fire rating.');
+});
+
+test('comprehensive: S-items are excluded', () => {
+  const plan = buildExportPlan(compModel, compProject(), { mode: 'comprehensive' });
+  assert.equal(compRow(plan, 'S01'), undefined);
+});
+
+test('comprehensive: project-level items read "All Lifts" with the project comment, until ticked', () => {
+  const plan = buildExportPlan(compModel, compProject({ comments: { F01: 'Awaiting report.' } }), { mode: 'comprehensive' });
+  const row = compRow(plan, 'F01');
+  assert.equal(row.applicableTo, 'All Lifts');
+  assert.equal(row.comment, 'Awaiting report.');
+  assert.equal(row.section, 'Reports');
+  const done = buildExportPlan(compModel, compProject({ checks: { F01: true } }), { mode: 'comprehensive' });
+  assert.equal(compRow(done, 'F01'), undefined);
+});

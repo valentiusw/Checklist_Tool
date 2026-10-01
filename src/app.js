@@ -503,9 +503,9 @@ function deselectProject() {
   if (detail) detail.hidden = true;
 }
 
-// Export trigger dropdown: toggles a menu whose two items export in the chosen
+// Export trigger dropdown: toggles a menu whose three items export in the chosen
 // mode. `getProject` resolves the project to export at click time.
-function wireExportDropdown({ btnId, menuId, fullId, outId, getProject }) {
+function wireExportDropdown({ btnId, menuId, fullId, outId, compId, getProject }) {
   const btn = document.getElementById(btnId);
   const menu = document.getElementById(menuId);
   const close = () => { if (!menu.hidden) { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); } };
@@ -529,6 +529,11 @@ function wireExportDropdown({ btnId, menuId, fullId, outId, getProject }) {
     const p = getProject();
     if (p) downloadProjectWorkbook(p, 'outstanding');
   });
+  document.getElementById(compId).addEventListener('click', () => {
+    close();
+    const p = getProject();
+    if (p) downloadProjectWorkbook(p, 'comprehensive');
+  });
 }
 
 function wireDashboardActions() {
@@ -538,7 +543,7 @@ function wireDashboardActions() {
   });
   wireExportDropdown({
     btnId: 'dash-export', menuId: 'export-menu',
-    fullId: 'menu-export-full', outId: 'menu-export-outstanding',
+    fullId: 'menu-export-full', outId: 'menu-export-outstanding', compId: 'menu-export-comprehensive',
     getProject: () => state.store.getProject(state.selectedProjectId),
   });
   document.getElementById('dash-archive').addEventListener('click', () => {
@@ -1378,9 +1383,11 @@ function downloadProjectWorkbook(project = getCurrentProject(), mode = 'outstand
     // Project title only (never the project number); keep its spaces and strip
     // only characters illegal in file names. The mode is named outright rather
     // than suffixed, and abbreviated to keep names short:
-    // "Smoke Tower_DPVT_Out" (outstanding) / "Smoke Tower_DPVT_All" (all items).
+    // "Smoke Tower_DPVT_Out" (outstanding) / "Smoke Tower_DPVT_All" (all items) /
+    // "Smoke Tower_DPVT_Comp" (comprehensive, one sheet for the whole project).
     const safeTitle = (project.name || 'Project').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Project';
-    const base = `${safeTitle}_DPVT_${mode === 'full' ? 'All' : 'Out'}`;
+    const MODE_WORD = { full: 'All', outstanding: 'Out', comprehensive: 'Comp' };
+    const base = `${safeTitle}_DPVT_${MODE_WORD[mode] || 'Out'}`;
     const type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     downloadBlob(new Blob([data], { type }), `${base}.xlsx`);
   } catch (err) {
@@ -1651,7 +1658,7 @@ async function init() {
   document.getElementById('btn-save-project').addEventListener('click', () => saveProjectFile());
   wireExportDropdown({
     btnId: 'btn-download-zip', menuId: 'dl-export-menu',
-    fullId: 'dl-export-full', outId: 'dl-export-outstanding',
+    fullId: 'dl-export-full', outId: 'dl-export-outstanding', compId: 'dl-export-comprehensive',
     getProject: () => getCurrentProject(),
   });
   document.getElementById('btn-save-library').addEventListener('click', saveLibraryFile);
