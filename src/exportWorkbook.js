@@ -298,9 +298,11 @@ function buildUnitSheetFull(XLSX, unitPlan, model) {
 
 // ---- comprehensive sheet: the whole project on one page --------------------
 // Every outstanding item once, with the lifts it is outstanding on and their
-// merged comments, plus a Response column for the client. The header is just the
-// job title, reviewer and date: no Overview, no progress, no how-to notes.
-const COMP_HEADER = ['Item ID', 'Description', 'Code', 'Applicable To', 'SL comments', 'Response', 'Example'];
+// merged comments, plus a blank Response column for the client. The header is a
+// title band and the job title, reviewer and date: no Overview, no progress, no
+// how-to notes.
+const COMP_HEADER = ['Item ID', 'Description', 'Code', 'Applicable To', 'SL comments', 'Example', 'Response'];
+const COMP_TITLE = 'Schindler DPVT Outstanding Checklist';
 const RESPONSE_WCH = 40;
 
 // Lines a wrapped cell needs: each explicit line wraps on its own.
@@ -311,12 +313,12 @@ function buildComprehensiveSheet(XLSX, model, project, plan, reviewDate) {
   const N = COMP_HEADER.length;
   const { newSheet, put, band, finalize } = makeApi(XLSX);
   const ws = newSheet(N);
-  ws['!cols'] = [{ wch: 14 }, { wch: 46 }, { wch: 14 }, { wch: 16 }, { wch: COMMENT_WCH }, { wch: RESPONSE_WCH }, { wch: 34 }];
+  ws['!cols'] = [{ wch: 14 }, { wch: 46 }, { wch: 14 }, { wch: 16 }, { wch: COMMENT_WCH }, { wch: 34 }, { wch: RESPONSE_WCH }];
   const rows = [];
   const rh = (r, hpt) => { rows[r] = { hpt }; };
   let r = 0;
 
-  band(ws, r, 0, N - 1, 'SCHINDLER', { fill: fill(RED_SUB), font: { bold: true, sz: 12, color: { rgb: WHITE } }, alignment: { vertical: 'center', indent: 1 } }); rh(r, 15); r++;
+  band(ws, r, 0, N - 1, COMP_TITLE, { fill: fill(RED_DK), font: { bold: true, sz: 14, color: { rgb: WHITE } }, alignment: { vertical: 'center', indent: 1 } }); rh(r, 24); r++;
   const detail = (label, value, fillable = false) => {
     put(ws, r, 0, label, { font: { bold: true, color: { rgb: INK } }, alignment: { vertical: 'center' }, border: { bottom: bd() } });
     band(ws, r, 1, 2, fillable ? '  (to be completed)' : value, fillable
@@ -350,14 +352,14 @@ function buildComprehensiveSheet(XLSX, model, project, plan, reviewDate) {
       put(ws, r, 2, it.code, { alignment: { vertical: 'top' }, border });
       put(ws, r, 3, it.applicableTo || '', cell);
       put(ws, r, 4, it.comment || '', cell);
-      put(ws, r, 5, '', { ...cell, fill: fill(FILLABLE) });
       if (it.exampleLink) {
         const label = it.example || it.exampleLink;
-        put(ws, r, 6, label, { ...cell, font: { color: { rgb: LINK }, underline: true } },
+        put(ws, r, 5, label, { ...cell, font: { color: { rgb: LINK }, underline: true } },
           { link: { Target: it.exampleLink, Tooltip: 'Open ' + label } });
       } else {
-        put(ws, r, 6, it.example || '', cell);
+        put(ws, r, 5, it.example || '', cell);
       }
+      put(ws, r, 6, '', cell);
       const lines = Math.max(wrapLines(it.description, 46), wrapLines(it.comment, COMMENT_WCH), wrapLines(it.applicableTo, 16));
       rh(r, 4 + lines * 14); r++;
     }
@@ -379,6 +381,22 @@ function sanitizeSheetName(name, used) {
   }
   used.add(candidate);
   return candidate;
+}
+
+// ---- file name -------------------------------------------------------------
+// Project title only (never the project number); keep its spaces and strip only
+// characters illegal in file names. The mode is named outright rather than
+// suffixed, abbreviated to keep names short, and the export date (DD.MM.YY) ends
+// the name so successive exports sit side by side:
+// "Lalor Park_DPVT_Out_01.10.26" (outstanding) / "_DPVT_All_" (all items) /
+// "_DPVT_Comp_" (comprehensive, one sheet for the whole project).
+const MODE_WORD = { full: 'All', outstanding: 'Out', comprehensive: 'Comp' };
+
+export function exportFileName(project, mode, date) {
+  const safeTitle = String((project && project.name) || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Project';
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${pad(date.getFullYear() % 100)}`;
+  return `${safeTitle}_DPVT_${MODE_WORD[mode] || 'Out'}_${stamp}.xlsx`;
 }
 
 // ---- assemble --------------------------------------------------------------

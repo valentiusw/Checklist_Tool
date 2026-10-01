@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildModel } from '../src/workbookModel.js';
 import { buildExportPlan } from '../src/exporter.js';
-import { buildExportWorkbook } from '../src/exportWorkbook.js';
+import { buildExportWorkbook, exportFileName } from '../src/exportWorkbook.js';
 
 // Minimal stand-in for the vendored xlsx-js-style global. buildExportWorkbook
 // only uses these four helpers, so the real library is not needed to assert on
@@ -273,10 +273,27 @@ test('comprehensive: a blank reviewer falls back to the fillable cell', () => {
 test('comprehensive: columns and widths, Response 40 and SL comments 50', () => {
   const ws = buildComp(scopedProject()).Sheets.Checklist;
   const text = sheetText(ws);
-  const header = ['Item ID', 'Description', 'Code', 'Applicable To', 'SL comments', 'Response', 'Example'];
+  const header = ['Item ID', 'Description', 'Code', 'Applicable To', 'SL comments', 'Example', 'Response'];
   for (const h of header) assert.ok(text.includes(h), `missing header ${h}`);
+  // Header cells sit in this exact left-to-right order on one row.
+  const headerRow = Object.entries(ws).find(([a, c]) => !a.startsWith('!') && c.v === 'Item ID')[0].slice(1);
+  assert.deepEqual(header.map((_, c) => ws[String.fromCharCode(65 + c) + headerRow].v), header);
   assert.equal(ws['!cols'][header.indexOf('SL comments')].wch, 50);
   assert.equal(ws['!cols'][header.indexOf('Response')].wch, 40);
+});
+
+test('comprehensive: the top strip is the B30510 title band', () => {
+  const ws = buildComp(scopedProject()).Sheets.Checklist;
+  assert.equal(ws.A1.v, 'Schindler DPVT Outstanding Checklist');
+  assert.equal(ws.A1.s.fill.fgColor.rgb, 'B30510');
+});
+
+test('comprehensive: the Response cells are not highlighted', () => {
+  const ws = buildComp(scopedProject()).Sheets.Checklist;
+  const idCell = Object.entries(ws).find(([a, c]) => !a.startsWith('!') && c.v === 'A01')[0];
+  const response = ws['G' + idCell.slice(1)];
+  assert.equal(response.v, '');
+  assert.equal(response.s.fill, undefined);
 });
 
 test('comprehensive: rows are grouped into discipline bands with Applicable To filled', () => {
@@ -291,4 +308,25 @@ test('comprehensive: rows are grouped into discipline bands with Applicable To f
 test('comprehensive: generated text has no em or en dash', () => {
   const text = sheetText(buildComp(scopedProject()).Sheets.Checklist).join('\n');
   assert.ok(!/[—–]/.test(text));
+});
+
+// ---- export file names -------------------------------------------------------
+
+const OCT1 = new Date(2026, 9, 1); // 1 October 2026, local time
+
+test('file names end with the export date as DD.MM.YY, for every mode', () => {
+  const project = { name: 'Lalor Park' };
+  assert.equal(exportFileName(project, 'comprehensive', OCT1), 'Lalor Park_DPVT_Comp_01.10.26.xlsx');
+  assert.equal(exportFileName(project, 'outstanding', OCT1), 'Lalor Park_DPVT_Out_01.10.26.xlsx');
+  assert.equal(exportFileName(project, 'full', OCT1), 'Lalor Park_DPVT_All_01.10.26.xlsx');
+});
+
+test('file names pad single-digit days and months', () => {
+  assert.equal(exportFileName({ name: 'X' }, 'outstanding', new Date(2027, 2, 5)), 'X_DPVT_Out_05.03.27.xlsx');
+});
+
+test('file names keep the title spaces, strip illegal characters, never use the project number', () => {
+  const project = { name: 'Tower: A/B\\C  Stage*1', details: { projectNumber: 'P-123' } };
+  assert.equal(exportFileName(project, 'outstanding', OCT1), 'Tower A B C Stage 1_DPVT_Out_01.10.26.xlsx');
+  assert.equal(exportFileName({ name: '' }, 'full', OCT1), 'Project_DPVT_All_01.10.26.xlsx');
 });
